@@ -64,7 +64,9 @@ class TimelineScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   // Period toggle
-                  SegmentedButton<TimelinePeriod>(
+                  Semantics(
+                    label: '타임라인 기간 선택',
+                    child: SegmentedButton<TimelinePeriod>(
                     segments: const [
                       ButtonSegment(
                         value: TimelinePeriod.weeks12,
@@ -85,6 +87,7 @@ class TimelineScreen extends ConsumerWidget {
                           .read(timelineControllerProvider.notifier)
                           .setPeriod(selection.first);
                     },
+                  ),
                   ),
                   const SizedBox(height: 24),
                   HeatmapGrid(

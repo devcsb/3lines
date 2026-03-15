@@ -221,18 +221,27 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: isReadMode
-                      ? SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: () => ref
-                                .read(todayControllerProvider.notifier)
-                                .toggleEdit(),
-                            child: const Text('수정하기'),
+                      ? Semantics(
+                          button: true,
+                          label: '오늘의 기록 수정하기',
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: () => ref
+                                  .read(todayControllerProvider.notifier)
+                                  .toggleEdit(),
+                              child: const Text('수정하기'),
+                            ),
                           ),
                         )
-                      : SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
+                      : Semantics(
+                          button: true,
+                          label: state.canSave
+                              ? '오늘의 기록 저장하기'
+                              : '감정을 선택하고 답변을 입력해주세요',
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
                             onPressed: state.canSave && !state.isSaving
                                 ? () async {
                                     final isFirstSave = !state.isCompleted;
@@ -264,6 +273,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                   )
                                 : const Text('기록 완료'),
                           ),
+                        ),
                         ),
                 ),
               ],

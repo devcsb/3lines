@@ -4,11 +4,11 @@ import 'package:three_lines/shared/widgets/staggered_fade_in.dart';
 
 void main() {
   testWidgets('renders child widget after animation', (tester) async {
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(const MaterialApp(
       home: Scaffold(
         body: StaggeredFadeIn(
           index: 0,
-          child: const Text('fade me'),
+          child: Text('fade me'),
         ),
       ),
     ));
@@ -21,11 +21,11 @@ void main() {
   });
 
   testWidgets('contains FadeTransition and SlideTransition', (tester) async {
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(const MaterialApp(
       home: Scaffold(
         body: StaggeredFadeIn(
           index: 0,
-          child: const Text('test'),
+          child: Text('test'),
         ),
       ),
     ));

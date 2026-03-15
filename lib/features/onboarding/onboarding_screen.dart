@@ -61,9 +61,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             Align(
               alignment: Alignment.topRight,
               child: _currentPage < _pages.length - 1
-                  ? TextButton(
-                      onPressed: _completeOnboarding,
-                      child: const Text('건너뛰기'),
+                  ? Semantics(
+                      button: true,
+                      label: '온보딩 건너뛰기',
+                      child: TextButton(
+                        onPressed: _completeOnboarding,
+                        child: const Text('건너뛰기'),
+                      ),
                     )
                   : const SizedBox(height: 48),
             ),
@@ -143,11 +147,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
                   // Start button (only on last page)
                   if (_currentPage == _pages.length - 1)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _completeOnboarding,
-                        child: const Text('시작하기'),
+                    Semantics(
+                      button: true,
+                      label: '3Lines 시작하기',
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _completeOnboarding,
+                          child: const Text('시작하기'),
+                        ),
                       ),
                     ),
                 ],

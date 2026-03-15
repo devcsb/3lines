@@ -116,7 +116,9 @@ class InsightsScreen extends ConsumerWidget {
                     ),
 
                   // Period selector
-                  Row(
+                  Semantics(
+                    label: '인사이트 기간 선택',
+                    child: Row(
                     children: [
                       ChoiceChip(
                         label: const Text('1주'),
@@ -145,6 +147,7 @@ class InsightsScreen extends ConsumerWidget {
                             .setPeriod(InsightsPeriod.month3),
                       ),
                     ],
+                  ),
                   ),
 
                   const SizedBox(height: 24),

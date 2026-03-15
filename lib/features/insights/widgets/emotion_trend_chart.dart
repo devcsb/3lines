@@ -22,15 +22,83 @@ class EmotionTrendChart extends StatelessWidget {
       );
     }
 
-    final spots = <FlSpot>[];
-    for (int i = 0; i < data.length; i++) {
-      spots.add(FlSpot(i.toDouble(), data[i].emotion.toDouble()));
+    final firstDate = data.first.date;
+    final lastDate = data.last.date;
+    final totalDays = lastDate.difference(firstDate).inDays;
+
+    // Build a map from day-offset to data for tooltips
+    final dataByOffset = <int, ({DateTime date, int emotion})>{};
+    for (final d in data) {
+      final offset = d.date.difference(firstDate).inDays;
+      dataByOffset[offset] = d;
     }
+
+    // Split data into consecutive-day segments for gap handling
+    // PRD 4.4: "기록 없는 날은 빈 구간 (선 끊김)"
+    final segments = <List<FlSpot>>[];
+    List<FlSpot> currentSegment = [];
+
+    for (int i = 0; i < data.length; i++) {
+      final dayOffset = data[i].date.difference(firstDate).inDays.toDouble();
+      final spot = FlSpot(dayOffset, data[i].emotion.toDouble());
+
+      if (i > 0) {
+        final prevDate = data[i - 1].date;
+        final gap = data[i].date.difference(prevDate).inDays;
+        if (gap > 1) {
+          // Gap detected — start a new segment
+          if (currentSegment.isNotEmpty) {
+            segments.add(currentSegment);
+          }
+          currentSegment = [spot];
+          continue;
+        }
+      }
+      currentSegment.add(spot);
+    }
+    if (currentSegment.isNotEmpty) {
+      segments.add(currentSegment);
+    }
+
+    // Create one LineChartBarData per segment
+    final lineBars = segments.map((spots) {
+      return LineChartBarData(
+        spots: spots,
+        isCurved: true,
+        color: theme.colorScheme.primary,
+        barWidth: 2,
+        dotData: FlDotData(
+          show: true,
+          getDotPainter: (spot, _, __, ___) {
+            final emotion = spot.y.toInt();
+            return FlDotCirclePainter(
+              radius: 4,
+              color: AppColors.emotionColors[emotion] ??
+                  theme.colorScheme.primary,
+              strokeWidth: 0,
+            );
+          },
+        ),
+        belowBarData: BarAreaData(
+          show: true,
+          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+        ),
+      );
+    }).toList();
+
+    // Bottom title interval based on total day span
+    final bottomInterval = totalDays > 14
+        ? (totalDays / 4).ceilToDouble()
+        : totalDays > 0
+            ? 1.0
+            : 1.0;
 
     return SizedBox(
       height: 200,
       child: LineChart(
         LineChartData(
+          minX: 0,
+          maxX: totalDays.toDouble(),
           minY: 0.5,
           maxY: 5.5,
           gridData: FlGridData(
@@ -61,19 +129,17 @@ class EmotionTrendChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 24,
-                interval: data.length > 7
-                    ? (data.length / 4).ceilToDouble()
-                    : 1,
+                interval: bottomInterval,
                 getTitlesWidget: (value, _) {
-                  final index = value.toInt();
-                  if (index < 0 || index >= data.length) {
+                  final dayOffset = value.toInt();
+                  if (dayOffset < 0 || dayOffset > totalDays) {
                     return const SizedBox();
                   }
-                  final d = data[index].date;
+                  final date = firstDate.add(Duration(days: dayOffset));
                   return Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
-                      '${d.month}/${d.day}',
+                      '${date.month}/${date.day}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontSize: 10,
                       ),
@@ -90,41 +156,18 @@ class EmotionTrendChart extends StatelessWidget {
             ),
           ),
           borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots,
-              isCurved: true,
-              color: theme.colorScheme.primary,
-              barWidth: 2,
-              dotData: FlDotData(
-                show: true,
-                getDotPainter: (spot, _, __, ___) {
-                  final emotion = spot.y.toInt();
-                  return FlDotCirclePainter(
-                    radius: 4,
-                    color: AppColors.emotionColors[emotion] ??
-                        theme.colorScheme.primary,
-                    strokeWidth: 0,
-                  );
-                },
-              ),
-              belowBarData: BarAreaData(
-                show: true,
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              ),
-            ),
-          ],
+          lineBarsData: lineBars,
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
               getTooltipItems: (touchedSpots) {
                 return touchedSpots.map((spot) {
-                  final index = spot.spotIndex;
-                  if (index >= data.length) return null;
-                  final d = data[index];
+                  final dayOffset = spot.x.toInt();
+                  final entry = dataByOffset[dayOffset];
+                  if (entry == null) return null;
                   final emoji =
-                      AppColors.emotionEmojis[d.emotion] ?? '';
+                      AppColors.emotionEmojis[entry.emotion] ?? '';
                   return LineTooltipItem(
-                    '$emoji ${d.date.month}/${d.date.day}',
+                    '$emoji ${entry.date.month}/${entry.date.day}',
                     TextStyle(
                       color: theme.colorScheme.onSurface,
                       fontSize: 12,

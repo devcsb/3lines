@@ -35,10 +35,10 @@ void main() {
   });
 
   testWidgets('accepts custom title', (tester) async {
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(const MaterialApp(
       home: Scaffold(
         body: KeywordCloud(
-          keywords: const {'감사': 1},
+          keywords: {'감사': 1},
           title: '커스텀 제목',
         ),
       ),
