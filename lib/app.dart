@@ -52,7 +52,24 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/onboarding',
-        builder: (_, __) => const OnboardingScreen(),
+        pageBuilder: (_, __) => CustomTransitionPage(
+          child: const OnboardingScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final curved =
+                CurvedAnimation(parent: animation, curve: Curves.easeInOut);
+            return FadeTransition(
+              opacity: curved,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.05),
+                  end: Offset.zero,
+                ).animate(curved),
+                child: child,
+              ),
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (_, __, navigationShell) =>
