@@ -171,6 +171,29 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     return '$base$sign$hours:$minutes';
   }
 
+  /// Imports entries from a JSON string (exported format). Returns the count
+  /// of entries imported, or throws on invalid JSON.
+  Future<int> importData(String jsonStr) async {
+    final decoded = json.decode(jsonStr);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Invalid export format');
+    }
+    final entriesList = decoded['entries'] as List<dynamic>?;
+    if (entriesList == null) {
+      throw const FormatException('No entries found in file');
+    }
+    final entries = entriesList.cast<Map<String, dynamic>>();
+    final entryRepo = ref.read(entryRepositoryProvider);
+    final count = await entryRepo.importEntries(entries);
+
+    // Refresh dependent screens
+    ref.invalidate(todayControllerProvider);
+    ref.invalidate(timelineControllerProvider);
+    ref.invalidate(insightsControllerProvider);
+
+    return count;
+  }
+
   Future<void> deleteAllData() async {
     final entryRepo = ref.read(entryRepositoryProvider);
     await entryRepo.deleteAllEntries();

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -225,6 +226,14 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 Semantics(
+                  label: 'JSON 파일에서 데이터 가져오기',
+                  child: ListTile(
+                    title: const Text('데이터 가져오기 (JSON)'),
+                    leading: const Icon(Icons.file_upload),
+                    onTap: () => _importData(context, ref),
+                  ),
+                ),
+                Semantics(
                   label: '모든 기록 데이터 삭제',
                   child: ListTile(
                     title: Text('모든 데이터 삭제',
@@ -265,6 +274,43 @@ class SettingsScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Future<void> _importData(BuildContext context, WidgetRef ref) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+      if (result == null || result.files.single.path == null) return;
+
+      final file = File(result.files.single.path!);
+      final jsonStr = await file.readAsString();
+
+      if (!context.mounted) return;
+
+      final count = await ref
+          .read(settingsControllerProvider.notifier)
+          .importData(jsonStr);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$count개의 기록을 가져왔어요')),
+        );
+      }
+    } on FormatException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('잘못된 파일 형식이에요: ${e.message}')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('가져오기에 실패했어요')),
+        );
+      }
+    }
   }
 
   void _showPromptEditor(

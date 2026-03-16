@@ -166,6 +166,48 @@ class EntryRepository {
     return allEntries.map((e) => DailyEntry.fromEntry(e).toJson()).toList();
   }
 
+  /// Imports entries from exported JSON data. Existing entries for the same
+  /// date are overwritten. Returns the number of entries imported.
+  Future<int> importEntries(List<Map<String, dynamic>> entries) async {
+    int count = 0;
+    for (final json in entries) {
+      final date = json['date'] as String?;
+      final emotion = json['emotion'] as int?;
+      final prompts = json['prompts'] as List<dynamic>?;
+      if (date == null || emotion == null || prompts == null) continue;
+
+      String answer(int i, String cat) {
+        if (i < prompts.length) {
+          final p = prompts[i] as Map<String, dynamic>;
+          return (p['answer'] as String?) ?? '';
+        }
+        return '';
+      }
+
+      String question(int i) {
+        if (i < prompts.length) {
+          final p = prompts[i] as Map<String, dynamic>;
+          return (p['question'] as String?) ?? '';
+        }
+        return '';
+      }
+
+      final entry = DailyEntry(
+        date: date,
+        emotion: emotion.clamp(1, 5),
+        prompt1: question(0),
+        answer1: answer(0, 'gratitude'),
+        prompt2: question(1),
+        answer2: answer(1, 'acceptance'),
+        prompt3: question(2),
+        answer3: answer(2, 'intention'),
+      );
+      await saveEntry(entry);
+      count++;
+    }
+    return count;
+  }
+
   Future<void> deleteAllEntries() async {
     await _db.delete(_db.entries).go();
   }

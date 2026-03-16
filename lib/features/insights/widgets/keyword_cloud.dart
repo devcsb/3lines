@@ -36,7 +36,9 @@ class KeywordCloud extends StatelessWidget {
           runSpacing: 4,
           children: keywords.entries.map((entry) {
             final intensity = (entry.value / maxCount).clamp(0.3, 1.0);
-            return Chip(
+            return Semantics(
+              label: '${entry.key}, ${entry.value}회',
+              child: Chip(
               label: Text(entry.key),
               labelStyle: TextStyle(
                 fontSize: 12 + (intensity * 4),
@@ -47,6 +49,7 @@ class KeywordCloud extends StatelessWidget {
                   .withValues(alpha: intensity * 0.5),
               side: BorderSide.none,
               visualDensity: VisualDensity.compact,
+            ),
             );
           }).toList(),
         ),
