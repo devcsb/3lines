@@ -47,45 +47,51 @@ class SettingsScreen extends ConsumerWidget {
                     )),
                 const Divider(),
                 ...List.generate(3, (index) {
-                  return ListTile(
-                    title: Text('질문 ${index + 1}'),
-                    subtitle: Text(
-                      state.prompts[index],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  return Semantics(
+                    label: '질문 ${index + 1} 수정: ${state.prompts[index]}',
+                    child: ListTile(
+                      title: Text('질문 ${index + 1}'),
+                      subtitle: Text(
+                        state.prompts[index],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => _showPromptEditor(
+                          context, ref, index, state.prompts[index]),
                     ),
-                    onTap: () => _showPromptEditor(
-                        context, ref, index, state.prompts[index]),
                   );
                 }),
-                ListTile(
-                  title: const Text('기본값으로 초기화'),
-                  leading: const Icon(Icons.restore),
-                  onTap: () async {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('질문 초기화'),
-                        content:
-                            const Text('모든 질문을 기본값으로 되돌릴까요?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('취소'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('초기화'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirmed == true) {
-                      await ref
-                          .read(settingsControllerProvider.notifier)
-                          .resetPrompts();
-                    }
-                  },
+                Semantics(
+                  label: '모든 질문을 기본값으로 초기화',
+                  child: ListTile(
+                    title: const Text('기본값으로 초기화'),
+                    leading: const Icon(Icons.restore),
+                    onTap: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('질문 초기화'),
+                          content:
+                              const Text('모든 질문을 기본값으로 되돌릴까요?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('취소'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('초기화'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true) {
+                        await ref
+                            .read(settingsControllerProvider.notifier)
+                            .resetPrompts();
+                      }
+                    },
+                  ),
                 ),
 
                 const SizedBox(height: 16),
@@ -96,44 +102,52 @@ class SettingsScreen extends ConsumerWidget {
                       color: theme.colorScheme.primary,
                     )),
                 const Divider(),
-                SwitchListTile(
-                  title: const Text('매일 리마인더'),
-                  value: state.reminderEnabled,
-                  onChanged: (v) async {
-                    final success = await ref
-                        .read(settingsControllerProvider.notifier)
-                        .setReminderEnabled(v);
-                    if (!success && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('알림 설정에 실패했어요')),
-                      );
-                    }
-                  },
-                ),
-                ListTile(
-                  title: const Text('리마인더 시간'),
-                  trailing: Text(
-                    '${state.reminderHour.toString().padLeft(2, '0')}:${state.reminderMinute.toString().padLeft(2, '0')}',
-                    style: theme.textTheme.bodyLarge,
+                Semantics(
+                  label: state.reminderEnabled
+                      ? '매일 리마인더 켜짐'
+                      : '매일 리마인더 꺼짐',
+                  child: SwitchListTile(
+                    title: const Text('매일 리마인더'),
+                    value: state.reminderEnabled,
+                    onChanged: (v) async {
+                      final success = await ref
+                          .read(settingsControllerProvider.notifier)
+                          .setReminderEnabled(v);
+                      if (!success && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('알림 설정에 실패했어요')),
+                        );
+                      }
+                    },
                   ),
-                  enabled: state.reminderEnabled,
-                  onTap: state.reminderEnabled
-                      ? () async {
-                          final time = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDay(
-                              hour: state.reminderHour,
-                              minute: state.reminderMinute,
-                            ),
-                          );
-                          if (time != null) {
-                            ref
-                                .read(settingsControllerProvider.notifier)
-                                .setReminderTime(time.hour, time.minute);
+                ),
+                Semantics(
+                  label: '리마인더 시간: ${state.reminderHour.toString().padLeft(2, '0')}시 ${state.reminderMinute.toString().padLeft(2, '0')}분',
+                  child: ListTile(
+                    title: const Text('리마인더 시간'),
+                    trailing: Text(
+                      '${state.reminderHour.toString().padLeft(2, '0')}:${state.reminderMinute.toString().padLeft(2, '0')}',
+                      style: theme.textTheme.bodyLarge,
+                    ),
+                    enabled: state.reminderEnabled,
+                    onTap: state.reminderEnabled
+                        ? () async {
+                            final time = await showTimePicker(
+                              context: context,
+                              initialTime: TimeOfDay(
+                                hour: state.reminderHour,
+                                minute: state.reminderMinute,
+                              ),
+                            );
+                            if (time != null) {
+                              ref
+                                  .read(settingsControllerProvider.notifier)
+                                  .setReminderTime(time.hour, time.minute);
+                            }
                           }
-                        }
-                      : null,
+                        : null,
+                  ),
                 ),
 
                 const SizedBox(height: 16),
@@ -147,27 +161,30 @@ class SettingsScreen extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 8),
-                  child: SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(
-                        value: 'system',
-                        label: Text('시스템 기본'),
-                      ),
-                      ButtonSegment(
-                        value: 'light',
-                        label: Text('라이트'),
-                      ),
-                      ButtonSegment(
-                        value: 'dark',
-                        label: Text('다크'),
-                      ),
-                    ],
-                    selected: {state.themeMode},
-                    onSelectionChanged: (selection) {
-                      ref
-                          .read(settingsControllerProvider.notifier)
-                          .setThemeMode(selection.first);
-                    },
+                  child: Semantics(
+                    label: '테마 선택: ${state.themeMode == 'system' ? '시스템 기본' : state.themeMode == 'light' ? '라이트' : '다크'}',
+                    child: SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(
+                          value: 'system',
+                          label: Text('시스템 기본'),
+                        ),
+                        ButtonSegment(
+                          value: 'light',
+                          label: Text('라이트'),
+                        ),
+                        ButtonSegment(
+                          value: 'dark',
+                          label: Text('다크'),
+                        ),
+                      ],
+                      selected: {state.themeMode},
+                      onSelectionChanged: (selection) {
+                        ref
+                            .read(settingsControllerProvider.notifier)
+                            .setThemeMode(selection.first);
+                      },
+                    ),
                   ),
                 ),
 
@@ -179,38 +196,44 @@ class SettingsScreen extends ConsumerWidget {
                       color: theme.colorScheme.primary,
                     )),
                 const Divider(),
-                ListTile(
-                  title: const Text('데이터 내보내기 (JSON)'),
-                  leading: const Icon(Icons.file_download),
-                  onTap: () async {
-                    try {
-                      final json = await ref
-                          .read(settingsControllerProvider.notifier)
-                          .exportData();
-                      final dir = await getTemporaryDirectory();
-                      final file = File(
-                          '${dir.path}/3lines_export_${DateTime.now().millisecondsSinceEpoch}.json');
-                      await file.writeAsString(json);
-                      if (context.mounted) {
-                        await Share.shareXFiles([XFile(file.path)]);
+                Semantics(
+                  label: '데이터를 JSON 파일로 내보내기',
+                  child: ListTile(
+                    title: const Text('데이터 내보내기 (JSON)'),
+                    leading: const Icon(Icons.file_download),
+                    onTap: () async {
+                      try {
+                        final json = await ref
+                            .read(settingsControllerProvider.notifier)
+                            .exportData();
+                        final dir = await getTemporaryDirectory();
+                        final file = File(
+                            '${dir.path}/3lines_export_${DateTime.now().millisecondsSinceEpoch}.json');
+                        await file.writeAsString(json);
+                        if (context.mounted) {
+                          await Share.shareXFiles([XFile(file.path)]);
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('내보내기에 실패했어요')),
+                          );
+                        }
                       }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('내보내기에 실패했어요')),
-                        );
-                      }
-                    }
-                  },
+                    },
+                  ),
                 ),
-                ListTile(
-                  title: Text('모든 데이터 삭제',
-                      style: TextStyle(
-                          color: theme.colorScheme.error)),
-                  leading: Icon(Icons.delete_forever,
-                      color: theme.colorScheme.error),
-                  onTap: () => _showDeleteConfirmation(context, ref),
+                Semantics(
+                  label: '모든 기록 데이터 삭제',
+                  child: ListTile(
+                    title: Text('모든 데이터 삭제',
+                        style: TextStyle(
+                            color: theme.colorScheme.error)),
+                    leading: Icon(Icons.delete_forever,
+                        color: theme.colorScheme.error),
+                    onTap: () => _showDeleteConfirmation(context, ref),
+                  ),
                 ),
 
                 const SizedBox(height: 16),
@@ -225,12 +248,15 @@ class SettingsScreen extends ConsumerWidget {
                   title: const Text('앱 버전'),
                   trailing: Text(state.appVersion),
                 ),
-                ListTile(
-                  title: const Text('오픈소스 라이선스'),
-                  onTap: () => showLicensePage(
-                    context: context,
-                    applicationName: '3Lines',
-                    applicationVersion: state.appVersion,
+                Semantics(
+                  label: '오픈소스 라이선스 보기',
+                  child: ListTile(
+                    title: const Text('오픈소스 라이선스'),
+                    onTap: () => showLicensePage(
+                      context: context,
+                      applicationName: '3Lines',
+                      applicationVersion: state.appVersion,
+                    ),
                   ),
                 ),
               ],
@@ -283,13 +309,12 @@ class SettingsScreen extends ConsumerWidget {
             '모든 기록이 영구적으로 삭제됩니다.\n확인하려면 "삭제"를 입력하세요.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('취소'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(ctx);
-              _showDeleteInput(context, ref);
+              Navigator.pop(ctx, true);
             },
             child: Text('다음',
                 style: TextStyle(
@@ -297,48 +322,100 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    ).then((confirmed) {
+      if (confirmed == true && context.mounted) {
+        _showDeleteInput(context, ref);
+      }
+    });
   }
 
   void _showDeleteInput(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('삭제 확인'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: '"삭제"를 입력하세요',
-            border: OutlineInputBorder(),
+      builder: (ctx) => _DeleteInputDialog(
+        controller: controller,
+        onDelete: () async {
+          await ref
+              .read(settingsControllerProvider.notifier)
+              .deleteAllData();
+          if (ctx.mounted) {
+            Navigator.pop(ctx);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('모든 데이터가 삭제되었어요')),
+            );
+          }
+        },
+      ),
+    );
+  }
+}
+
+/// Stateful dialog that enables the delete button only when "삭제" is typed.
+class _DeleteInputDialog extends StatefulWidget {
+  final TextEditingController controller;
+  final VoidCallback onDelete;
+
+  const _DeleteInputDialog({
+    required this.controller,
+    required this.onDelete,
+  });
+
+  @override
+  State<_DeleteInputDialog> createState() => _DeleteInputDialogState();
+}
+
+class _DeleteInputDialogState extends State<_DeleteInputDialog> {
+  bool _canDelete = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  void _onTextChanged() {
+    final matches = widget.controller.text == '삭제';
+    if (matches != _canDelete) {
+      setState(() => _canDelete = matches);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('삭제 확인'),
+      content: TextField(
+        controller: widget.controller,
+        autofocus: true,
+        decoration: const InputDecoration(
+          hintText: '"삭제"를 입력하세요',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          onPressed: _canDelete ? widget.onDelete : null,
+          child: Text(
+            '삭제',
+            style: TextStyle(
+              color: _canDelete
+                  ? Theme.of(context).colorScheme.error
+                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () async {
-              if (controller.text == '삭제') {
-                await ref
-                    .read(settingsControllerProvider.notifier)
-                    .deleteAllData();
-                if (ctx.mounted) {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('모든 데이터가 삭제되었어요')),
-                  );
-                }
-              }
-            },
-            child: Text('삭제',
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.error)),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }
