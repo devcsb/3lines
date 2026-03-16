@@ -304,6 +304,88 @@ void main() {
     });
   });
 
+  group('importEntries', () {
+    test('imports entries from valid JSON format', () async {
+      final entries = [
+        {
+          'date': '2026-03-01',
+          'emotion': 4,
+          'prompts': [
+            {'category': 'gratitude', 'question': '감사한 것', 'answer': '가족'},
+            {'category': 'acceptance', 'question': '수용할 것', 'answer': '실수'},
+            {'category': 'intention', 'question': '의도', 'answer': '운동'},
+          ],
+        },
+        {
+          'date': '2026-03-02',
+          'emotion': 3,
+          'prompts': [
+            {'category': 'gratitude', 'question': '감사한 것', 'answer': '날씨'},
+            {'category': 'acceptance', 'question': '수용할 것', 'answer': ''},
+            {'category': 'intention', 'question': '의도', 'answer': '독서'},
+          ],
+        },
+      ];
+      final count = await repo.importEntries(entries);
+      expect(count, 2);
+      expect(await repo.getTotalCount(), 2);
+
+      final entry = await repo.getEntryByDate('2026-03-01');
+      expect(entry!.emotion, 4);
+      expect(entry.answer1, '가족');
+      expect(entry.prompt1, '감사한 것');
+    });
+
+    test('skips entries with missing required fields', () async {
+      final entries = [
+        {'date': '2026-03-01'}, // missing emotion and prompts
+        {
+          'date': '2026-03-02',
+          'emotion': 3,
+          'prompts': [
+            {'category': 'gratitude', 'question': 'q', 'answer': 'a'},
+          ],
+        },
+      ];
+      final count = await repo.importEntries(entries);
+      expect(count, 1);
+    });
+
+    test('overwrites existing entries on same date', () async {
+      await repo.saveEntry(makeEntry('2026-03-01', emotion: 2));
+      final entries = [
+        {
+          'date': '2026-03-01',
+          'emotion': 5,
+          'prompts': [
+            {'category': 'gratitude', 'question': 'q', 'answer': 'new'},
+            {'category': 'acceptance', 'question': 'q2', 'answer': ''},
+            {'category': 'intention', 'question': 'q3', 'answer': ''},
+          ],
+        },
+      ];
+      await repo.importEntries(entries);
+      final entry = await repo.getEntryByDate('2026-03-01');
+      expect(entry!.emotion, 5);
+      expect(entry.answer1, 'new');
+    });
+
+    test('clamps emotion values to valid range', () async {
+      final entries = [
+        {
+          'date': '2026-03-01',
+          'emotion': 10,
+          'prompts': [
+            {'category': 'gratitude', 'question': 'q', 'answer': 'a'},
+          ],
+        },
+      ];
+      await repo.importEntries(entries);
+      final entry = await repo.getEntryByDate('2026-03-01');
+      expect(entry!.emotion, 5); // clamped to max
+    });
+  });
+
   group('deleteAllEntries', () {
     test('deletes all entries', () async {
       await repo.saveEntry(makeEntry('2026-03-01'));
