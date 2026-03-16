@@ -386,6 +386,58 @@ void main() {
     });
   });
 
+  group('export/import round-trip', () {
+    test('exported data can be re-imported faithfully', () async {
+      // Create entries
+      await repo.saveEntry(DailyEntry(
+        date: '2026-03-01',
+        emotion: 4,
+        prompt1: '감사한 것은?',
+        answer1: '가족과 저녁',
+        prompt2: '수용할 것은?',
+        answer2: '실수를 인정',
+        prompt3: '내일의 의도는?',
+        answer3: '일찍 일어나기',
+      ));
+      await repo.saveEntry(DailyEntry(
+        date: '2026-03-02',
+        emotion: 2,
+        prompt1: '감사한 것은?',
+        answer1: '좋은 날씨',
+        prompt2: '수용할 것은?',
+        answer2: '',
+        prompt3: '내일의 의도는?',
+        answer3: '운동하기',
+      ));
+
+      // Export
+      final exported = await repo.exportAllEntries();
+      expect(exported.length, 2);
+
+      // Delete all
+      await repo.deleteAllEntries();
+      expect(await repo.getTotalCount(), 0);
+
+      // Re-import
+      final count = await repo.importEntries(exported);
+      expect(count, 2);
+      expect(await repo.getTotalCount(), 2);
+
+      // Verify data integrity
+      final entry1 = await repo.getEntryByDate('2026-03-01');
+      expect(entry1!.emotion, 4);
+      expect(entry1.answer1, '가족과 저녁');
+      expect(entry1.answer2, '실수를 인정');
+      expect(entry1.answer3, '일찍 일어나기');
+      expect(entry1.prompt1, '감사한 것은?');
+
+      final entry2 = await repo.getEntryByDate('2026-03-02');
+      expect(entry2!.emotion, 2);
+      expect(entry2.answer1, '좋은 날씨');
+      expect(entry2.answer2, '');
+    });
+  });
+
   group('deleteAllEntries', () {
     test('deletes all entries', () async {
       await repo.saveEntry(makeEntry('2026-03-01'));
