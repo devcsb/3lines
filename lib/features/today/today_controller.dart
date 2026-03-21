@@ -1,10 +1,14 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/date_utils.dart' as du;
 import '../../data/models/daily_entry.dart';
+import '../../core/services/notification_service.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../insights/insights_controller.dart';
+import '../settings/settings_controller.dart';
 import '../timeline/timeline_controller.dart';
 
 class TodayState {
@@ -61,11 +65,11 @@ class TodayState {
   }
 }
 
-class TodayController extends AsyncNotifier<TodayState> {
+class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
   @override
   Future<TodayState> build() async {
-    final entryRepo = ref.read(entryRepositoryProvider);
-    final settingsRepo = ref.read(settingsRepositoryProvider);
+    final entryRepo = ref.watch(entryRepositoryProvider);
+    final settingsRepo = ref.watch(settingsRepositoryProvider);
 
     final prompts = await settingsRepo.getPrompts();
     final todayEntry = await entryRepo.getTodayEntry();
@@ -112,7 +116,8 @@ class TodayController extends AsyncNotifier<TodayState> {
   /// Saves the current entry. Returns true on success, false on failure.
   Future<bool> save() async {
     final current = state.valueOrNull;
-    if (current == null || !current.canSave || current.isSaving) return false;
+    final emotion = current?.emotion;
+    if (current == null || emotion == null || !current.canSave || current.isSaving) return false;
 
     state = AsyncData(current.copyWith(isSaving: true));
 
@@ -122,7 +127,7 @@ class TodayController extends AsyncNotifier<TodayState> {
       final entry = DailyEntry(
         id: current.existingEntry?.id,
         date: du.getTodayString(),
-        emotion: current.emotion!,
+        emotion: emotion,
         prompt1: current.prompts[0],
         answer1: current.answer1,
         prompt2: current.prompts[1],
@@ -143,11 +148,18 @@ class TodayController extends AsyncNotifier<TodayState> {
         existingEntry: saved,
       ));
 
+      // Cancel today's reminder since entry is now saved
+      final settings = ref.read(settingsControllerProvider).valueOrNull;
+      if (settings != null && settings.reminderEnabled) {
+        await ref.read(notificationServiceProvider).cancelReminder();
+      }
+
       // Invalidate dependent screens so they reload fresh data
       ref.invalidate(timelineControllerProvider);
       ref.invalidate(insightsControllerProvider);
       return true;
-    } catch (_) {
+    } catch (e, stack) {
+      developer.log('Failed to save entry', error: e, stackTrace: stack);
       state = AsyncData(current.copyWith(isSaving: false));
       return false;
     }
@@ -161,9 +173,10 @@ class TodayController extends AsyncNotifier<TodayState> {
 
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = AsyncData(await build());
+    state = await AsyncValue.guard(() => build());
   }
 }
 
 final todayControllerProvider =
-    AsyncNotifierProvider<TodayController, TodayState>(TodayController.new);
+    AutoDisposeAsyncNotifierProvider<TodayController, TodayState>(
+        TodayController.new);

@@ -13,7 +13,8 @@ String formatKoreanDate(DateTime date) =>
     DateFormat('yyyy년 M월 d일 EEEE', 'ko').format(date);
 
 String formatDateString(String dateStr) {
-  final date = DateTime.parse(dateStr);
+  final date = DateTime.tryParse(dateStr);
+  if (date == null) return dateStr;
   return formatKoreanDate(date);
 }
 
@@ -26,5 +27,15 @@ DateTime stringToDate(String dateStr) => DateTime.parse(dateStr);
 
 String getDayOfWeekLabel(int weekday) {
   const labels = ['', '월', '화', '수', '목', '금', '토', '일'];
+  if (weekday < 1 || weekday > 7) return '';
   return labels[weekday];
+}
+
+String formatWithTimezone(DateTime dt) {
+  final offset = dt.timeZoneOffset;
+  final sign = offset.isNegative ? '-' : '+';
+  final hours = offset.inHours.abs().toString().padLeft(2, '0');
+  final minutes = (offset.inMinutes.abs() % 60).toString().padLeft(2, '0');
+  final base = dt.toIso8601String().split('.').first;
+  return '$base$sign$hours:$minutes';
 }

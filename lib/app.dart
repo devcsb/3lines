@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_notifier.dart';
 import 'data/repositories/settings_repository.dart';
 import 'features/insights/insights_screen.dart';
+import 'features/lock/lock_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/timeline/timeline_screen.dart';
@@ -13,38 +14,78 @@ import 'features/today/today_screen.dart';
 import 'shared/widgets/app_bottom_nav.dart';
 
 final onboardingDoneProvider = FutureProvider<bool>((ref) async {
-  final repo = ref.read(settingsRepositoryProvider);
+  final repo = ref.watch(settingsRepositoryProvider);
   return repo.isOnboardingDone();
 });
 
-/// Listenable that notifies GoRouter when onboarding status changes.
-class _OnboardingNotifier extends ChangeNotifier {
-  bool _done = false;
-  bool get done => _done;
-  set done(bool value) {
-    if (_done != value) {
-      _done = value;
+final biometricLockEnabledProvider = FutureProvider<bool>((ref) async {
+  final repo = ref.watch(settingsRepositoryProvider);
+  return repo.isBiometricLockEnabled();
+});
+
+/// Listenable that notifies GoRouter when onboarding or lock status changes.
+class _RouterNotifier extends ChangeNotifier {
+  bool _onboardingDone = false;
+  bool get onboardingDone => _onboardingDone;
+  set onboardingDone(bool value) {
+    if (_onboardingDone != value) {
+      _onboardingDone = value;
+      notifyListeners();
+    }
+  }
+
+  bool _locked = false;
+  bool get locked => _locked;
+  set locked(bool value) {
+    if (_locked != value) {
+      _locked = value;
       notifyListeners();
     }
   }
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final notifier = _OnboardingNotifier();
+  final notifier = _RouterNotifier();
   ref.onDispose(() => notifier.dispose());
 
-  final onboardingDone =
-      ref.watch(onboardingDoneProvider).valueOrNull ?? false;
-  notifier.done = onboardingDone;
+  // Listen (not watch) so the router is created once and refreshed via notifier
+  ref.listen(onboardingDoneProvider, (_, next) {
+    notifier.onboardingDone = next.valueOrNull ?? false;
+  });
+
+  ref.listen(biometricLockEnabledProvider, (_, next) {
+    final enabled = next.valueOrNull ?? false;
+    if (enabled) {
+      // Set locked on first load when biometric lock is enabled
+      final currentLockState = ref.read(biometricLockStateProvider);
+      if (!currentLockState) {
+        ref.read(biometricLockStateProvider.notifier).state = true;
+      }
+      notifier.locked = ref.read(biometricLockStateProvider);
+    } else {
+      ref.read(biometricLockStateProvider.notifier).state = false;
+      notifier.locked = false;
+    }
+  });
+
+  ref.listen(biometricLockStateProvider, (_, locked) {
+    notifier.locked = locked;
+  });
 
   return GoRouter(
     initialLocation: '/',
     refreshListenable: notifier,
     redirect: (context, state) {
-      if (!notifier.done && state.matchedLocation != '/onboarding') {
+      if (!notifier.onboardingDone && state.matchedLocation != '/onboarding') {
         return '/onboarding';
       }
-      if (notifier.done && state.matchedLocation == '/onboarding') {
+      if (notifier.onboardingDone && state.matchedLocation == '/onboarding') {
+        return notifier.locked ? '/lock' : '/';
+      }
+      if (notifier.onboardingDone && notifier.locked && state.matchedLocation != '/lock') {
+        return '/lock';
+      }
+      if (notifier.onboardingDone && !notifier.locked && state.matchedLocation == '/lock') {
         return '/';
       }
       return null;
@@ -70,6 +111,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           },
           transitionDuration: const Duration(milliseconds: 300),
         ),
+      ),
+      GoRoute(
+        path: '/lock',
+        builder: (_, __) => const LockScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (_, __, navigationShell) =>
