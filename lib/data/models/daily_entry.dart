@@ -1,5 +1,4 @@
-import 'package:drift/drift.dart';
-import '../database/app_database.dart';
+import '../../core/utils/date_utils.dart' as du;
 
 class DailyEntry {
   final int? id;
@@ -13,6 +12,7 @@ class DailyEntry {
   final String answer3;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? photoPath;
 
   DailyEntry({
     this.id,
@@ -26,40 +26,9 @@ class DailyEntry {
     this.answer3 = '',
     DateTime? createdAt,
     DateTime? updatedAt,
+    this.photoPath,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
-
-  factory DailyEntry.fromEntry(Entry entry) {
-    return DailyEntry(
-      id: entry.id,
-      date: entry.date,
-      emotion: entry.emotion,
-      prompt1: entry.prompt1,
-      answer1: entry.answer1,
-      prompt2: entry.prompt2,
-      answer2: entry.answer2,
-      prompt3: entry.prompt3,
-      answer3: entry.answer3,
-      createdAt: entry.createdAt,
-      updatedAt: entry.updatedAt,
-    );
-  }
-
-  EntriesCompanion toCompanion() {
-    return EntriesCompanion(
-      id: id != null ? Value(id!) : const Value.absent(),
-      date: Value(date),
-      emotion: Value(emotion),
-      prompt1: Value(prompt1),
-      answer1: Value(answer1),
-      prompt2: Value(prompt2),
-      answer2: Value(answer2),
-      prompt3: Value(prompt3),
-      answer3: Value(answer3),
-      createdAt: Value(createdAt),
-      updatedAt: Value(DateTime.now()),
-    );
-  }
 
   DailyEntry copyWith({
     int? id,
@@ -73,6 +42,7 @@ class DailyEntry {
     String? answer3,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? Function()? photoPath,
   }) {
     return DailyEntry(
       id: id ?? this.id,
@@ -86,28 +56,41 @@ class DailyEntry {
       answer3: answer3 ?? this.answer3,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      photoPath: photoPath != null ? photoPath() : this.photoPath,
     );
   }
 
-  static String _formatWithTimezone(DateTime dt) {
-    final offset = dt.timeZoneOffset;
-    final sign = offset.isNegative ? '-' : '+';
-    final hours = offset.inHours.abs().toString().padLeft(2, '0');
-    final minutes = (offset.inMinutes.abs() % 60).toString().padLeft(2, '0');
-    final base = dt.toIso8601String().split('.').first;
-    return '$base$sign$hours:$minutes';
-  }
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DailyEntry &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          date == other.date &&
+          emotion == other.emotion &&
+          prompt1 == other.prompt1 &&
+          answer1 == other.answer1 &&
+          prompt2 == other.prompt2 &&
+          answer2 == other.answer2 &&
+          prompt3 == other.prompt3 &&
+          answer3 == other.answer3 &&
+          photoPath == other.photoPath;
+
+  @override
+  int get hashCode => Object.hash(
+        id, date, emotion, prompt1, answer1, prompt2, answer2, prompt3, answer3, photoPath);
 
   Map<String, dynamic> toJson() {
     return {
       'date': date,
       'emotion': emotion,
+      'photo_path': photoPath,
       'prompts': [
         {'category': 'gratitude', 'question': prompt1, 'answer': answer1},
         {'category': 'acceptance', 'question': prompt2, 'answer': answer2},
         {'category': 'intention', 'question': prompt3, 'answer': answer3},
       ],
-      'created_at': _formatWithTimezone(createdAt),
+      'created_at': du.formatWithTimezone(createdAt),
     };
   }
 }

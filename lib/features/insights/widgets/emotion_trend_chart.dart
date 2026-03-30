@@ -3,10 +3,49 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 
-class EmotionTrendChart extends StatelessWidget {
+class EmotionTrendChart extends StatefulWidget {
   final List<({DateTime date, int emotion})> data;
 
   const EmotionTrendChart({super.key, required this.data});
+
+  @override
+  State<EmotionTrendChart> createState() => _EmotionTrendChartState();
+}
+
+class _EmotionTrendChartState extends State<EmotionTrendChart>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _drawController;
+  late Animation<double> _drawAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _drawController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    _drawAnimation = CurvedAnimation(
+      parent: _drawController,
+      curve: Curves.easeOutCubic,
+    );
+    _drawController.forward();
+  }
+
+  @override
+  void didUpdateWidget(EmotionTrendChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.data != widget.data) {
+      _drawController.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _drawController.dispose();
+    super.dispose();
+  }
+
+  List<({DateTime date, int emotion})> get data => widget.data;
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +64,46 @@ class EmotionTrendChart extends StatelessWidget {
     final firstDate = data.first.date;
     final lastDate = data.last.date;
     final totalDays = lastDate.difference(firstDate).inDays;
+
+    // Single data point: expand range so the chart renders properly
+    if (totalDays == 0) {
+      return SizedBox(
+        height: 200,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.emotionColors[data.first.emotion]
+                          ?.withValues(alpha: 0.2) ??
+                      theme.colorScheme.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    '${data.first.emotion}',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: AppColors.emotionColors[data.first.emotion],
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${AppColors.emotionLabels[data.first.emotion]} · ${firstDate.month}/${firstDate.day}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     // Build a map from day-offset to data for tooltips
     final dataByOffset = <int, ({DateTime date, int emotion})>{};
@@ -93,7 +172,13 @@ class EmotionTrendChart extends StatelessWidget {
             ? 1.0
             : 1.0;
 
-    return SizedBox(
+    return AnimatedBuilder(
+      animation: _drawAnimation,
+      builder: (context, _) {
+      final progress = _drawAnimation.value;
+      return Opacity(
+      opacity: progress.clamp(0.0, 1.0),
+      child: SizedBox(
       height: 200,
       child: LineChart(
         LineChartData(
@@ -119,8 +204,12 @@ class EmotionTrendChart extends StatelessWidget {
                 getTitlesWidget: (value, _) {
                   if (value < 1 || value > 5) return const SizedBox();
                   return Text(
-                    AppColors.emotionEmojis[value.toInt()] ?? '',
-                    style: const TextStyle(fontSize: 14),
+                    AppColors.emotionLabels[value.toInt()] ?? '',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: AppColors.emotionColors[value.toInt()],
+                      fontWeight: FontWeight.w500,
+                    ),
                   );
                 },
               ),
@@ -164,10 +253,10 @@ class EmotionTrendChart extends StatelessWidget {
                   final dayOffset = spot.x.toInt();
                   final entry = dataByOffset[dayOffset];
                   if (entry == null) return null;
-                  final emoji =
-                      AppColors.emotionEmojis[entry.emotion] ?? '';
+                  final label =
+                      AppColors.emotionLabels[entry.emotion] ?? '';
                   return LineTooltipItem(
-                    '$emoji ${entry.date.month}/${entry.date.day}',
+                    '$label ${entry.date.month}/${entry.date.day}',
                     TextStyle(
                       color: theme.colorScheme.onSurface,
                       fontSize: 12,
@@ -179,6 +268,9 @@ class EmotionTrendChart extends StatelessWidget {
           ),
         ),
       ),
+    ),
+    );
+      },
     );
   }
 }

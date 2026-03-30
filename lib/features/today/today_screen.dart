@@ -3,12 +3,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_colors.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../shared/widgets/staggered_fade_in.dart';
 import 'today_controller.dart';
+import '../../core/services/photo_service.dart';
+import 'widgets/animated_save_button.dart';
 import 'widgets/completion_animation.dart';
+import 'widgets/daily_quote.dart';
 import 'widgets/emotion_picker.dart';
+import 'widgets/milestone_banner.dart';
+import 'widgets/one_year_ago_card.dart';
+import 'widgets/photo_attachment.dart';
 import 'widgets/prompt_card.dart';
+import 'widgets/prompt_suggestions.dart';
+import 'widgets/streak_pulse_badge.dart';
 
 class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
@@ -47,7 +56,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
       if (mounted) {
         _currentDate = du.getTodayString();
         ref.read(todayControllerProvider.notifier).refresh();
-        // Schedule the next midnight
         _scheduleMidnightRefresh();
       }
     });
@@ -61,7 +69,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
         _currentDate = today;
         ref.read(todayControllerProvider.notifier).refresh();
       }
-      // Re-schedule in case timer drifted while backgrounded
       _scheduleMidnightRefresh();
     }
   }
@@ -91,89 +98,158 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
         ),
         data: (state) {
           if (_showCompletionAnimation) {
-            return Center(
-              child: CompletionAnimation(
-                onComplete: () {
-                  setState(() => _showCompletionAnimation = false);
-                },
-              ),
+            return CompletionAnimation(
+              streak: state.currentStreak,
+              emotion: state.emotion ?? 3,
+              onComplete: () {
+                setState(() => _showCompletionAnimation = false);
+              },
             );
           }
 
           final isReadMode = state.isCompleted && !state.isEditing;
 
           return SafeArea(
+            bottom: false,
             child: Column(
               children: [
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Greeting
-                        Text(
-                          du.getGreeting(),
-                          style: theme.textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 8),
+                        // Date
                         Text(
                           du.formatKoreanDate(DateTime.now()),
-                          style: theme.textTheme.titleMedium?.copyWith(
+                          style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.7),
+                                .withValues(alpha: 0.45),
+                            letterSpacing: 0.5,
                           ),
                         ),
+                        const SizedBox(height: 4),
+                        // Greeting
+                        Text(
+                          du.getGreeting(streak: state.currentStreak),
+                          style: theme.textTheme.headlineSmall,
+                        ),
+                        if (!state.isCompleted) ...[
+                          const SizedBox(height: 6),
+                          const DailyQuote(),
+                        ],
 
                         // Streak badge
                         if (state.currentStreak > 0) ...[
-                          const SizedBox(height: 8),
-                          Semantics(
-                            label: '${state.currentStreak}일 연속 기록 중',
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                '${state.currentStreak}일 연속',
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color:
-                                      theme.colorScheme.onPrimaryContainer,
-                                ),
-                              ),
-                            ),
+                          const SizedBox(height: 12),
+                          StreakPulseBadge(
+                            streak: state.currentStreak,
+                            usedGraceDay: state.usedGraceDay,
                           ),
                         ],
 
-                        // Completed badge
-                        if (isReadMode) ...[
+                        // Milestone celebration
+                        if (state.milestone != null) ...[
                           const SizedBox(height: 16),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color:
-                                  theme.colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(12),
+                          MilestoneBanner(milestone: state.milestone!),
+                        ],
+
+                        // Completed badge + sparkline — animated entrance
+                        if (isReadMode) ...[
+                          TweenAnimationBuilder<double>(
+                            key: const ValueKey('read-mode-badge'),
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            duration: const Duration(milliseconds: 450),
+                            curve: Curves.easeOutCubic,
+                            builder: (context, value, child) => Opacity(
+                              opacity: value.clamp(0.0, 1.0),
+                              child: Transform.translate(
+                                offset: Offset(0, 18 * (1 - value)),
+                                child: child,
+                              ),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            child: Column(
                               children: [
-                                Icon(Icons.check_circle,
-                                    color: theme.colorScheme.primary,
-                                    size: 20),
-                                const SizedBox(width: 8),
-                                Text('오늘의 기록 완료',
-                                    style: theme.textTheme.labelLarge),
+                                if (state.milestone == null) ...[
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primaryContainer
+                                          .withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.check_circle_rounded,
+                                            color: theme.colorScheme.primary,
+                                            size: 18),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '오늘의 기록 완료',
+                                          style: theme.textTheme.labelMedium
+                                              ?.copyWith(
+                                            color: theme.colorScheme.primary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                if (state.recentEmotions.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  _MiniSparkline(
+                                      recentEmotions: state.recentEmotions),
+                                ],
                               ],
                             ),
                           ),
                         ],
 
-                        const SizedBox(height: 24),
+                        // Grace day encouragement (when streak > 0, not completed, grace day used)
+                        if (!state.isCompleted &&
+                            state.usedGraceDay &&
+                            state.currentStreak > 0) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.tertiaryContainer
+                                  .withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '자리를 비웠어도 괜찮아요. 다시 돌아오신 것만으로 충분해요.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.6),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+
+                        // Past reflection cards (1 month / 6 months / 1 year ago)
+                        if (state.oneYearAgoEntry != null ||
+                            state.sixMonthsAgoEntry != null ||
+                            state.oneMonthAgoEntry != null) ...[
+                          const SizedBox(height: 16),
+                          OneYearAgoCard(
+                            entry: state.oneYearAgoEntry,
+                            sixMonthsAgoEntry: state.sixMonthsAgoEntry,
+                            oneMonthAgoEntry: state.oneMonthAgoEntry,
+                          ),
+                        ],
+
+                        const SizedBox(height: 28),
 
                         // Emotion picker
                         EmotionPicker(
@@ -184,9 +260,40 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                           enabled: !isReadMode,
                         ),
 
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
 
-                        // Prompt cards (staggered fade in per PRD)
+                        // Photo attachment
+                        PhotoAttachment(
+                          photoPath: state.photoPath,
+                          readOnly: isReadMode,
+                          onPickCamera: () async {
+                            final path = await ref
+                                .read(photoServiceProvider)
+                                .pickFromCamera();
+                            if (path != null) {
+                              ref
+                                  .read(todayControllerProvider.notifier)
+                                  .attachPhoto(path);
+                            }
+                          },
+                          onPickGallery: () async {
+                            final path = await ref
+                                .read(photoServiceProvider)
+                                .pickFromGallery();
+                            if (path != null) {
+                              ref
+                                  .read(todayControllerProvider.notifier)
+                                  .attachPhoto(path);
+                            }
+                          },
+                          onRemove: () => ref
+                              .read(todayControllerProvider.notifier)
+                              .removePhoto(),
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // Prompt cards with suggestions
                         ...List.generate(3, (index) {
                           final answer = switch (index) {
                             0 => state.answer1,
@@ -196,18 +303,59 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                           return StaggeredFadeIn(
                             index: index,
                             child: Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: PromptCard(
-                                index: index,
-                                question: state.prompts[index],
-                                answer: answer,
-                                readOnly: isReadMode,
-                                onChanged: isReadMode
-                                    ? null
-                                    : (v) => ref
-                                        .read(
-                                            todayControllerProvider.notifier)
-                                        .setAnswer(index, v),
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: Column(
+                                children: [
+                                  PromptCard(
+                                    index: index,
+                                    question: state.prompts[index],
+                                    answer: answer,
+                                    readOnly: isReadMode,
+                                    onChanged: isReadMode
+                                        ? null
+                                        : (v) => ref
+                                            .read(
+                                                todayControllerProvider.notifier)
+                                            .setAnswer(index, v),
+                                  ),
+                                  // Suggestion chips (edit mode)
+                                  if (!isReadMode) ...[
+                                    const SizedBox(height: 8),
+                                    PromptSuggestions(
+                                      promptIndex: index,
+                                      onTap: (suggestion) {
+                                        final prev = answer;
+                                        final next = prev.isEmpty
+                                            ? suggestion
+                                            : '$prev $suggestion';
+                                        ref
+                                            .read(todayControllerProvider
+                                                .notifier)
+                                            .setAnswer(index, next);
+                                        if (prev.isNotEmpty) {
+                                          ScaffoldMessenger.of(context)
+                                            ..hideCurrentSnackBar()
+                                            ..showSnackBar(
+                                              SnackBar(
+                                                content:
+                                                    const Text('제안을 추가했어요'),
+                                                duration: const Duration(
+                                                    seconds: 3),
+                                                action: SnackBarAction(
+                                                  label: '되돌리기',
+                                                  onPressed: () => ref
+                                                      .read(
+                                                          todayControllerProvider
+                                                              .notifier)
+                                                      .setAnswer(index, prev),
+                                                ),
+                                              ),
+                                            );
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           );
@@ -218,8 +366,20 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                 ),
 
                 // Bottom button
-                Padding(
-                  padding: const EdgeInsets.all(16),
+                Container(
+                  padding: EdgeInsets.fromLTRB(
+                    20, 12, 20,
+                    16 + MediaQuery.of(context).padding.bottom,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    border: Border(
+                      top: BorderSide(
+                        color: theme.colorScheme.outlineVariant
+                            .withValues(alpha: 0.3),
+                      ),
+                    ),
+                  ),
                   child: isReadMode
                       ? Semantics(
                           button: true,
@@ -234,52 +394,145 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                             ),
                           ),
                         )
-                      : Semantics(
-                          button: true,
-                          label: state.canSave
-                              ? '오늘의 기록 저장하기'
-                              : '감정을 선택하고 답변을 입력해주세요',
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                            onPressed: state.canSave && !state.isSaving
-                                ? () async {
-                                    final isFirstSave = !state.isCompleted;
-                                    final messenger =
-                                        ScaffoldMessenger.of(context);
-                                    final success = await ref
-                                        .read(
-                                            todayControllerProvider.notifier)
-                                        .save();
-                                    if (!mounted) return;
-                                    if (success && isFirstSave) {
-                                      setState(() =>
-                                          _showCompletionAnimation = true);
-                                    } else if (!success) {
-                                      messenger.showSnackBar(
-                                        const SnackBar(
-                                            content:
-                                                Text('저장에 실패했어요. 다시 시도해주세요.')),
-                                      );
-                                    }
-                                  }
-                                : null,
-                            child: state.isSaving
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  )
-                                : const Text('기록 완료'),
-                          ),
-                        ),
+                      : AnimatedSaveButton(
+                          filledCount: [
+                            state.answer1,
+                            state.answer2,
+                            state.answer3,
+                          ].where((a) => a.isNotEmpty).length,
+                          canSave: state.canSave,
+                          isSaving: state.isSaving,
+                          onPressed: () async {
+                            final isFirstSave = !state.isCompleted;
+                            final messenger =
+                                ScaffoldMessenger.of(context);
+                            final success = await ref
+                                .read(todayControllerProvider.notifier)
+                                .save();
+                            if (!mounted) return;
+                            if (success && isFirstSave) {
+                              setState(
+                                  () => _showCompletionAnimation = true);
+                            } else if (!success) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        '저장에 실패했어요. 다시 시도해주세요.')),
+                              );
+                            }
+                          },
                         ),
                 ),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _MiniSparkline extends StatelessWidget {
+  final List<({DateTime date, int emotion})> recentEmotions;
+
+  const _MiniSparkline({required this.recentEmotions});
+
+  static const _dayLabels = ['월', '화', '수', '목', '금', '토', '일'];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final days = List.generate(7, (i) => now.subtract(Duration(days: 6 - i)));
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest
+            .withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '최근 7일 감정',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: days.map((day) {
+              final dateStr =
+                  '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+              final emotionEntry = recentEmotions
+                  .where((e) =>
+                      '${e.date.year}-${e.date.month.toString().padLeft(2, '0')}-${e.date.day.toString().padLeft(2, '0')}' ==
+                      dateStr)
+                  .firstOrNull;
+              final emotion = emotionEntry?.emotion;
+              final color = emotion != null
+                  ? AppColors.emotionColors[emotion]!
+                  : theme.colorScheme.outlineVariant
+                      .withValues(alpha: 0.4);
+              final isToday = day.year == now.year &&
+                  day.month == now.month &&
+                  day.day == now.day;
+
+              return Column(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    width: emotion != null ? 28 : 22,
+                    height: emotion != null ? 28 : 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: color.withValues(
+                          alpha: emotion != null ? 0.85 : 0.25),
+                      border: isToday
+                          ? Border.all(
+                              color: theme.colorScheme.primary,
+                              width: 1.5,
+                            )
+                          : null,
+                    ),
+                    child: emotion != null
+                        ? Center(
+                            child: Text(
+                              '$emotion',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _dayLabels[day.weekday - 1],
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontSize: 9,
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: isToday ? 0.7 : 0.35,
+                      ),
+                      fontWeight: isToday
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }

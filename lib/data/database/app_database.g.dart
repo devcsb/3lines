@@ -94,6 +94,12 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
+  static const VerificationMeta _photoPathMeta =
+      const VerificationMeta('photoPath');
+  @override
+  late final GeneratedColumn<String> photoPath = GeneratedColumn<String>(
+      'photo_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -106,7 +112,8 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         answer3,
         emotion,
         createdAt,
-        updatedAt
+        updatedAt,
+        photoPath
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -165,6 +172,10 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
     }
+    if (data.containsKey('photo_path')) {
+      context.handle(_photoPathMeta,
+          photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta));
+    }
     return context;
   }
 
@@ -196,6 +207,8 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      photoPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}photo_path']),
     );
   }
 
@@ -217,6 +230,7 @@ class Entry extends DataClass implements Insertable<Entry> {
   final int emotion;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? photoPath;
   const Entry(
       {required this.id,
       required this.date,
@@ -228,7 +242,8 @@ class Entry extends DataClass implements Insertable<Entry> {
       required this.answer3,
       required this.emotion,
       required this.createdAt,
-      required this.updatedAt});
+      required this.updatedAt,
+      this.photoPath});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -243,6 +258,9 @@ class Entry extends DataClass implements Insertable<Entry> {
     map['emotion'] = Variable<int>(emotion);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || photoPath != null) {
+      map['photo_path'] = Variable<String>(photoPath);
+    }
     return map;
   }
 
@@ -259,6 +277,9 @@ class Entry extends DataClass implements Insertable<Entry> {
       emotion: Value(emotion),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      photoPath: photoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoPath),
     );
   }
 
@@ -277,6 +298,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       emotion: serializer.fromJson<int>(json['emotion']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      photoPath: serializer.fromJson<String?>(json['photoPath']),
     );
   }
   @override
@@ -294,6 +316,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       'emotion': serializer.toJson<int>(emotion),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'photoPath': serializer.toJson<String?>(photoPath),
     };
   }
 
@@ -308,7 +331,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           String? answer3,
           int? emotion,
           DateTime? createdAt,
-          DateTime? updatedAt}) =>
+          DateTime? updatedAt,
+          Value<String?> photoPath = const Value.absent()}) =>
       Entry(
         id: id ?? this.id,
         date: date ?? this.date,
@@ -321,6 +345,7 @@ class Entry extends DataClass implements Insertable<Entry> {
         emotion: emotion ?? this.emotion,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        photoPath: photoPath.present ? photoPath.value : this.photoPath,
       );
   Entry copyWithCompanion(EntriesCompanion data) {
     return Entry(
@@ -335,6 +360,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       emotion: data.emotion.present ? data.emotion.value : this.emotion,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
     );
   }
 
@@ -351,14 +377,15 @@ class Entry extends DataClass implements Insertable<Entry> {
           ..write('answer3: $answer3, ')
           ..write('emotion: $emotion, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('photoPath: $photoPath')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, date, prompt1, answer1, prompt2, answer2,
-      prompt3, answer3, emotion, createdAt, updatedAt);
+      prompt3, answer3, emotion, createdAt, updatedAt, photoPath);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -373,7 +400,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           other.answer3 == this.answer3 &&
           other.emotion == this.emotion &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.photoPath == this.photoPath);
 }
 
 class EntriesCompanion extends UpdateCompanion<Entry> {
@@ -388,6 +416,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
   final Value<int> emotion;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<String?> photoPath;
   const EntriesCompanion({
     this.id = const Value.absent(),
     this.date = const Value.absent(),
@@ -400,6 +429,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.emotion = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.photoPath = const Value.absent(),
   });
   EntriesCompanion.insert({
     this.id = const Value.absent(),
@@ -413,6 +443,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     required int emotion,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.photoPath = const Value.absent(),
   })  : date = Value(date),
         emotion = Value(emotion);
   static Insertable<Entry> custom({
@@ -427,6 +458,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Expression<int>? emotion,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<String>? photoPath,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -440,6 +472,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       if (emotion != null) 'emotion': emotion,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (photoPath != null) 'photo_path': photoPath,
     });
   }
 
@@ -454,7 +487,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       Value<String>? answer3,
       Value<int>? emotion,
       Value<DateTime>? createdAt,
-      Value<DateTime>? updatedAt}) {
+      Value<DateTime>? updatedAt,
+      Value<String?>? photoPath}) {
     return EntriesCompanion(
       id: id ?? this.id,
       date: date ?? this.date,
@@ -467,6 +501,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       emotion: emotion ?? this.emotion,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      photoPath: photoPath ?? this.photoPath,
     );
   }
 
@@ -506,6 +541,9 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (photoPath.present) {
+      map['photo_path'] = Variable<String>(photoPath.value);
+    }
     return map;
   }
 
@@ -522,7 +560,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
           ..write('answer3: $answer3, ')
           ..write('emotion: $emotion, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('photoPath: $photoPath')
           ..write(')'))
         .toString();
   }
@@ -739,6 +778,7 @@ typedef $$EntriesTableCreateCompanionBuilder = EntriesCompanion Function({
   required int emotion,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<String?> photoPath,
 });
 typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<int> id,
@@ -752,6 +792,7 @@ typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<int> emotion,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<String?> photoPath,
 });
 
 class $$EntriesTableTableManager extends RootTableManager<
@@ -782,6 +823,7 @@ class $$EntriesTableTableManager extends RootTableManager<
             Value<int> emotion = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<String?> photoPath = const Value.absent(),
           }) =>
               EntriesCompanion(
             id: id,
@@ -795,6 +837,7 @@ class $$EntriesTableTableManager extends RootTableManager<
             emotion: emotion,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            photoPath: photoPath,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -808,6 +851,7 @@ class $$EntriesTableTableManager extends RootTableManager<
             required int emotion,
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<String?> photoPath = const Value.absent(),
           }) =>
               EntriesCompanion.insert(
             id: id,
@@ -821,6 +865,7 @@ class $$EntriesTableTableManager extends RootTableManager<
             emotion: emotion,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            photoPath: photoPath,
           ),
         ));
 }
@@ -882,6 +927,11 @@ class $$EntriesTableFilterComposer
       column: $state.table.updatedAt,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get photoPath => $state.composableBuilder(
+      column: $state.table.photoPath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
 }
 
 class $$EntriesTableOrderingComposer
@@ -939,6 +989,11 @@ class $$EntriesTableOrderingComposer
 
   ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
       column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get photoPath => $state.composableBuilder(
+      column: $state.table.photoPath,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 }

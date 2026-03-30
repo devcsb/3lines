@@ -1,13 +1,53 @@
 import 'package:intl/intl.dart';
 
-String getGreeting() {
-  final hour = DateTime.now().hour;
-  if (hour >= 5 && hour < 12) return '좋은 아침이에요';
-  if (hour >= 12 && hour < 18) return '좋은 오후예요';
-  return '좋은 저녁이에요';
+String getGreeting({int streak = 0}) {
+  final now = DateTime.now();
+  final hour = now.hour;
+  final weekday = now.weekday;
+
+  // Streak-aware greetings for milestones
+  if (streak == 6) return '내일이면 7일째예요';
+  if (streak == 29) return '내일이면 한 달이에요';
+  if (streak >= 50 && streak % 10 == 0) return '$streak일, 대단해요';
+
+  // Day-of-week specials
+  if (weekday == DateTime.monday && hour < 12) return '새로운 한 주가 시작됐어요';
+  if (weekday == DateTime.friday && hour >= 18) return '한 주 수고했어요';
+  if (weekday == DateTime.sunday) return '여유로운 하루 보내세요';
+
+  // Time-based defaults
+  if (hour >= 5 && hour < 9) return '고요한 아침이에요';
+  if (hour >= 9 && hour < 12) return '좋은 아침이에요';
+  if (hour >= 12 && hour < 14) return '오늘 하루도 잘 보내고 있나요';
+  if (hour >= 14 && hour < 18) return '좋은 오후예요';
+  if (hour >= 18 && hour < 22) return '오늘 하루 어떠셨나요';
+  return '늦은 밤, 오늘을 돌아봐요';
 }
 
 String getTodayString() => DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+/// Days elapsed since a fixed epoch (2024-01-01). Used for deterministic
+/// daily prompt rotation without storing any state.
+int daysSinceEpoch() {
+  const epoch = Duration(days: 19723); // 2024-01-01 in days since Unix epoch
+  final today = DateTime.now();
+  final daysSinceUnix = today.millisecondsSinceEpoch ~/ 86400000;
+  return daysSinceUnix - epoch.inDays;
+}
+
+/// Subtracts [months] from [from], clamping the day to the last day of
+/// the resulting month. This prevents overflow (e.g. March 31 - 1 month
+/// returning March 3 instead of Feb 28).
+DateTime subtractMonths(DateTime from, int months) {
+  var year = from.year;
+  var month = from.month - months;
+  while (month <= 0) {
+    month += 12;
+    year--;
+  }
+  final maxDay = DateTime(year, month + 1, 0).day;
+  return DateTime(year, month, from.day.clamp(1, maxDay));
+}
 
 String formatKoreanDate(DateTime date) =>
     DateFormat('yyyy년 M월 d일 EEEE', 'ko').format(date);

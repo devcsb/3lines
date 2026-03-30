@@ -1,59 +1,113 @@
 import 'package:flutter/material.dart';
 
-class KeywordCloud extends StatelessWidget {
+/// Keyword cloud with staggered pill entrance animations.
+class KeywordCloud extends StatefulWidget {
   final Map<String, int> keywords;
-  final String title;
 
   const KeywordCloud({
     super.key,
     required this.keywords,
-    this.title = '자주 쓰는 단어',
   });
+
+  @override
+  State<KeywordCloud> createState() => _KeywordCloudState();
+}
+
+class _KeywordCloudState extends State<KeywordCloud>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: Duration(
+        milliseconds: 300 + (widget.keywords.length * 60).clamp(0, 600),
+      ),
+      vsync: this,
+    )..forward();
+  }
+
+  @override
+  void didUpdateWidget(KeywordCloud oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.keywords != widget.keywords) {
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (keywords.isEmpty) {
+    if (widget.keywords.isEmpty) {
       return Text(
         '아직 분석할 키워드가 부족해요',
         style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
         ),
       );
     }
 
     final maxCount =
-        keywords.values.reduce((a, b) => a > b ? a : b).toDouble();
+        widget.keywords.values.reduce((a, b) => a > b ? a : b).toDouble();
+    final entries = widget.keywords.entries.toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: theme.textTheme.titleMedium),
-        const SizedBox(height: 8),
-        Wrap(
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Wrap(
           spacing: 8,
-          runSpacing: 4,
-          children: keywords.entries.map((entry) {
+          runSpacing: 6,
+          children: List.generate(entries.length, (i) {
+            final entry = entries[i];
             final intensity = (entry.value / maxCount).clamp(0.3, 1.0);
-            return Semantics(
-              label: '${entry.key}, ${entry.value}회',
-              child: Chip(
-              label: Text(entry.key),
-              labelStyle: TextStyle(
-                fontSize: 12 + (intensity * 4),
-                color: theme.colorScheme.primary
-                    .withValues(alpha: intensity),
+
+            // Stagger: each pill starts at a different point in the animation
+            final staggerStart = (i / entries.length) * 0.5;
+            final pillProgress =
+                ((_controller.value - staggerStart) / 0.5).clamp(0.0, 1.0);
+            final easedProgress =
+                Curves.easeOutCubic.transform(pillProgress);
+
+            return Opacity(
+              opacity: easedProgress,
+              child: Transform.scale(
+                scale: 0.7 + (0.3 * easedProgress),
+                child: Semantics(
+                  label: '${entry.key}, ${entry.value}회',
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer
+                          .withValues(alpha: intensity * 0.4),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      entry.key,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 12 + (intensity * 3),
+                        color: theme.colorScheme.primary
+                            .withValues(alpha: intensity),
+                        fontWeight: intensity > 0.6
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              backgroundColor: theme.colorScheme.primaryContainer
-                  .withValues(alpha: intensity * 0.5),
-              side: BorderSide.none,
-              visualDensity: VisualDensity.compact,
-            ),
             );
-          }).toList(),
-        ),
-      ],
+          }),
+        );
+      },
     );
   }
 }

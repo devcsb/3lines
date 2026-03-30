@@ -153,12 +153,13 @@ class ThreeLinesApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
     final themeAsync = ref.watch(themeNotifierProvider);
     final mode = themeAsync.valueOrNull ?? ThemeMode.system;
+    final accent = ref.watch(accentThemeProvider).valueOrNull ?? 'sage';
 
     return MaterialApp.router(
       title: '3Lines',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: AppTheme.lightForAccent(accent),
+      darkTheme: AppTheme.darkForAccent(accent),
       themeMode: mode,
       routerConfig: router,
       locale: const Locale('ko', 'KR'),

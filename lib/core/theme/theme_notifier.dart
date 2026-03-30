@@ -6,7 +6,7 @@ import '../../data/repositories/settings_repository.dart';
 class ThemeNotifier extends AsyncNotifier<ThemeMode> {
   @override
   Future<ThemeMode> build() async {
-    final mode = await ref.read(settingsRepositoryProvider).getThemeMode();
+    final mode = await ref.watch(settingsRepositoryProvider).getThemeMode();
     return _parseMode(mode);
   }
 
@@ -26,3 +26,21 @@ class ThemeNotifier extends AsyncNotifier<ThemeMode> {
 
 final themeNotifierProvider =
     AsyncNotifierProvider<ThemeNotifier, ThemeMode>(ThemeNotifier.new);
+
+// ── Accent theme notifier ──────────────────────────────────────────
+
+class AccentThemeNotifier extends AsyncNotifier<String> {
+  @override
+  Future<String> build() async {
+    return ref.watch(settingsRepositoryProvider).getAccentTheme();
+  }
+
+  Future<void> setAccent(String accent) async {
+    await ref.read(settingsRepositoryProvider).setAccentTheme(accent);
+    state = AsyncData(accent);
+  }
+}
+
+final accentThemeProvider =
+    AsyncNotifierProvider<AccentThemeNotifier, String>(
+        AccentThemeNotifier.new);

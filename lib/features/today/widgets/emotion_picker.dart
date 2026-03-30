@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_colors.dart';
 
 class EmotionPicker extends StatefulWidget {
@@ -21,82 +22,121 @@ class EmotionPicker extends StatefulWidget {
 class _EmotionPickerState extends State<EmotionPicker> {
   int? _animatingIndex;
 
+  static const _icons = <int, IconData>{
+    1: Icons.sentiment_very_dissatisfied_rounded,
+    2: Icons.sentiment_dissatisfied_rounded,
+    3: Icons.sentiment_neutral_rounded,
+    4: Icons.sentiment_satisfied_alt_rounded,
+    5: Icons.sentiment_very_satisfied_rounded,
+  };
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(5, (index) {
-        final value = index + 1;
-        final isSelected = widget.selectedEmotion == value;
-        final isAnimating = _animatingIndex == value;
+    final theme = Theme.of(context);
 
-        return GestureDetector(
-          onTap: widget.enabled
-              ? () {
-                  setState(() => _animatingIndex = value);
-                  widget.onSelected(value);
-                  Future.delayed(const Duration(milliseconds: 200), () {
-                    if (mounted) setState(() => _animatingIndex = null);
-                  });
-                }
-              : null,
-          child: Semantics(
-            label: '감정 선택: 5단계 중 $value (${AppColors.emotionLabels[value]})',
-            selected: isSelected,
-            child: AnimatedScale(
-              scale: isAnimating ? 1.2 : 1.0,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isSelected
-                          ? AppColors.emotionColors[value]!.withValues(alpha: 0.2)
-                          : Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                      border: Border.all(
-                        color: isSelected
-                            ? AppColors.emotionColors[value]!
-                            : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        AppColors.emotionEmojis[value]!,
-                        style: TextStyle(
-                          fontSize: 28,
-                          color: isSelected ? null : Colors.grey,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    AppColors.emotionLabels[value]!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: isSelected
-                              ? AppColors.emotionColors[value]
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.5),
-                          fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.normal,
-                        ),
-                  ),
-                ],
-              ),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '오늘의 감정',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
           ),
-        );
-      }),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: List.generate(5, (index) {
+            final value = index + 1;
+            final isSelected = widget.selectedEmotion == value;
+            final isAnimating = _animatingIndex == value;
+            final color = AppColors.emotionColors[value]!;
+            final icon = _icons[value]!;
+
+            return Expanded(
+              child: GestureDetector(
+                onTap: widget.enabled
+                    ? () {
+                        HapticService.selection();
+                        setState(() => _animatingIndex = value);
+                        widget.onSelected(value);
+                        Future.delayed(const Duration(milliseconds: 250), () {
+                          if (mounted) {
+                            setState(() => _animatingIndex = null);
+                          }
+                        });
+                      }
+                    : null,
+                child: Semantics(
+                  label:
+                      '감정 선택: 5단계 중 $value (${AppColors.emotionLabels[value]})',
+                  selected: isSelected,
+                  child: AnimatedScale(
+                    scale: isAnimating ? 1.15 : 1.0,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeInOut,
+                          width: isSelected ? 48 : 38,
+                          height: isSelected ? 48 : 38,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isSelected
+                                ? color
+                                : color.withValues(alpha: 0.12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? color
+                                  : color.withValues(alpha: 0.3),
+                              width: isSelected ? 2.0 : 1.5,
+                            ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: color.withValues(alpha: 0.35),
+                                      blurRadius: 10,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Center(
+                            child: Icon(
+                              icon,
+                              size: isSelected ? 26 : 20,
+                              color: isSelected
+                                  ? Colors.white
+                                  : color.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: theme.textTheme.labelSmall!.copyWith(
+                            color: isSelected
+                                ? color
+                                : theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.4),
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.normal,
+                            fontSize: isSelected ? 11 : 10,
+                          ),
+                          child: Text(AppColors.emotionLabels[value]!),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ],
     );
   }
 }

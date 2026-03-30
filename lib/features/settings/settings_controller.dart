@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/constants/default_prompts.dart';
+import '../../core/services/biometric_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/theme/theme_notifier.dart';
+import '../../core/utils/date_utils.dart' as du;
 import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../insights/insights_controller.dart';
@@ -19,6 +21,7 @@ class SettingsState {
   final int reminderMinute;
   final String themeMode;
   final String appVersion;
+  final bool biometricLockEnabled;
 
   const SettingsState({
     this.prompts = const ['', '', ''],
@@ -27,6 +30,7 @@ class SettingsState {
     this.reminderMinute = 0,
     this.themeMode = 'system',
     this.appVersion = '',
+    this.biometricLockEnabled = false,
   });
 
   SettingsState copyWith({
@@ -36,6 +40,7 @@ class SettingsState {
     int? reminderMinute,
     String? themeMode,
     String? appVersion,
+    bool? biometricLockEnabled,
   }) {
     return SettingsState(
       prompts: prompts ?? this.prompts,
@@ -44,24 +49,27 @@ class SettingsState {
       reminderMinute: reminderMinute ?? this.reminderMinute,
       themeMode: themeMode ?? this.themeMode,
       appVersion: appVersion ?? this.appVersion,
+      biometricLockEnabled: biometricLockEnabled ?? this.biometricLockEnabled,
     );
   }
 }
 
-class SettingsController extends AsyncNotifier<SettingsState> {
+class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
   @override
   Future<SettingsState> build() async {
-    final settingsRepo = ref.read(settingsRepositoryProvider);
+    final settingsRepo = ref.watch(settingsRepositoryProvider);
     final results = await Future.wait([
       settingsRepo.getPrompts(),
       settingsRepo.getReminderSettings(),
       settingsRepo.getThemeMode(),
       PackageInfo.fromPlatform().then((info) => info.version).catchError((_) => '1.0.0'),
+      settingsRepo.isBiometricLockEnabled(),
     ]);
     final prompts = results[0] as List<String>;
     final reminder = results[1] as ({bool enabled, int hour, int minute});
     final themeMode = results[2] as String;
     final version = results[3] as String;
+    final biometricLock = results[4] as bool;
 
     return SettingsState(
       prompts: prompts,
@@ -70,6 +78,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
       reminderMinute: reminder.minute,
       themeMode: themeMode,
       appVersion: version,
+      biometricLockEnabled: biometricLock,
     );
   }
 
@@ -111,11 +120,25 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     if (current == null) return false;
 
     if (enabled) {
-      final scheduled = await notifService.scheduleDailyReminder(
+      final entryRepo = ref.read(entryRepositoryProvider);
+      final scheduled = await notifService.scheduleSmartDailyReminder(
         hour: current.reminderHour,
         minute: current.reminderMinute,
+        entryExistsToday: () async => await entryRepo.getTodayEntry() != null,
       );
       if (!scheduled) return false;
+
+      // Schedule streak-at-risk notification (1hr before) if user has a streak
+      final streak = await entryRepo.getCurrentStreak();
+      if (streak > 0) {
+        await notifService.scheduleStreakAtRiskReminder(
+          reminderHour: current.reminderHour,
+          reminderMinute: current.reminderMinute,
+        );
+      }
+
+      // Schedule Sunday weekly retrospective reminder
+      await notifService.scheduleWeeklyRetrospectiveReminder();
     } else {
       await notifService.cancelReminder();
     }
@@ -125,20 +148,64 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     return true;
   }
 
-  Future<void> setReminderTime(int hour, int minute) async {
+  /// Updates the reminder time. Returns false if rescheduling fails.
+  Future<bool> setReminderTime(int hour, int minute) async {
     final repo = ref.read(settingsRepositoryProvider);
     final notifService = ref.read(notificationServiceProvider);
-    await repo.setSetting('reminder_hour', hour.toString());
-    await repo.setSetting('reminder_minute', minute.toString());
     final current = state.valueOrNull;
-    if (current == null) return;
+    if (current == null) return false;
 
-    if (current.reminderEnabled) {
-      await notifService.scheduleDailyReminder(hour: hour, minute: minute);
+    try {
+      await repo.setSetting('reminder_hour', hour.toString());
+      await repo.setSetting('reminder_minute', minute.toString());
+
+      if (current.reminderEnabled) {
+        final entryRepo = ref.read(entryRepositoryProvider);
+        final scheduled = await notifService.scheduleSmartDailyReminder(
+          hour: hour,
+          minute: minute,
+          entryExistsToday: () async => await entryRepo.getTodayEntry() != null,
+        );
+        if (!scheduled) return false;
+
+        // Reschedule streak-at-risk with new time
+        final streak = await entryRepo.getCurrentStreak();
+        if (streak > 0) {
+          await notifService.scheduleStreakAtRiskReminder(
+            reminderHour: hour,
+            reminderMinute: minute,
+          );
+        } else {
+          await notifService.cancelStreakAtRiskReminder();
+        }
+      }
+
+      state = AsyncData(
+          current.copyWith(reminderHour: hour, reminderMinute: minute));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Enables or disables biometric lock. Returns false if device doesn't support it.
+  Future<bool> setBiometricLockEnabled(bool enabled) async {
+    final repo = ref.read(settingsRepositoryProvider);
+
+    if (enabled) {
+      final bioService = ref.read(biometricServiceProvider);
+      final available = await bioService.isAvailable();
+      if (!available) return false;
+      // Verify user can authenticate before enabling
+      final authenticated = await bioService.authenticate();
+      if (!authenticated) return false;
     }
 
-    state = AsyncData(
-        current.copyWith(reminderHour: hour, reminderMinute: minute));
+    await repo.setSetting('biometric_lock_enabled', enabled.toString());
+    final current = state.valueOrNull;
+    if (current == null) return false;
+    state = AsyncData(current.copyWith(biometricLockEnabled: enabled));
+    return true;
   }
 
   Future<void> setThemeMode(String mode) async {
@@ -155,56 +222,58 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     final data = {
       'app': '3Lines',
       'version': '1.0.0',
-      'exported_at': _formatWithTimezone(DateTime.now()),
+      'exported_at': du.formatWithTimezone(DateTime.now()),
       'total_entries': entries.length,
       'entries': entries,
     };
     return const JsonEncoder.withIndent('  ').convert(data);
   }
 
-  String _formatWithTimezone(DateTime dt) {
-    final offset = dt.timeZoneOffset;
-    final sign = offset.isNegative ? '-' : '+';
-    final hours = offset.inHours.abs().toString().padLeft(2, '0');
-    final minutes = (offset.inMinutes.abs() % 60).toString().padLeft(2, '0');
-    final base = dt.toIso8601String().split('.').first;
-    return '$base$sign$hours:$minutes';
-  }
-
-  /// Imports entries from a JSON string (exported format). Returns the count
-  /// of entries imported, or throws on invalid JSON.
-  Future<int> importData(String jsonStr) async {
+  /// Imports entries from a JSON string (exported format). Returns import
+  /// result with counts, or throws on invalid JSON.
+  Future<({int imported, int skipped})> importData(String jsonStr) async {
     final decoded = json.decode(jsonStr);
-    if (decoded is! Map<String, dynamic>) {
+    final List<dynamic> entriesList;
+    if (decoded is List<dynamic>) {
+      entriesList = decoded;
+    } else if (decoded is Map<String, dynamic>) {
+      final list = decoded['entries'] as List<dynamic>?;
+      if (list == null) {
+        throw const FormatException('No entries found in file');
+      }
+      entriesList = list;
+    } else {
       throw const FormatException('Invalid export format');
-    }
-    final entriesList = decoded['entries'] as List<dynamic>?;
-    if (entriesList == null) {
-      throw const FormatException('No entries found in file');
     }
     final entries = entriesList.cast<Map<String, dynamic>>();
     final entryRepo = ref.read(entryRepositoryProvider);
-    final count = await entryRepo.importEntries(entries);
+    final result = await entryRepo.importEntries(entries);
 
     // Refresh dependent screens
     ref.invalidate(todayControllerProvider);
     ref.invalidate(timelineControllerProvider);
     ref.invalidate(insightsControllerProvider);
 
-    return count;
+    return result;
   }
 
-  Future<void> deleteAllData() async {
-    final entryRepo = ref.read(entryRepositoryProvider);
-    await entryRepo.deleteAllEntries();
+  /// Deletes all entries. Returns false on failure.
+  Future<bool> deleteAllData() async {
+    try {
+      final entryRepo = ref.read(entryRepositoryProvider);
+      await entryRepo.deleteAllEntries();
 
-    // Invalidate all data-dependent screens
-    ref.invalidate(todayControllerProvider);
-    ref.invalidate(timelineControllerProvider);
-    ref.invalidate(insightsControllerProvider);
+      // Invalidate all data-dependent screens
+      ref.invalidate(todayControllerProvider);
+      ref.invalidate(timelineControllerProvider);
+      ref.invalidate(insightsControllerProvider);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 }
 
 final settingsControllerProvider =
-    AsyncNotifierProvider<SettingsController, SettingsState>(
+    AutoDisposeAsyncNotifierProvider<SettingsController, SettingsState>(
         SettingsController.new);

@@ -24,19 +24,30 @@ class PromptCard extends StatefulWidget {
 
 class _PromptCardState extends State<PromptCard> {
   late TextEditingController _controller;
+  final _focusNode = FocusNode();
+  bool _isFocused = false;
+
+  // Accent colors per category (감사, 수용, 의도)
+  static const _accentColors = [
+    Color(0xFF5B8A6A), // sage green – gratitude
+    Color(0xFFC49A6A), // warm sand – acceptance
+    Color(0xFF6B8A8A), // muted teal – intention
+  ];
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.answer);
+    _focusNode.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    if (mounted) setState(() => _isFocused = _focusNode.hasFocus);
   }
 
   @override
   void didUpdateWidget(PromptCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Only update controller text if the answer changed externally
-    // (e.g. switching to edit mode with existing data)
-    // but not while user is actively typing
     if (oldWidget.answer != widget.answer &&
         _controller.text != widget.answer) {
       _controller.text = widget.answer;
@@ -45,6 +56,8 @@ class _PromptCardState extends State<PromptCard> {
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -54,59 +67,139 @@ class _PromptCardState extends State<PromptCard> {
     final theme = Theme.of(context);
     final category = widget.index < promptCategories.length
         ? promptCategories[widget.index]
-        : '';
-    final label = promptCategoryLabels[category] ?? '';
+        : null;
+    final label = category?.label ?? '';
+    final accent = _accentColors[widget.index.clamp(0, 2)];
 
-    return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _isFocused
+              ? accent.withValues(alpha: 0.5)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+        boxShadow: _isFocused
+            ? [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (label.isNotEmpty)
-              Chip(
-                label: Text(label),
-                labelStyle: theme.textTheme.labelSmall,
-                padding: EdgeInsets.zero,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-              ),
-            const SizedBox(height: 8),
-            Text(
-              widget.question,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w500,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left accent bar — widens on focus
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            width: _isFocused ? 5 : 4,
+            constraints: const BoxConstraints(minHeight: 100),
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: _isFocused ? 1.0 : 0.7),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
               ),
             ),
-            const SizedBox(height: 8),
-            if (widget.readOnly)
-              Text(
-                widget.answer.isEmpty ? '-' : widget.answer,
-                style: theme.textTheme.bodyLarge,
-              )
-            else
-              TextField(
-                controller: _controller,
-                maxLines: 2,
-                maxLength: 200,
-                decoration: InputDecoration(
-                  hintText: '여기에 적어주세요...',
-                  border: InputBorder.none,
-                  counterStyle: theme.textTheme.bodySmall?.copyWith(
-                    color:
-                        theme.colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
+          // Content
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (label.isNotEmpty)
+                    Text(
+                      label.toUpperCase(),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: accent,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  const SizedBox(height: 6),
+                  Text(
+                    widget.question,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                      height: 1.4,
+                    ),
                   ),
-                ),
-                onChanged: widget.onChanged,
+                  const SizedBox(height: 8),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 320),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.06),
+                          end: Offset.zero,
+                        ).animate(CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutCubic,
+                        )),
+                        child: child,
+                      ),
+                    ),
+                    child: widget.readOnly
+                        ? Padding(
+                            key: const ValueKey('read'),
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              widget.answer.isEmpty ? '—' : widget.answer,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: widget.answer.isEmpty ? 0.3 : 0.7,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Semantics(
+                            key: const ValueKey('edit'),
+                            label: '${widget.question} 답변 입력',
+                            child: TextField(
+                              controller: _controller,
+                              focusNode: _focusNode,
+                              maxLines: 2,
+                              maxLength: 200,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.8),
+                              ),
+                              decoration: InputDecoration(
+                                hintText: '여기에 적어주세요...',
+                                filled: false,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                contentPadding:
+                                    const EdgeInsets.symmetric(vertical: 4),
+                                counterStyle:
+                                    theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.3),
+                                ),
+                              ),
+                              onChanged: widget.onChanged,
+                            ),
+                          ),
+                  ),
+                ],
               ),
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }

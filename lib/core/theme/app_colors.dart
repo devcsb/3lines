@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Emotion colors (for picker + charts)
+  // ── Emotion palette (muted, sophisticated) ─────────────────────
   static const emotionColors = <int, Color>{
-    1: Color(0xFFEF5350), // Red 400 - 힘듦
-    2: Color(0xFFFF9800), // Orange 500 - 불안
-    3: Color(0xFFFFCA28), // Amber 400 - 보통
-    4: Color(0xFF66BB6A), // Green 400 - 평온
-    5: Color(0xFF43A047), // Green 600 - 감사
+    1: Color(0xFFC4736A), // dusty rose – 힘듦
+    2: Color(0xFFC49A6A), // warm sand – 불안
+    3: Color(0xFFB5A97E), // muted gold – 보통
+    4: Color(0xFF7EA88A), // sage – 평온
+    5: Color(0xFF5B8A6A), // deep sage – 감사
   };
 
-  // Emotion emojis
+  // Subtle emoji — only used where absolutely needed (charts, tooltips)
   static const emotionEmojis = <int, String>{
-    1: '😫',
-    2: '😕',
-    3: '😐',
-    4: '🙂',
-    5: '😊',
+    1: '·',
+    2: '·',
+    3: '·',
+    4: '·',
+    5: '·',
   };
 
-  // Emotion labels
   static const emotionLabels = <int, String>{
     1: '힘듦',
     2: '불안',
@@ -28,24 +27,23 @@ class AppColors {
     5: '감사',
   };
 
-  // Heatmap colors (light theme)
+  // ── Heatmap (warm sage gradient) ───────────────────────────────
   static const heatmapColorsLight = <int, Color>{
-    0: Color(0xFFE0E0E0), // Grey 300 - no entry
-    1: Color(0xFFC8E6C9), // Green 100
-    2: Color(0xFFA5D6A7), // Green 200
-    3: Color(0xFF66BB6A), // Green 400
-    4: Color(0xFF43A047), // Green 600
-    5: Color(0xFF2E7D32), // Green 800
+    0: Color(0xFFE8E4DC), // warm grey – no entry
+    1: Color(0xFFD6E5D8),
+    2: Color(0xFFB5D4BA),
+    3: Color(0xFF8ABF95),
+    4: Color(0xFF6AAB78),
+    5: Color(0xFF4D8F5C),
   };
 
-  // Heatmap colors (dark theme)
   static const heatmapColorsDark = <int, Color>{
-    0: Color(0xFF2C2C2C), // Grey 850 - no entry
-    1: Color(0xFF1B3A1B),
-    2: Color(0xFF265C26),
-    3: Color(0xFF357A35),
-    4: Color(0xFF3E8E3E),
-    5: Color(0xFF43A047),
+    0: Color(0xFF2A2826), // warm dark – no entry
+    1: Color(0xFF1F3425),
+    2: Color(0xFF2A4A32),
+    3: Color(0xFF366040),
+    4: Color(0xFF43764E),
+    5: Color(0xFF508C5C),
   };
 
   static Color getHeatmapColor(int? emotionValue, Brightness brightness) {

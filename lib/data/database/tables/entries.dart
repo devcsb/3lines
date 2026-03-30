@@ -14,4 +14,5 @@ class Entries extends Table {
       dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>
       dateTime().withDefault(currentDateAndTime)();
+  TextColumn get photoPath => text().nullable()();
 }

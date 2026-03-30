@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/date_utils.dart' as du;
 
-class HeatmapGrid extends StatelessWidget {
+class HeatmapGrid extends StatefulWidget {
   final Map<String, int> emotionMap;
   final DateTime startDate;
   final ValueChanged<String>? onCellTap;
@@ -16,26 +17,56 @@ class HeatmapGrid extends StatelessWidget {
   });
 
   @override
+  State<HeatmapGrid> createState() => _HeatmapGridState();
+}
+
+class _HeatmapGridState extends State<HeatmapGrid>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _waveController;
+
+  @override
+  void initState() {
+    super.initState();
+    _waveController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..forward();
+  }
+
+  @override
+  void didUpdateWidget(HeatmapGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Re-trigger animation when data changes (period switch)
+    if (oldWidget.emotionMap != widget.emotionMap ||
+        oldWidget.startDate != widget.startDate) {
+      _waveController
+        ..reset()
+        ..forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _waveController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final brightness = theme.brightness;
     final now = DateTime.now();
-    const dayLabels = ['', '월', '', '수', '', '금', ''];
+    const dayLabels = ['월', '', '수', '', '금', '', ''];
 
-    // Calculate weeks - align to Monday boundaries
-    final startMonday = startDate.subtract(Duration(days: startDate.weekday - 1));
+    final startMonday = widget.startDate
+        .subtract(Duration(days: widget.startDate.weekday - 1));
     final endMonday = now.subtract(Duration(days: now.weekday - 1));
     final weeks = (endMonday.difference(startMonday).inDays ~/ 7) + 1;
 
-    // Cell size calculation
     final screenWidth = MediaQuery.of(context).size.width;
-    final availableWidth = screenWidth - 32 - 30; // padding + day labels
+    final availableWidth = screenWidth - 32 - 30;
     final cellSize = (availableWidth / weeks).clamp(8.0, 20.0);
     const gap = 2.0;
-
-    // Tap target: use cellSize + gap, but in scrollable grid we don't
-    // enforce 44dp minimum (would make the grid too large). The grid is
-    // horizontally scrollable so cells can be compact.
     final tapSize = cellSize + gap;
 
     return Column(
@@ -67,50 +98,73 @@ class HeatmapGrid extends StatelessWidget {
                   }),
                 ),
               ),
-              // Grid
+              // Grid with staggered wave animation
               Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  reverse: true,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: List.generate(weeks, (weekIndex) {
-                      final weekStart =
-                          _getWeekStart(now, weeks - 1 - weekIndex);
-                      return Column(
-                        children: List.generate(7, (dayIndex) {
-                          final date =
-                              weekStart.add(Duration(days: dayIndex));
-                          if (date.isAfter(now) ||
-                              date.isBefore(startDate)) {
-                            return SizedBox(
-                              width: tapSize,
-                              height: tapSize,
-                            );
-                          }
-                          final dateStr = du.dateToString(date);
-                          final emotion = emotionMap[dateStr];
+                child: AnimatedBuilder(
+                  animation: _waveController,
+                  builder: (context, _) {
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      reverse: true,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: List.generate(weeks, (weekIndex) {
+                          // Stagger: most recent weeks animate first
+                          final reversedIndex = weeks - 1 - weekIndex;
+                          final start =
+                              (reversedIndex / weeks * 0.65).clamp(0.0, 1.0);
+                          final end = (start + 0.35).clamp(0.0, 1.0);
+                          // Use Interval.transform directly to avoid
+                          // allocating a CurvedAnimation object per frame.
+                          final interval =
+                              Interval(start, end, curve: Curves.easeOutCubic);
+                          final progress =
+                              interval.transform(_waveController.value);
 
-                          final tooltipMsg = emotion != null
-                              ? '${date.month}/${date.day} ${AppColors.emotionEmojis[emotion]} $emotion점'
-                              : '${date.month}/${date.day} 기록 없음';
+                          final weekStart =
+                              _getWeekStart(now, weeks - 1 - weekIndex);
+                          return Opacity(
+                            opacity: progress.clamp(0.0, 1.0),
+                            child: Transform.scale(
+                              scale: 0.6 + 0.4 * progress,
+                              alignment: Alignment.center,
+                              child: Column(
+                                children: List.generate(7, (dayIndex) {
+                                  final date = weekStart
+                                      .add(Duration(days: dayIndex));
+                                  if (date.isAfter(now) ||
+                                      date.isBefore(widget.startDate)) {
+                                    return SizedBox(
+                                        width: tapSize, height: tapSize);
+                                  }
+                                  final dateStr = du.dateToString(date);
+                                  final emotion =
+                                      widget.emotionMap[dateStr];
+                                  final tooltipMsg = emotion != null
+                                      ? '${date.month}/${date.day} ${AppColors.emotionLabels[emotion]} $emotion점'
+                                      : '${date.month}/${date.day} 기록 없음';
 
-                          return _HeatmapCell(
-                            tapSize: tapSize,
-                            cellSize: cellSize,
-                            color: AppColors.getHeatmapColor(
-                                emotion, brightness),
-                            tooltipMsg: tooltipMsg,
-                            semanticLabel:
-                                '${du.formatKoreanDate(date)}, ${emotion != null ? "감정 $emotion점" : "기록 없음"}',
-                            onTap: emotion != null
-                                ? () => onCellTap?.call(dateStr)
-                                : null,
+                                  return _HeatmapCell(
+                                    tapSize: tapSize,
+                                    cellSize: cellSize,
+                                    color: AppColors.getHeatmapColor(
+                                        emotion, brightness),
+                                    tooltipMsg: tooltipMsg,
+                                    semanticLabel:
+                                        '${du.formatKoreanDate(date)}, ${emotion != null ? "감정 $emotion점" : "기록 없음"}',
+                                    onTap: emotion != null
+                                        ? () =>
+                                            widget.onCellTap?.call(dateStr)
+                                        : null,
+                                  );
+                                }),
+                              ),
+                            ),
                           );
                         }),
-                      );
-                    }),
-                  ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -123,7 +177,6 @@ class HeatmapGrid extends StatelessWidget {
           children: [
             Text('적음 ',
                 style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
-            // Empty cell
             Container(
               width: 12,
               height: 12,
@@ -133,7 +186,6 @@ class HeatmapGrid extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            // Emotion levels 1-5
             ...List.generate(5, (i) {
               return Container(
                 width: 12,
@@ -155,7 +207,7 @@ class HeatmapGrid extends StatelessWidget {
 
   DateTime _getWeekStart(DateTime reference, int weeksAgo) {
     final date = reference.subtract(Duration(days: weeksAgo * 7));
-    final weekday = date.weekday; // 1=Monday
+    final weekday = date.weekday;
     return date.subtract(Duration(days: weekday - 1));
   }
 }
@@ -193,10 +245,13 @@ class _HeatmapCellState extends State<_HeatmapCell> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapDown: widget.onTap != null
-            ? (_) => setState(() => _highlighted = true)
+            ? (_) {
+                if (mounted) setState(() => _highlighted = true);
+              }
             : null,
         onTapUp: widget.onTap != null
             ? (_) {
+                HapticService.light();
                 widget.onTap!();
                 Future.delayed(const Duration(milliseconds: 250), () {
                   if (mounted) setState(() => _highlighted = false);
@@ -221,7 +276,7 @@ class _HeatmapCellState extends State<_HeatmapCell> {
                   height: widget.cellSize,
                   decoration: BoxDecoration(
                     color: widget.color,
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: BorderRadius.circular(3),
                     border: _highlighted
                         ? Border.all(
                             color: Theme.of(context).colorScheme.primary,

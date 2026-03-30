@@ -2,9 +2,11 @@ import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/theme_notifier.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../data/models/daily_entry.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/services/photo_service.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../insights/insights_controller.dart';
@@ -20,8 +22,15 @@ class TodayState {
   final bool isCompleted;
   final bool isEditing;
   final int currentStreak;
+  final bool usedGraceDay;
   final DailyEntry? existingEntry;
   final bool isSaving;
+  final DailyEntry? oneYearAgoEntry;
+  final DailyEntry? sixMonthsAgoEntry;
+  final DailyEntry? oneMonthAgoEntry;
+  final int? milestone; // non-null when a milestone is reached (7, 30, 100, 365)
+  final String? photoPath;
+  final List<({DateTime date, int emotion})> recentEmotions;
 
   const TodayState({
     this.emotion,
@@ -32,14 +41,21 @@ class TodayState {
     this.isCompleted = false,
     this.isEditing = false,
     this.currentStreak = 0,
+    this.usedGraceDay = false,
     this.existingEntry,
     this.isSaving = false,
+    this.oneYearAgoEntry,
+    this.sixMonthsAgoEntry,
+    this.oneMonthAgoEntry,
+    this.milestone,
+    this.photoPath,
+    this.recentEmotions = const [],
   });
 
   bool get canSave => emotion != null && (answer1.isNotEmpty || answer2.isNotEmpty || answer3.isNotEmpty);
 
   TodayState copyWith({
-    int? emotion,
+    int? Function()? emotion,
     String? answer1,
     String? answer2,
     String? answer3,
@@ -47,11 +63,18 @@ class TodayState {
     bool? isCompleted,
     bool? isEditing,
     int? currentStreak,
-    DailyEntry? existingEntry,
+    bool? usedGraceDay,
+    DailyEntry? Function()? existingEntry,
     bool? isSaving,
+    DailyEntry? Function()? oneYearAgoEntry,
+    DailyEntry? Function()? sixMonthsAgoEntry,
+    DailyEntry? Function()? oneMonthAgoEntry,
+    int? Function()? milestone,
+    String? Function()? photoPath,
+    List<({DateTime date, int emotion})>? recentEmotions,
   }) {
     return TodayState(
-      emotion: emotion ?? this.emotion,
+      emotion: emotion != null ? emotion() : this.emotion,
       answer1: answer1 ?? this.answer1,
       answer2: answer2 ?? this.answer2,
       answer3: answer3 ?? this.answer3,
@@ -59,21 +82,48 @@ class TodayState {
       isCompleted: isCompleted ?? this.isCompleted,
       isEditing: isEditing ?? this.isEditing,
       currentStreak: currentStreak ?? this.currentStreak,
-      existingEntry: existingEntry ?? this.existingEntry,
+      usedGraceDay: usedGraceDay ?? this.usedGraceDay,
+      existingEntry: existingEntry != null ? existingEntry() : this.existingEntry,
       isSaving: isSaving ?? this.isSaving,
+      oneYearAgoEntry: oneYearAgoEntry != null ? oneYearAgoEntry() : this.oneYearAgoEntry,
+      sixMonthsAgoEntry: sixMonthsAgoEntry != null ? sixMonthsAgoEntry() : this.sixMonthsAgoEntry,
+      oneMonthAgoEntry: oneMonthAgoEntry != null ? oneMonthAgoEntry() : this.oneMonthAgoEntry,
+      milestone: milestone != null ? milestone() : this.milestone,
+      photoPath: photoPath != null ? photoPath() : this.photoPath,
+      recentEmotions: recentEmotions ?? this.recentEmotions,
     );
   }
 }
 
 class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
+  static const _milestones = [7, 30, 100, 365];
+
   @override
   Future<TodayState> build() async {
     final entryRepo = ref.watch(entryRepositoryProvider);
     final settingsRepo = ref.watch(settingsRepositoryProvider);
 
-    final prompts = await settingsRepo.getPrompts();
-    final todayEntry = await entryRepo.getTodayEntry();
-    final streak = await entryRepo.getCurrentStreak();
+    final now = DateTime.now();
+    final results = await Future.wait([
+      settingsRepo.getRotatingPrompts(),
+      entryRepo.getTodayEntry(),
+      entryRepo.getCurrentStreakWithGrace(),
+      entryRepo.getOneYearAgoEntry(),
+      entryRepo.getEmotionTrend(
+        now.subtract(const Duration(days: 6)),
+        now,
+      ),
+      entryRepo.getSixMonthsAgoEntry(),
+      entryRepo.getOneMonthAgoEntry(),
+    ]);
+
+    final prompts = results[0] as List<String>;
+    final todayEntry = results[1] as DailyEntry?;
+    final streakResult = results[2] as ({int count, bool usedGraceDay});
+    final oneYearAgo = results[3] as DailyEntry?;
+    final recentTrend = results[4] as List<({DateTime date, int emotion})>;
+    final sixMonthsAgo = results[5] as DailyEntry?;
+    final oneMonthAgo = results[6] as DailyEntry?;
 
     if (todayEntry != null) {
       return TodayState(
@@ -83,21 +133,32 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
         answer3: todayEntry.answer3,
         prompts: prompts,
         isCompleted: true,
-        currentStreak: streak,
+        currentStreak: streakResult.count,
+        usedGraceDay: streakResult.usedGraceDay,
         existingEntry: todayEntry,
+        oneYearAgoEntry: oneYearAgo,
+        sixMonthsAgoEntry: sixMonthsAgo,
+        oneMonthAgoEntry: oneMonthAgo,
+        photoPath: todayEntry.photoPath,
+        recentEmotions: recentTrend,
       );
     }
 
     return TodayState(
       prompts: prompts,
-      currentStreak: streak,
+      currentStreak: streakResult.count,
+      usedGraceDay: streakResult.usedGraceDay,
+      oneYearAgoEntry: oneYearAgo,
+      sixMonthsAgoEntry: sixMonthsAgo,
+      oneMonthAgoEntry: oneMonthAgo,
+      recentEmotions: recentTrend,
     );
   }
 
   void setEmotion(int value) {
     final current = state.valueOrNull;
     if (current == null || value < 1 || value > 5) return;
-    state = AsyncData(current.copyWith(emotion: value));
+    state = AsyncData(current.copyWith(emotion: () => value));
   }
 
   void setAnswer(int index, String value) {
@@ -134,24 +195,57 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
         answer2: current.answer2,
         prompt3: current.prompts[2],
         answer3: current.answer3,
+        photoPath: current.photoPath,
       );
 
       await entryRepo.saveEntry(entry);
-      final streak = await entryRepo.getCurrentStreak();
+      final streakResult = await entryRepo.getCurrentStreakWithGrace();
       final saved = await entryRepo.getTodayEntry();
+      final totalCount = await entryRepo.getTotalCount();
+
+      // Check if this save hits a milestone
+      int? milestone;
+      for (final m in _milestones) {
+        if (totalCount == m) {
+          milestone = m;
+          break;
+        }
+      }
+
+      // Unlock milestone accent theme when a milestone is reached
+      if (milestone != null) {
+        final settingsRepo = ref.read(settingsRepositoryProvider);
+        await settingsRepo.unlockMilestone(milestone);
+        // Refresh the accent theme provider so AppearanceSection updates
+        ref.invalidate(accentThemeProvider);
+      }
 
       state = AsyncData(current.copyWith(
         isCompleted: true,
         isEditing: false,
         isSaving: false,
-        currentStreak: streak,
-        existingEntry: saved,
+        currentStreak: streakResult.count,
+        usedGraceDay: streakResult.usedGraceDay,
+        existingEntry: () => saved,
+        milestone: () => milestone,
       ));
 
-      // Cancel today's reminder since entry is now saved
+      // Reschedule reminder: cancel today's and ensure tomorrow's fires
       final settings = ref.read(settingsControllerProvider).valueOrNull;
       if (settings != null && settings.reminderEnabled) {
-        await ref.read(notificationServiceProvider).cancelReminder();
+        final notifService = ref.read(notificationServiceProvider);
+        // Personalize tomorrow's notification with today's gratitude answer
+        final todayAnswer = entry.answer1.trim();
+        final notifBody = todayAnswer.isNotEmpty
+            ? '어제의 감사: "${todayAnswer.length > 30 ? '${todayAnswer.substring(0, 30)}…' : todayAnswer}"'
+            : null;
+        await notifService.scheduleDailyReminder(
+          hour: settings.reminderHour,
+          minute: settings.reminderMinute,
+          body: notifBody,
+        );
+        // Streak is safe now — cancel today's at-risk notification
+        await notifService.cancelStreakAtRiskReminder();
       }
 
       // Invalidate dependent screens so they reload fresh data
@@ -169,6 +263,20 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
     final current = state.valueOrNull;
     if (current == null) return;
     state = AsyncData(current.copyWith(isEditing: !current.isEditing));
+  }
+
+  void attachPhoto(String path) {
+    final current = state.valueOrNull;
+    if (current == null) return;
+    state = AsyncData(current.copyWith(photoPath: () => path));
+  }
+
+  Future<void> removePhoto() async {
+    final current = state.valueOrNull;
+    if (current == null || current.photoPath == null) return;
+    final photoService = ref.read(photoServiceProvider);
+    await photoService.deletePhoto(current.photoPath!);
+    state = AsyncData(current.copyWith(photoPath: () => null));
   }
 
   Future<void> refresh() async {
