@@ -70,7 +70,7 @@ void main() {
 
       test('overwrites specified fields', () {
         const original = TodayState(emotion: 3, answer1: 'old');
-        final copied = original.copyWith(emotion: 5, answer1: 'new');
+        final copied = original.copyWith(emotion: () => 5, answer1: 'new');
         expect(copied.emotion, 5);
         expect(copied.answer1, 'new');
       });
@@ -87,9 +87,15 @@ void main() {
         expect(copied.isSaving, isTrue);
       });
 
+      test('can clear emotion to null', () {
+        const original = TodayState(emotion: 3);
+        final copied = original.copyWith(emotion: () => null);
+        expect(copied.emotion, isNull);
+      });
+
       test('isSaving defaults to false in copyWith', () {
         const original = TodayState(isSaving: true);
-        final copied = original.copyWith(emotion: 3);
+        final copied = original.copyWith(emotion: () => 3);
         expect(copied.isSaving, isTrue);
       });
     });

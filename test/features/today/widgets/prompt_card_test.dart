@@ -58,7 +58,7 @@ void main() {
 
   testWidgets('shows dash for empty answer in read-only mode', (tester) async {
     await tester.pumpWidget(buildApp(readOnly: true, answer: ''));
-    expect(find.text('-'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
   });
 
   testWidgets('calls onChanged when text is entered', (tester) async {

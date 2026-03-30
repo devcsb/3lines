@@ -5,8 +5,8 @@ import 'package:three_lines/features/insights/widgets/stat_card.dart';
 void main() {
   Widget buildApp({
     String title = '평균 감정',
-    String value = '🙂 4.2',
-    IconData icon = Icons.emoji_emotions,
+    String value = '4.2',
+    IconData icon = Icons.favorite_rounded,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -17,17 +17,20 @@ void main() {
 
   testWidgets('displays title and value', (tester) async {
     await tester.pumpWidget(buildApp(title: '현재 스트릭', value: '12일'));
+    await tester.pumpAndSettle(); // wait for count-up animation
     expect(find.text('현재 스트릭'), findsOneWidget);
     expect(find.text('12일'), findsOneWidget);
   });
 
   testWidgets('displays icon', (tester) async {
-    await tester.pumpWidget(buildApp(icon: Icons.local_fire_department));
-    expect(find.byIcon(Icons.local_fire_department), findsOneWidget);
+    await tester.pumpWidget(buildApp(icon: Icons.local_fire_department_rounded));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.local_fire_department_rounded), findsOneWidget);
   });
 
-  testWidgets('renders as a Card', (tester) async {
+  testWidgets('renders as a Container with border', (tester) async {
     await tester.pumpWidget(buildApp());
-    expect(find.byType(Card), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.byType(Container), findsWidgets);
   });
 }

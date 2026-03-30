@@ -1,41 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:three_lines/data/database/app_database.dart';
 import 'package:three_lines/data/models/daily_entry.dart';
 
 void main() {
-  group('DailyEntry.fromEntry', () {
-    test('preserves all fields from Entry', () {
-      final now = DateTime(2026, 3, 14, 21, 30);
-      final entry = Entry(
-        id: 42,
-        date: '2026-03-14',
-        emotion: 4,
-        prompt1: '감사 질문',
-        answer1: '맑은 날씨',
-        prompt2: '수용 질문',
-        answer2: '긴장했다',
-        prompt3: '의도 질문',
-        answer3: '침착한 사람',
-        createdAt: now,
-        updatedAt: now,
-      );
-
-      final daily = DailyEntry.fromEntry(entry);
-
-      expect(daily.id, 42);
-      expect(daily.date, '2026-03-14');
-      expect(daily.emotion, 4);
-      expect(daily.prompt1, '감사 질문');
-      expect(daily.answer1, '맑은 날씨');
-      expect(daily.prompt2, '수용 질문');
-      expect(daily.answer2, '긴장했다');
-      expect(daily.prompt3, '의도 질문');
-      expect(daily.answer3, '침착한 사람');
-      expect(daily.createdAt, now);
-      expect(daily.updatedAt, now);
-    });
-  });
-
   group('DailyEntry.toJson', () {
     test('produces correct JSON structure per PRD 4.5', () {
       final entry = DailyEntry(
@@ -121,23 +87,6 @@ void main() {
       expect(copy.answer2, 'a2');
       expect(copy.prompt3, 'q3');
       expect(copy.answer3, 'a3');
-    });
-  });
-
-  group('DailyEntry.toCompanion', () {
-    test('creates companion with correct fields', () {
-      final entry = DailyEntry(
-        date: '2026-03-14',
-        emotion: 4,
-        prompt1: 'q1',
-        answer1: 'a1',
-      );
-
-      final companion = entry.toCompanion();
-      expect(companion.date.value, '2026-03-14');
-      expect(companion.emotion.value, 4);
-      expect(companion.prompt1.value, 'q1');
-      expect(companion.answer1.value, 'a1');
     });
   });
 }

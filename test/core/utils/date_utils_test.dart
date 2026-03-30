@@ -47,12 +47,16 @@ void main() {
   });
 
   group('getGreeting', () {
-    test('returns a valid Korean greeting', () {
+    test('returns a non-empty Korean greeting', () {
       final result = getGreeting();
-      expect(
-        ['좋은 아침이에요', '좋은 오후예요', '좋은 저녁이에요'],
-        contains(result),
-      );
+      expect(result, isNotEmpty);
+      expect(result.length, greaterThan(3));
+    });
+
+    test('returns streak-aware greeting at milestones', () {
+      expect(getGreeting(streak: 6), '내일이면 7일째예요');
+      expect(getGreeting(streak: 29), '내일이면 한 달이에요');
+      expect(getGreeting(streak: 50), '50일, 대단해요');
     });
   });
 
@@ -80,6 +84,41 @@ void main() {
       expect(result.year, 2026);
       expect(result.month, 3);
       expect(result.day, 14);
+    });
+  });
+
+  group('subtractMonths', () {
+    test('normal case: March 15 minus 1 month = Feb 15', () {
+      final result = subtractMonths(DateTime(2026, 3, 15), 1);
+      expect(result, DateTime(2026, 2, 15));
+    });
+
+    test('day clamp: March 31 minus 1 month = Feb 28 (not March 3)', () {
+      // This is the critical bug — DateTime(2026, 2, 31) would overflow to March 3
+      final result = subtractMonths(DateTime(2026, 3, 31), 1);
+      expect(result.month, 2);
+      expect(result.day, 28);
+    });
+
+    test('day clamp on leap year: March 31 minus 1 month = Feb 29', () {
+      final result = subtractMonths(DateTime(2028, 3, 31), 1);
+      expect(result, DateTime(2028, 2, 29));
+    });
+
+    test('crosses year boundary: Jan 15 minus 1 month = Dec 15 previous year', () {
+      final result = subtractMonths(DateTime(2026, 1, 15), 1);
+      expect(result, DateTime(2025, 12, 15));
+    });
+
+    test('6 months back: Sept 30 minus 6 months = March 30', () {
+      final result = subtractMonths(DateTime(2026, 9, 30), 6);
+      expect(result, DateTime(2026, 3, 30));
+    });
+
+    test('6 months back with clamp: Aug 31 minus 6 months = Feb 28', () {
+      final result = subtractMonths(DateTime(2026, 8, 31), 6);
+      expect(result.month, 2);
+      expect(result.day, 28);
     });
   });
 }

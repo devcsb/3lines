@@ -93,15 +93,14 @@ void main() {
     expect(barData.length, 3);
   });
 
-  testWidgets('single data point renders without error', (tester) async {
+  testWidgets('single data point renders summary instead of chart', (tester) async {
     final data = [
       (date: DateTime(2025, 1, 1), emotion: 4),
     ];
     await tester.pumpWidget(buildChart(data));
-    expect(find.byType(LineChart), findsOneWidget);
-
-    final lineChart = tester.widget<LineChart>(find.byType(LineChart));
-    expect(lineChart.data.lineBarsData.length, 1);
-    expect(lineChart.data.lineBarsData[0].spots.length, 1);
+    // Single data point shows a summary card, not a LineChart
+    expect(find.byType(LineChart), findsNothing);
+    expect(find.text('4'), findsOneWidget);
+    expect(find.textContaining('평온'), findsOneWidget);
   });
 }

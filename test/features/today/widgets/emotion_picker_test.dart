@@ -17,16 +17,7 @@ void main() {
 
   testWidgets('renders 5 emotion options', (tester) async {
     await tester.pumpWidget(buildApp());
-    // 5 emoji texts
-    expect(find.text('😫'), findsOneWidget);
-    expect(find.text('😕'), findsOneWidget);
-    expect(find.text('😐'), findsOneWidget);
-    expect(find.text('🙂'), findsOneWidget);
-    expect(find.text('😊'), findsOneWidget);
-  });
-
-  testWidgets('renders all emotion labels', (tester) async {
-    await tester.pumpWidget(buildApp());
+    // 5 label texts (no emojis)
     expect(find.text('힘듦'), findsOneWidget);
     expect(find.text('불안'), findsOneWidget);
     expect(find.text('보통'), findsOneWidget);
@@ -34,11 +25,16 @@ void main() {
     expect(find.text('감사'), findsOneWidget);
   });
 
+  testWidgets('renders section header', (tester) async {
+    await tester.pumpWidget(buildApp());
+    expect(find.text('오늘의 감정'), findsOneWidget);
+  });
+
   testWidgets('calls onSelected when tapped', (tester) async {
     int? selected;
     await tester.pumpWidget(buildApp(onSelected: (v) => selected = v));
 
-    await tester.tap(find.text('😊'));
+    await tester.tap(find.text('감사'));
     await tester.pumpAndSettle();
 
     expect(selected, 5);
@@ -51,7 +47,7 @@ void main() {
       enabled: false,
     ));
 
-    await tester.tap(find.text('😊'));
+    await tester.tap(find.text('감사'));
     await tester.pumpAndSettle();
 
     expect(selected, isNull);
@@ -61,7 +57,6 @@ void main() {
     await tester.pumpWidget(buildApp(selectedEmotion: 3));
     await tester.pumpAndSettle();
 
-    // Semantics label should indicate selected
     expect(
       find.bySemanticsLabel(RegExp(r'감정 선택: 5단계 중 3')),
       findsOneWidget,
