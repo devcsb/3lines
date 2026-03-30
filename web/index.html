@@ -31,6 +31,12 @@
 
   <title>three_lines</title>
   <link rel="manifest" href="manifest.json">
+
+  <script src="https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/sql-wasm.js"></script>
+  <script>
+    // Initialize sql.js and expose it globally for drift
+    initSqlJs({ locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/${file}` });
+  </script>
 </head>
 <body>
   <!--
