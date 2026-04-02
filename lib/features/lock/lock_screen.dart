@@ -14,6 +14,10 @@ class _LockScreenState extends ConsumerState<LockScreen>
     with WidgetsBindingObserver {
   bool _authenticating = false;
 
+  /// 사용자가 실제로 앱을 백그라운드로 보냈는지 추적한다.
+  /// 생체인증 시스템 다이얼로그로 인한 lifecycle 전환과 구분하기 위해 사용한다.
+  bool _didGoToBackground = false;
+
   @override
   void initState() {
     super.initState();
@@ -29,7 +33,15 @@ class _LockScreenState extends ConsumerState<LockScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.paused) {
+      // 인증 다이얼로그가 떠 있는 동안의 paused는 무시하고,
+      // 사용자가 직접 앱을 백그라운드로 보낸 경우만 기록한다.
+      if (!_authenticating) {
+        _didGoToBackground = true;
+      }
+    }
+    if (state == AppLifecycleState.resumed && _didGoToBackground) {
+      _didGoToBackground = false;
       _authenticate();
     }
   }
