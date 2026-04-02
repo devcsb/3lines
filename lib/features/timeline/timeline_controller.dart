@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/daily_entry.dart';
 import '../../data/repositories/entry_repository.dart';
+import '../insights/insights_controller.dart';
+import '../today/today_controller.dart';
 
 enum TimelinePeriod {
   weeks12(84),
@@ -120,6 +122,10 @@ class TimelineController extends AutoDisposeAsyncNotifier<TimelineState> {
     final period = state.valueOrNull?.period ?? TimelinePeriod.weeks12;
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => _loadData(period));
+
+    // 오늘/인사이트 화면도 함께 갱신하여 삭제된 데이터가 즉시 반영되게 한다.
+    ref.invalidate(todayControllerProvider);
+    ref.invalidate(insightsControllerProvider);
   }
 }
 
