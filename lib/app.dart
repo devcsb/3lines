@@ -48,6 +48,10 @@ final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterNotifier();
   ref.onDispose(() => notifier.dispose());
 
+  // main.dart에서 사전 로딩한 잠금 상태를 즉시 반영하여
+  // 라우터 생성 시점부터 올바른 리다이렉트가 동작하게 한다.
+  notifier.locked = ref.read(biometricLockStateProvider);
+
   // Listen (not watch) so the router is created once and refreshed via notifier
   ref.listen(onboardingDoneProvider, (_, next) {
     notifier.onboardingDone = next.valueOrNull ?? false;
@@ -56,7 +60,6 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.listen(biometricLockEnabledProvider, (_, next) {
     final enabled = next.valueOrNull ?? false;
     if (enabled) {
-      // Set locked on first load when biometric lock is enabled
       final currentLockState = ref.read(biometricLockStateProvider);
       if (!currentLockState) {
         ref.read(biometricLockStateProvider.notifier).state = true;

@@ -106,4 +106,21 @@ void main() {
       expect(await repo.isOnboardingDone(), true);
     });
   });
+
+  group('isBiometricLockEnabled', () {
+    test('returns false by default', () async {
+      expect(await repo.isBiometricLockEnabled(), false);
+    });
+
+    test('returns true after enabling biometric lock', () async {
+      await repo.setSetting('biometric_lock_enabled', 'true');
+      expect(await repo.isBiometricLockEnabled(), true);
+    });
+
+    test('returns false after disabling biometric lock', () async {
+      await repo.setSetting('biometric_lock_enabled', 'true');
+      await repo.setSetting('biometric_lock_enabled', 'false');
+      expect(await repo.isBiometricLockEnabled(), false);
+    });
+  });
 }
