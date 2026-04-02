@@ -88,6 +88,17 @@ class EntryRepository {
     await (_db.delete(_db.entries)..where((t) => t.date.equals(date))).go();
   }
 
+  /// Returns all non-null photo paths stored in entries.
+  Future<List<String>> getAllPhotoPaths() async {
+    final query = _db.select(_db.entries)
+      ..where((t) => t.photoPath.isNotNull());
+    final results = await query.get();
+    return results
+        .map((e) => e.photoPath)
+        .whereType<String>()
+        .toList();
+  }
+
   /// Returns the entry immediately before [currentDate], or null.
   Future<DailyEntry?> getPreviousEntry(String currentDate) async {
     final query = _db.select(_db.entries)

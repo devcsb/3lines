@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/services/photo_service.dart';
 import '../../data/models/daily_entry.dart';
 import '../../data/repositories/entry_repository.dart';
 
@@ -116,7 +117,17 @@ class TimelineController extends AutoDisposeAsyncNotifier<TimelineState> {
 
   Future<void> deleteEntry(String date) async {
     final repo = ref.read(entryRepositoryProvider);
+
+    // 삭제 전에 해당 기록의 사진 파일 경로를 확보한다.
+    final entry = await repo.getEntryByDate(date);
     await repo.deleteEntry(date);
+
+    // 첨부 사진 파일이 있으면 디스크에서도 삭제한다.
+    if (entry?.photoPath != null) {
+      final photoService = ref.read(photoServiceProvider);
+      await photoService.deletePhoto(entry!.photoPath!);
+    }
+
     final period = state.valueOrNull?.period ?? TimelinePeriod.weeks12;
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => _loadData(period));

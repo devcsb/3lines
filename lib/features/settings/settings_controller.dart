@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/constants/default_prompts.dart';
 import '../../core/services/biometric_service.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/services/photo_service.dart';
 import '../../core/theme/theme_notifier.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../data/repositories/entry_repository.dart';
@@ -261,7 +262,17 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
   Future<bool> deleteAllData() async {
     try {
       final entryRepo = ref.read(entryRepositoryProvider);
+      final photoService = ref.read(photoServiceProvider);
+
+      // 삭제 전에 모든 사진 파일 경로를 확보한다.
+      final photoPaths = await entryRepo.getAllPhotoPaths();
+
       await entryRepo.deleteAllEntries();
+
+      // 고아 사진 파일을 디스크에서 정리한다.
+      for (final path in photoPaths) {
+        await photoService.deletePhoto(path);
+      }
 
       // Invalidate all data-dependent screens
       ref.invalidate(todayControllerProvider);
