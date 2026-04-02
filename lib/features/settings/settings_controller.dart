@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/constants/default_prompts.dart';
+import '../../app.dart';
 import '../../core/services/biometric_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/theme/theme_notifier.dart';
+import '../lock/lock_screen.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/settings_repository.dart';
@@ -205,6 +207,15 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
     final current = state.valueOrNull;
     if (current == null) return false;
     state = AsyncData(current.copyWith(biometricLockEnabled: enabled));
+
+    // biometricLockEnabledProvider를 갱신하여 라우터가 변경을 감지하게 한다.
+    ref.invalidate(biometricLockEnabledProvider);
+
+    // 비활성화 시 현재 잠금 상태도 즉시 해제한다.
+    if (!enabled) {
+      ref.read(biometricLockStateProvider.notifier).state = false;
+    }
+
     return true;
   }
 
