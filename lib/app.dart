@@ -60,10 +60,10 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.listen(biometricLockEnabledProvider, (_, next) {
     final enabled = next.valueOrNull ?? false;
     if (enabled) {
-      final currentLockState = ref.read(biometricLockStateProvider);
-      if (!currentLockState) {
-        ref.read(biometricLockStateProvider.notifier).state = true;
-      }
+      // 앱 시작 시 잠금 복원은 main.dart에서 biometricLockStateProvider를
+      // 사전 설정하여 처리하므로, 여기서는 현재 잠금 상태만 라우터에 반영한다.
+      // 설정에서 활성화한 직후에는 biometricLockStateProvider가 false이므로
+      // 사용자가 즉시 잠금 화면으로 튕기지 않는다.
       notifier.locked = ref.read(biometricLockStateProvider);
     } else {
       ref.read(biometricLockStateProvider.notifier).state = false;
