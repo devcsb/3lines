@@ -274,8 +274,17 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
   Future<void> removePhoto() async {
     final current = state.valueOrNull;
     if (current == null || current.photoPath == null) return;
-    final photoService = ref.read(photoServiceProvider);
-    await photoService.deletePhoto(current.photoPath!);
+
+    // DB에 저장된 사진은 여기서 삭제하지 않는다.
+    // save() 호출 시 DB 트랜잭션 성공 후에 정리된다.
+    // 미저장 사진(새로 첨부했지만 아직 save() 전인 사진)만 즉시 삭제하여
+    // storage leak를 방지한다.
+    final savedPath = current.existingEntry?.photoPath;
+    if (current.photoPath != savedPath) {
+      final photoService = ref.read(photoServiceProvider);
+      await photoService.deletePhoto(current.photoPath!);
+    }
+
     state = AsyncData(current.copyWith(photoPath: () => null));
   }
 
