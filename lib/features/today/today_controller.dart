@@ -199,6 +199,15 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
       );
 
       await entryRepo.saveEntry(entry);
+
+      // DB 저장이 성공한 후에 이전 사진 파일을 삭제한다.
+      // 저장 전에 삭제하면 saveEntry() 실패 시 파일을 복구할 수 없다.
+      final oldPhotoPath = current.existingEntry?.photoPath;
+      if (oldPhotoPath != null && oldPhotoPath != current.photoPath) {
+        final photoService = ref.read(photoServiceProvider);
+        await photoService.deletePhoto(oldPhotoPath);
+      }
+
       final streakResult = await entryRepo.getCurrentStreakWithGrace();
       final saved = await entryRepo.getTodayEntry();
       final totalCount = await entryRepo.getTotalCount();
