@@ -245,7 +245,10 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
     } else {
       throw const FormatException('Invalid export format');
     }
-    final entries = entriesList.cast<Map<String, dynamic>>();
+    // cast<>() 대신 whereType으로 안전하게 필터링하여
+    // 잘못된 타입의 항목이 전체 가져오기를 실패시키지 않도록 한다.
+    final entries = entriesList.whereType<Map<String, dynamic>>().toList();
+    final skippedByType = entriesList.length - entries.length;
     final entryRepo = ref.read(entryRepositoryProvider);
     final result = await entryRepo.importEntries(entries);
 
@@ -254,7 +257,7 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
     ref.invalidate(timelineControllerProvider);
     ref.invalidate(insightsControllerProvider);
 
-    return result;
+    return (imported: result.imported, skipped: result.skipped + skippedByType);
   }
 
   /// Deletes all entries. Returns false on failure.
