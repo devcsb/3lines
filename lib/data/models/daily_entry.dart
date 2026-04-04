@@ -91,6 +91,7 @@ class DailyEntry {
         {'category': 'intention', 'question': prompt3, 'answer': answer3},
       ],
       'created_at': du.formatWithTimezone(createdAt),
+      'updated_at': du.formatWithTimezone(updatedAt),
     };
   }
 }
