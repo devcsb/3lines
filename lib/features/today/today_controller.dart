@@ -198,6 +198,13 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
         photoPath: current.photoPath,
       );
 
+      // 사진이 교체되었으면 이전 파일을 디스크에서 삭제한다.
+      final oldPhotoPath = current.existingEntry?.photoPath;
+      if (oldPhotoPath != null && oldPhotoPath != current.photoPath) {
+        final photoService = ref.read(photoServiceProvider);
+        await photoService.deletePhoto(oldPhotoPath);
+      }
+
       await entryRepo.saveEntry(entry);
       final streakResult = await entryRepo.getCurrentStreakWithGrace();
       final saved = await entryRepo.getTodayEntry();
@@ -268,6 +275,16 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
   void attachPhoto(String path) {
     final current = state.valueOrNull;
     if (current == null) return;
+
+    // 기존에 선택한 미저장 사진이 있으면 디스크에서 정리한다.
+    // (DB에 저장된 사진과 동일한 경우는 삭제하지 않는다.)
+    final previousPath = current.photoPath;
+    final savedPath = current.existingEntry?.photoPath;
+    if (previousPath != null && previousPath != savedPath) {
+      final photoService = ref.read(photoServiceProvider);
+      photoService.deletePhoto(previousPath);
+    }
+
     state = AsyncData(current.copyWith(photoPath: () => path));
   }
 
