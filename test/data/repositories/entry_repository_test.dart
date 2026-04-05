@@ -517,6 +517,102 @@ void main() {
     });
   });
 
+  group('deleteEntry', () {
+    test('removes entry from database', () async {
+      await repo.saveEntry(makeEntry('2026-03-01'));
+      await repo.deleteEntry('2026-03-01');
+      expect(await repo.getEntryByDate('2026-03-01'), isNull);
+    });
+
+    test('does nothing for non-existent date', () async {
+      await repo.deleteEntry('2099-01-01');
+      expect(await repo.getTotalCount(), 0);
+    });
+
+    test('only removes the targeted date', () async {
+      await repo.saveEntry(makeEntry('2026-03-01'));
+      await repo.saveEntry(makeEntry('2026-03-02'));
+      await repo.deleteEntry('2026-03-01');
+      expect(await repo.getEntryByDate('2026-03-01'), isNull);
+      expect(await repo.getEntryByDate('2026-03-02'), isNotNull);
+    });
+  });
+
+  group('getAllPhotoPaths', () {
+    test('returns empty list when no entries have photos', () async {
+      await repo.saveEntry(makeEntry('2026-03-01'));
+      final paths = await repo.getAllPhotoPaths();
+      expect(paths, isEmpty);
+    });
+
+    test('returns paths only for entries with photos', () async {
+      await repo.saveEntry(DailyEntry(
+        date: '2026-03-01',
+        emotion: 3,
+        photoPath: '/photos/photo1.jpg',
+      ));
+      await repo.saveEntry(makeEntry('2026-03-02')); // no photo
+      await repo.saveEntry(DailyEntry(
+        date: '2026-03-03',
+        emotion: 4,
+        photoPath: '/photos/photo2.jpg',
+      ));
+      final paths = await repo.getAllPhotoPaths();
+      expect(paths.length, 2);
+      expect(paths, containsAll(['/photos/photo1.jpg', '/photos/photo2.jpg']));
+    });
+
+    test('returns empty list for empty database', () async {
+      expect(await repo.getAllPhotoPaths(), isEmpty);
+    });
+  });
+
+  group('getPreviousEntry', () {
+    test('returns null when no previous entry exists', () async {
+      await repo.saveEntry(makeEntry('2026-03-01'));
+      expect(await repo.getPreviousEntry('2026-03-01'), isNull);
+    });
+
+    test('returns the closest entry before the given date', () async {
+      await repo.saveEntry(makeEntry('2026-03-01', emotion: 1));
+      await repo.saveEntry(makeEntry('2026-03-03', emotion: 3));
+      await repo.saveEntry(makeEntry('2026-03-05', emotion: 5));
+      final result = await repo.getPreviousEntry('2026-03-05');
+      expect(result?.date, '2026-03-03');
+      expect(result?.emotion, 3);
+    });
+
+    test('skips non-adjacent dates correctly', () async {
+      await repo.saveEntry(makeEntry('2026-03-01', emotion: 2));
+      await repo.saveEntry(makeEntry('2026-03-10', emotion: 4));
+      final result = await repo.getPreviousEntry('2026-03-10');
+      expect(result?.date, '2026-03-01');
+    });
+  });
+
+  group('getNextEntry', () {
+    test('returns null when no next entry exists', () async {
+      await repo.saveEntry(makeEntry('2026-03-05'));
+      expect(await repo.getNextEntry('2026-03-05'), isNull);
+    });
+
+    test('returns the closest entry after the given date', () async {
+      await repo.saveEntry(makeEntry('2026-03-01', emotion: 1));
+      await repo.saveEntry(makeEntry('2026-03-03', emotion: 3));
+      await repo.saveEntry(makeEntry('2026-03-05', emotion: 5));
+      final result = await repo.getNextEntry('2026-03-01');
+      expect(result?.date, '2026-03-03');
+      expect(result?.emotion, 3);
+    });
+
+    test('skips non-adjacent dates correctly', () async {
+      await repo.saveEntry(makeEntry('2026-03-01', emotion: 2));
+      await repo.saveEntry(makeEntry('2026-03-10', emotion: 4));
+      final result = await repo.getNextEntry('2026-03-01');
+      expect(result?.date, '2026-03-10');
+    });
+  });
+
   group('deleteAllEntries', () {
     test('deletes all entries', () async {
       await repo.saveEntry(makeEntry('2026-03-01'));

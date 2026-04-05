@@ -22,6 +22,7 @@ class TimelineScreen extends ConsumerStatefulWidget {
 
 class _TimelineScreenState extends ConsumerState<TimelineScreen> {
   final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
   Timer? _debounceTimer;
   bool _loadingEntry = false;
 
@@ -29,6 +30,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
   void dispose() {
     _debounceTimer?.cancel();
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -115,6 +117,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                   // Search bar
                   SearchBar(
                     controller: _searchController,
+                    focusNode: _searchFocusNode,
                     hintText: '기록 검색...',
                     leading: Padding(
                       padding: const EdgeInsets.only(left: 8),
@@ -128,6 +131,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                           icon: const Icon(Icons.clear_rounded),
                           onPressed: () {
                             _searchController.clear();
+                            _searchFocusNode.unfocus();
                             ref
                                 .read(timelineControllerProvider.notifier)
                                 .clearSearch();

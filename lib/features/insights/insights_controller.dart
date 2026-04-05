@@ -186,7 +186,8 @@ class InsightsController extends AutoDisposeAsyncNotifier<InsightsState> {
   }
 
   Future<void> setPeriod(InsightsPeriod period) async {
-    state = const AsyncLoading();
+    // 이전 데이터를 유지하여 전체 화면 로딩 스피너를 방지한다.
+    state = AsyncLoading<InsightsState>().copyWithPrevious(state);
     state = await AsyncValue.guard(() => _loadData(period));
   }
 }

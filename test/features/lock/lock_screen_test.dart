@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,10 +11,25 @@ class FakeBiometricService extends BiometricService {
   bool authenticateResult = true;
   int authenticateCallCount = 0;
 
+  /// true 시 authenticate()가 [completeAuth] 호출 전까지 완료되지 않는다.
+  /// 중복 호출 방지 테스트에서 실제 생체인증 다이얼로그를 시뮬레이션할 때 사용.
+  bool blocking = false;
+  Completer<bool>? _pendingAuth;
+
   @override
   Future<bool> authenticate() async {
     authenticateCallCount++;
+    if (blocking) {
+      _pendingAuth = Completer<bool>();
+      return _pendingAuth!.future;
+    }
     return authenticateResult;
+  }
+
+  void completeAuth() {
+    _pendingAuth?.complete(authenticateResult);
+    _pendingAuth = null;
+    blocking = false;
   }
 
   @override
@@ -21,11 +38,12 @@ class FakeBiometricService extends BiometricService {
 
 void main() {
   group('biometricLockStateProvider', () {
-    test('기본 초기값은 false이다', () {
+    test('기본 초기값은 true이다 (홈 화면 플래시 방지)', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
-      expect(container.read(biometricLockStateProvider), false);
+      // biometricLockEnabled가 resolve되기 전 홈 화면이 노출되지 않도록 true로 시작
+      expect(container.read(biometricLockStateProvider), true);
     });
 
     test('overrideWith로 초기값을 true로 설정할 수 있다', () {
@@ -130,20 +148,29 @@ void main() {
     });
 
     testWidgets('인증 중 중복 호출이 방지된다', (tester) async {
+      // 초기 자동 인증은 즉시 완료(실패)
       fakeBioService.authenticateResult = false;
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
-
-      // 첫 번째 인증 완료 후 카운트 확인
       expect(fakeBioService.authenticateCallCount, 1);
 
-      // 빠르게 연속 탭해도 중복 호출되지 않아야 한다
-      await tester.tap(find.text('잠금 해제'));
-      await tester.tap(find.text('잠금 해제'));
-      await tester.pumpAndSettle();
+      // 다음 인증은 블로킹 — 실제 생체인증 다이얼로그처럼 완료를 지연
+      fakeBioService.blocking = true;
 
-      // 첫 번째(initState) + 버튼 탭 1회 = 2회 (중복 방지)
+      // 첫 번째 탭: 인증 시작 (_authenticating = true)
+      await tester.tap(find.text('잠금 해제'));
+      await tester.pump(); // _authenticating = true 반영
+
+      // 두 번째 탭: _authenticating 가드에 의해 차단되어야 한다
+      await tester.tap(find.text('잠금 해제'));
+      await tester.pump();
+
+      // 1회(initState) + 1회(버튼) = 2회 (두 번째 탭은 차단됨)
       expect(fakeBioService.authenticateCallCount, 2);
+
+      // 인증 완료하여 테스트 정리
+      fakeBioService.completeAuth();
+      await tester.pumpAndSettle();
     });
   });
 }

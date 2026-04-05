@@ -80,6 +80,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
 
     return Scaffold(
       body: asyncState.when(
+        skipLoadingOnRefresh: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
           child: Column(
@@ -395,11 +396,15 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                           ),
                         )
                       : AnimatedSaveButton(
-                          filledCount: [
-                            state.answer1,
-                            state.answer2,
-                            state.answer3,
-                          ].where((a) => a.isNotEmpty).length,
+                          filledCount: () {
+                            final count = [
+                              state.answer1,
+                              state.answer2,
+                              state.answer3,
+                            ].where((a) => a.isNotEmpty).length;
+                            // 감정 미선택 시 링이 100%로 오해되지 않도록 최대 2/3로 제한
+                            return state.emotion != null ? count : count.clamp(0, 2);
+                          }(),
                           canSave: state.canSave,
                           isSaving: state.isSaving,
                           onPressed: () async {

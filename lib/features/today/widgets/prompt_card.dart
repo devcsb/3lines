@@ -185,6 +185,8 @@ class _PromptCardState extends State<PromptCard> {
                                 focusedBorder: InputBorder.none,
                                 contentPadding:
                                     const EdgeInsets.symmetric(vertical: 4),
+                                // 포커스 시에만 글자 수 카운터 표시
+                                counterText: _isFocused ? null : '',
                                 counterStyle:
                                     theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurface

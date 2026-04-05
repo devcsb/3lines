@@ -27,6 +27,7 @@ class InsightsScreen extends ConsumerWidget {
 
     return Scaffold(
       body: asyncState.when(
+        skipLoadingOnRefresh: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
           child: Column(
