@@ -3,10 +3,13 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../../app.dart';
 import '../../core/constants/default_prompts.dart';
 import '../../core/services/biometric_service.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/services/photo_service.dart';
 import '../../core/theme/theme_notifier.dart';
+import '../lock/lock_screen.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/settings_repository.dart';
@@ -205,6 +208,15 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
     final current = state.valueOrNull;
     if (current == null) return false;
     state = AsyncData(current.copyWith(biometricLockEnabled: enabled));
+
+    // biometricLockEnabledProvider를 갱신하여 라우터가 변경을 감지하게 한다.
+    ref.invalidate(biometricLockEnabledProvider);
+
+    // 비활성화 시 현재 잠금 상태도 즉시 해제한다.
+    if (!enabled) {
+      ref.read(biometricLockStateProvider.notifier).state = false;
+    }
+
     return true;
   }
 
@@ -245,7 +257,10 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
     } else {
       throw const FormatException('Invalid export format');
     }
-    final entries = entriesList.cast<Map<String, dynamic>>();
+    // cast<>() 대신 whereType으로 안전하게 필터링하여
+    // 잘못된 타입의 항목이 전체 가져오기를 실패시키지 않도록 한다.
+    final entries = entriesList.whereType<Map<String, dynamic>>().toList();
+    final skippedByType = entriesList.length - entries.length;
     final entryRepo = ref.read(entryRepositoryProvider);
     final result = await entryRepo.importEntries(entries);
 
@@ -254,14 +269,24 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
     ref.invalidate(timelineControllerProvider);
     ref.invalidate(insightsControllerProvider);
 
-    return result;
+    return (imported: result.imported, skipped: result.skipped + skippedByType);
   }
 
   /// Deletes all entries. Returns false on failure.
   Future<bool> deleteAllData() async {
     try {
       final entryRepo = ref.read(entryRepositoryProvider);
+      final photoService = ref.read(photoServiceProvider);
+
+      // 삭제 전에 모든 사진 파일 경로를 확보한다.
+      final photoPaths = await entryRepo.getAllPhotoPaths();
+
       await entryRepo.deleteAllEntries();
+
+      // 고아 사진 파일을 디스크에서 정리한다.
+      for (final path in photoPaths) {
+        await photoService.deletePhoto(path);
+      }
 
       // Invalidate all data-dependent screens
       ref.invalidate(todayControllerProvider);

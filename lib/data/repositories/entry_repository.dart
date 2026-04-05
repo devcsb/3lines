@@ -59,8 +59,8 @@ class EntryRepository {
     return result != null ? _fromEntry(result) : null;
   }
 
-  Future<void> saveEntry(DailyEntry entry) async {
-    final companion = _toCompanion(entry);
+  Future<void> saveEntry(DailyEntry entry, {bool preserveTimestamps = false}) async {
+    final companion = _toCompanion(entry, preserveTimestamps: preserveTimestamps);
     await _db.into(_db.entries).insert(
       companion,
       onConflict: DoUpdate(
@@ -86,6 +86,17 @@ class EntryRepository {
 
   Future<void> deleteEntry(String date) async {
     await (_db.delete(_db.entries)..where((t) => t.date.equals(date))).go();
+  }
+
+  /// Returns all non-null photo paths stored in entries.
+  Future<List<String>> getAllPhotoPaths() async {
+    final query = _db.select(_db.entries)
+      ..where((t) => t.photoPath.isNotNull());
+    final results = await query.get();
+    return results
+        .map((e) => e.photoPath)
+        .whereType<String>()
+        .toList();
   }
 
   /// Returns the entry immediately before [currentDate], or null.
@@ -473,10 +484,14 @@ class EntryRepository {
           return '';
         }
 
-        // Preserve original created_at timestamp if available
+        // Preserve original timestamps if available
         final createdAtRaw = json['created_at'] as String?;
         final createdAt = createdAtRaw != null
             ? DateTime.tryParse(createdAtRaw)
+            : null;
+        final updatedAtRaw = json['updated_at'] as String?;
+        final updatedAt = updatedAtRaw != null
+            ? DateTime.tryParse(updatedAtRaw)
             : null;
         // Photo path is metadata-only on import (file may not exist)
         final photoPath = json['photo_path'] as String?;
@@ -491,10 +506,11 @@ class EntryRepository {
           prompt3: field(2, 'question'),
           answer3: field(2, 'answer'),
           createdAt: createdAt,
+          updatedAt: updatedAt,
           photoPath: photoPath,
         );
         try {
-          await saveEntry(entry);
+          await saveEntry(entry, preserveTimestamps: true);
           imported++;
         } catch (_) {
           skipped++;

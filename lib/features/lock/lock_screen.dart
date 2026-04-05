@@ -13,10 +13,8 @@ class LockScreen extends ConsumerStatefulWidget {
 class _LockScreenState extends ConsumerState<LockScreen>
     with WidgetsBindingObserver {
   bool _authenticating = false;
-
-  /// 사용자가 실제로 앱을 백그라운드로 보냈는지 추적한다.
-  /// 생체인증 시스템 다이얼로그로 인한 lifecycle 전환과 구분하기 위해 사용한다.
-  bool _didGoToBackground = false;
+  // 사용자가 인증을 취소한 경우 true. lifecycle resumed 이벤트로 자동 재시도 방지.
+  bool _userCancelled = false;
 
   @override
   void initState() {
@@ -33,30 +31,37 @@ class _LockScreenState extends ConsumerState<LockScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      // 인증 다이얼로그가 떠 있는 동안의 paused는 무시하고,
-      // 사용자가 직접 앱을 백그라운드로 보낸 경우만 기록한다.
-      if (!_authenticating) {
-        _didGoToBackground = true;
-      }
-    }
-    if (state == AppLifecycleState.resumed && _didGoToBackground) {
-      _didGoToBackground = false;
+    // 인증 중이거나 사용자가 취소한 경우 lifecycle 이벤트로 자동 재시도하지 않음
+    if (state == AppLifecycleState.resumed && !_authenticating && !_userCancelled) {
       _authenticate();
     }
   }
 
   Future<void> _authenticate() async {
     if (_authenticating) return;
-    _authenticating = true;
+    setState(() {
+      _authenticating = true;
+      _userCancelled = false;
+    });
     try {
       final bioService = ref.read(biometricServiceProvider);
       final success = await bioService.authenticate();
       if (success && mounted) {
         ref.read(biometricLockStateProvider.notifier).state = false;
+      } else if (!success && mounted) {
+        // 인증 실패 또는 취소: 사용자가 명시적으로 버튼을 탭할 때까지 자동 재시도 안 함
+        setState(() {
+          _userCancelled = true;
+        });
       }
     } finally {
-      _authenticating = false;
+      if (mounted) {
+        setState(() {
+          _authenticating = false;
+        });
+      } else {
+        _authenticating = false;
+      }
     }
   }
 
@@ -102,6 +107,7 @@ class _LockScreenState extends ConsumerState<LockScreen>
   }
 }
 
-/// Whether the app is currently locked. Set to true on app start when biometric
-/// lock is enabled; set to false after successful authentication.
-final biometricLockStateProvider = StateProvider<bool>((ref) => false);
+/// Whether the app is currently locked. Starts as true so that the home screen
+/// is never exposed before biometricLockEnabledProvider resolves.
+/// Set to false after successful authentication or when biometric lock is disabled.
+final biometricLockStateProvider = StateProvider<bool>((ref) => true);
