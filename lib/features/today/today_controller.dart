@@ -199,6 +199,15 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
       );
 
       await entryRepo.saveEntry(entry);
+
+      // DB 저장이 성공한 후에 이전 사진 파일을 삭제한다.
+      // 저장 전에 삭제하면 saveEntry() 실패 시 파일을 복구할 수 없다.
+      final oldPhotoPath = current.existingEntry?.photoPath;
+      if (oldPhotoPath != null && oldPhotoPath != current.photoPath) {
+        final photoService = ref.read(photoServiceProvider);
+        await photoService.deletePhoto(oldPhotoPath);
+      }
+
       final streakResult = await entryRepo.getCurrentStreakWithGrace();
       final saved = await entryRepo.getTodayEntry();
       final totalCount = await entryRepo.getTotalCount();
@@ -268,14 +277,33 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
   void attachPhoto(String path) {
     final current = state.valueOrNull;
     if (current == null) return;
+
+    // 기존에 선택한 미저장 사진이 있으면 디스크에서 정리한다.
+    // (DB에 저장된 사진과 동일한 경우는 삭제하지 않는다.)
+    final previousPath = current.photoPath;
+    final savedPath = current.existingEntry?.photoPath;
+    if (previousPath != null && previousPath != savedPath) {
+      final photoService = ref.read(photoServiceProvider);
+      photoService.deletePhoto(previousPath);
+    }
+
     state = AsyncData(current.copyWith(photoPath: () => path));
   }
 
   Future<void> removePhoto() async {
     final current = state.valueOrNull;
     if (current == null || current.photoPath == null) return;
-    final photoService = ref.read(photoServiceProvider);
-    await photoService.deletePhoto(current.photoPath!);
+
+    // DB에 저장된 사진은 여기서 삭제하지 않는다.
+    // save() 호출 시 DB 트랜잭션 성공 후에 정리된다.
+    // 미저장 사진(새로 첨부했지만 아직 save() 전인 사진)만 즉시 삭제하여
+    // storage leak를 방지한다.
+    final savedPath = current.existingEntry?.photoPath;
+    if (current.photoPath != savedPath) {
+      final photoService = ref.read(photoServiceProvider);
+      await photoService.deletePhoto(current.photoPath!);
+    }
+
     state = AsyncData(current.copyWith(photoPath: () => null));
   }
 
