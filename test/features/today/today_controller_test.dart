@@ -254,6 +254,112 @@ void main() {
     });
   });
 
+  group('toggleEdit', () {
+    test('toggles isEditing between true and false', () async {
+      await entryRepo.saveEntry(DailyEntry(
+        date: du.getTodayString(),
+        emotion: 3,
+        answer1: '기존 답변',
+      ));
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+
+      expect(container.read(todayControllerProvider).valueOrNull?.isEditing, isFalse);
+      notifier.toggleEdit();
+      expect(container.read(todayControllerProvider).valueOrNull?.isEditing, isTrue);
+      notifier.toggleEdit();
+      expect(container.read(todayControllerProvider).valueOrNull?.isEditing, isFalse);
+    });
+  });
+
+  group('save — edge cases', () {
+    test('prevents concurrent saves via isSaving guard', () async {
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+      notifier.setEmotion(3);
+      notifier.setAnswer(0, '동시 저장 테스트');
+
+      // Start two saves concurrently: the first sets isSaving=true before
+      // its first await, so the second call should return false immediately.
+      final future1 = notifier.save();
+      final future2 = notifier.save();
+
+      final result1 = await future1;
+      final result2 = await future2;
+
+      expect(result1, isTrue);
+      expect(result2, isFalse); // blocked by isSaving guard
+    });
+
+    test('detects milestone at 7 total entries', () async {
+      // Pre-populate 6 past entries so today's save becomes entry #7
+      for (int i = 1; i <= 6; i++) {
+        final date = DateTime.now().subtract(Duration(days: i));
+        await entryRepo.saveEntry(DailyEntry(
+          date: du.dateToString(date),
+          emotion: 3,
+          answer1: '사전 데이터',
+        ));
+      }
+
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+      notifier.setEmotion(4);
+      notifier.setAnswer(0, '7번째 기록');
+
+      await notifier.save();
+
+      final state = container.read(todayControllerProvider).valueOrNull;
+      expect(state?.milestone, 7);
+    });
+
+    test('milestone is null when total count is not a milestone', () async {
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+      notifier.setEmotion(3);
+      notifier.setAnswer(0, '첫 기록');
+
+      await notifier.save();
+
+      final state = container.read(todayControllerProvider).valueOrNull;
+      // 1 is not a milestone (7, 30, 100, 365)
+      expect(state?.milestone, isNull);
+    });
+
+    test('isSaving is false after failure', () async {
+      // Set emotion and answer so canSave is true initially
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+      notifier.setEmotion(3);
+      notifier.setAnswer(0, '테스트');
+
+      // DB will be closed to simulate a save failure
+      await db.close();
+      final success = await notifier.save();
+
+      expect(success, isFalse);
+      final state = container.read(todayControllerProvider).valueOrNull;
+      expect(state?.isSaving, isFalse);
+
+      // Re-open for tearDown
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+    });
+  });
+
+  group('setAnswer — boundary', () {
+    test('ignores invalid index values', () async {
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+      notifier.setAnswer(-1, '무효');
+      notifier.setAnswer(3, '무효');
+      notifier.setAnswer(99, '무효');
+      final state = container.read(todayControllerProvider).valueOrNull;
+      expect(state?.answer1, '');
+      expect(state?.answer2, '');
+      expect(state?.answer3, '');
+    });
+  });
+
   group('removePhoto', () {
     test('clears photoPath in state', () async {
       await container.read(todayControllerProvider.future);

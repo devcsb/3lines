@@ -46,7 +46,8 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('데이터를 불러올 수 없어요'),
+              Text('데이터를 불러올 수 없어요',
+                  style: Theme.of(context).textTheme.bodyLarge),
               TextButton(
                 onPressed: () =>
                     ref.invalidate(timelineControllerProvider),
@@ -198,13 +199,22 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                           onCellTap: (dateStr) async {
                             if (_loadingEntry) return;
                             setState(() => _loadingEntry = true);
-                            final entry = await ref
-                                .read(timelineControllerProvider.notifier)
-                                .getEntryByDate(dateStr);
-                            if (!mounted) return;
-                            setState(() => _loadingEntry = false);
-                            if (entry != null) {
-                              _showEntryDetail(entry);
+                            try {
+                              final entry = await ref
+                                  .read(timelineControllerProvider.notifier)
+                                  .getEntryByDate(dateStr);
+                              if (!mounted) return;
+                              setState(() => _loadingEntry = false);
+                              if (entry != null) {
+                                _showEntryDetail(entry);
+                              }
+                            } catch (_) {
+                              if (!mounted) return;
+                              setState(() => _loadingEntry = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('기록을 불러올 수 없어요')),
+                              );
                             }
                           },
                         ),

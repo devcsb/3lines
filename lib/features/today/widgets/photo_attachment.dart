@@ -94,20 +94,24 @@ class _PhotoThumbnail extends StatelessWidget {
         ),
         if (!readOnly && onRemove != null)
           Positioned(
-            top: 8,
-            right: 8,
-            child: GestureDetector(
-              onTap: onRemove,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.close_rounded,
-                  size: 18,
-                  color: Colors.white,
+            top: 4,
+            right: 4,
+            child: Semantics(
+              button: true,
+              label: '사진 제거',
+              child: Material(
+                color: Colors.transparent,
+                shape: const CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: IconButton(
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.close_rounded,
+                      size: 18, color: Colors.white),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withValues(alpha: 0.5),
+                    minimumSize: const Size(40, 40),
+                    padding: EdgeInsets.zero,
+                  ),
                 ),
               ),
             ),

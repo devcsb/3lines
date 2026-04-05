@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -143,6 +145,105 @@ void main() {
       final result = await notifier.importData(mixedJson);
       // 2 non-map items counted as skippedByType, 1 map item attempted
       expect(result.skipped, greaterThanOrEqualTo(2));
+    });
+
+    test('returns zero imported for empty entries list', () async {
+      const emptyEntriesJson = '{"app": "3Lines", "version": "1.0.0", "entries": []}';
+      await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+
+      final result = await notifier.importData(emptyEntriesJson);
+      expect(result.imported, 0);
+      expect(result.skipped, 0);
+      expect(await entryRepo.getTotalCount(), 0);
+    });
+  });
+
+  group('exportData', () {
+    test('returns valid JSON with correct wrapper structure for empty database', () async {
+      await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+
+      final jsonStr = await notifier.exportData();
+      final decoded = json.decode(jsonStr) as Map<String, dynamic>;
+
+      expect(decoded['app'], '3Lines');
+      expect(decoded['version'], isNotEmpty);
+      expect(decoded['exported_at'], isNotEmpty);
+      expect(decoded['total_entries'], 0);
+      expect(decoded['entries'], isEmpty);
+    });
+
+    test('exports all entries with correct field mapping', () async {
+      await entryRepo.saveEntry(DailyEntry(
+        date: '2026-03-01',
+        emotion: 4,
+        prompt1: '감사한 것은?',
+        answer1: '가족과 저녁',
+        prompt2: '수용할 것은?',
+        answer2: '실수 인정',
+        prompt3: '내일의 의도는?',
+        answer3: '일찍 일어나기',
+      ));
+      await entryRepo.saveEntry(DailyEntry(
+        date: '2026-03-02',
+        emotion: 2,
+        prompt1: '감사한 것은?',
+        answer1: '좋은 날씨',
+        prompt2: '',
+        answer2: '',
+        prompt3: '',
+        answer3: '',
+      ));
+
+      await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+
+      final jsonStr = await notifier.exportData();
+      final decoded = json.decode(jsonStr) as Map<String, dynamic>;
+
+      expect(decoded['total_entries'], 2);
+      final entries = decoded['entries'] as List<dynamic>;
+      expect(entries.length, 2);
+
+      // Entries should be in date order (ascending)
+      final first = entries[0] as Map<String, dynamic>;
+      expect(first['date'], '2026-03-01');
+      expect(first['emotion'], 4);
+
+      final prompts = first['prompts'] as List<dynamic>;
+      expect(prompts.length, greaterThan(0));
+      // First prompt should carry the answer
+      final gratitudePrompt = (prompts as List)
+          .cast<Map<String, dynamic>>()
+          .firstWhere((p) => p['answer'] == '가족과 저녁', orElse: () => {});
+      expect(gratitudePrompt, isNotEmpty);
+    });
+
+    test('exported JSON can be re-imported with correct counts', () async {
+      await entryRepo.saveEntry(DailyEntry(
+        date: '2026-03-10',
+        emotion: 3,
+        prompt1: '감사',
+        answer1: '건강',
+        prompt2: '',
+        answer2: '',
+        prompt3: '',
+        answer3: '',
+      ));
+
+      await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+
+      final jsonStr = await notifier.exportData();
+      // Delete all and re-import
+      await entryRepo.deleteAllEntries();
+      expect(await entryRepo.getTotalCount(), 0);
+
+      final result = await notifier.importData(jsonStr);
+      expect(result.imported, 1);
+      expect(result.skipped, 0);
+      expect(await entryRepo.getTotalCount(), 1);
     });
   });
 

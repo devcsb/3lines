@@ -33,7 +33,8 @@ class InsightsScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('데이터를 불러올 수 없어요'),
+              Text('데이터를 불러올 수 없어요',
+                  style: Theme.of(context).textTheme.bodyLarge),
               TextButton(
                 onPressed: () =>
                     ref.invalidate(insightsControllerProvider),

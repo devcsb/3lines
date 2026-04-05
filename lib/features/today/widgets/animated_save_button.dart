@@ -9,6 +9,7 @@ class AnimatedSaveButton extends StatelessWidget {
   final int filledCount; // 0–3: how many prompts have answers
   final bool canSave;
   final bool isSaving;
+  final bool emotionSelected;
   final VoidCallback? onPressed;
 
   const AnimatedSaveButton({
@@ -16,6 +17,7 @@ class AnimatedSaveButton extends StatelessWidget {
     required this.filledCount,
     required this.canSave,
     required this.isSaving,
+    this.emotionSelected = false,
     this.onPressed,
   });
 
@@ -40,7 +42,7 @@ class AnimatedSaveButton extends StatelessWidget {
           Expanded(
             child: Semantics(
               button: true,
-              label: canSave ? '오늘의 기록 저장하기' : '$filledCount/3 작성 중',
+              label: canSave ? '오늘의 기록 저장하기' : (emotionSelected ? '$filledCount/3 작성 중' : '감정 선택 필요'),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
@@ -57,7 +59,9 @@ class AnimatedSaveButton extends StatelessWidget {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(canSave ? '기록 완료' : '답변을 작성해주세요'),
+                      : Text(canSave
+                        ? '기록 완료'
+                        : (emotionSelected ? '답변을 작성해주세요' : '감정을 선택해주세요')),
                 ),
               ),
             ),

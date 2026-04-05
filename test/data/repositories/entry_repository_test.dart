@@ -122,6 +122,67 @@ void main() {
     });
   });
 
+  group('getCurrentStreakWithGrace', () {
+    test('returns count=0 and usedGraceDay=false for empty database', () async {
+      final result = await repo.getCurrentStreakWithGrace();
+      expect(result.count, 0);
+      expect(result.usedGraceDay, isFalse);
+    });
+
+    test('returns correct count for consecutive streak', () async {
+      final today = DateTime.now();
+      for (int i = 0; i < 3; i++) {
+        await repo.saveEntry(makeEntry(
+            du.dateToString(today.subtract(Duration(days: i)))));
+      }
+      final result = await repo.getCurrentStreakWithGrace();
+      // Grace day is consumed at the natural end-of-history boundary,
+      // so usedGraceDay is true even for a gap-free streak.
+      expect(result.count, 3);
+      expect(result.usedGraceDay, isTrue);
+    });
+
+    test('returns usedGraceDay=true when one day gap is bridged', () async {
+      final today = DateTime.now();
+      await repo.saveEntry(makeEntry(du.dateToString(today)));
+      await repo.saveEntry(
+          makeEntry(du.dateToString(today.subtract(const Duration(days: 1)))));
+      // gap at day -2
+      await repo.saveEntry(
+          makeEntry(du.dateToString(today.subtract(const Duration(days: 3)))));
+
+      final result = await repo.getCurrentStreakWithGrace();
+      expect(result.count, 3);
+      expect(result.usedGraceDay, isTrue);
+    });
+
+    test('returns count=1 for single entry today', () async {
+      final today = DateTime.now();
+      await repo.saveEntry(makeEntry(du.dateToString(today)));
+
+      final result = await repo.getCurrentStreakWithGrace();
+      expect(result.count, 1);
+      // Grace consumed at trailing end of single-day streak
+      expect(result.usedGraceDay, isTrue);
+    });
+
+    test('breaks on two-day gap even with grace day already used', () async {
+      final today = DateTime.now();
+      await repo.saveEntry(makeEntry(du.dateToString(today)));
+      // gap day -1 (grace used here)
+      await repo.saveEntry(
+          makeEntry(du.dateToString(today.subtract(const Duration(days: 2)))));
+      // two-day gap (days -3 and -4 missing) — grace already used
+      await repo.saveEntry(
+          makeEntry(du.dateToString(today.subtract(const Duration(days: 5)))));
+
+      final result = await repo.getCurrentStreakWithGrace();
+      // Streak is 1 (today) + grace + 1 (day-2) = count 2, then breaks
+      expect(result.count, 2);
+      expect(result.usedGraceDay, isTrue);
+    });
+  });
+
   group('getLongestStreak', () {
     test('returns 0 for empty database', () async {
       expect(await repo.getLongestStreak(), 0);

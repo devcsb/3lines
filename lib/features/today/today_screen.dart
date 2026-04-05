@@ -396,6 +396,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                           ),
                         )
                       : AnimatedSaveButton(
+                          emotionSelected: state.emotion != null,
                           filledCount: () {
                             final count = [
                               state.answer1,
@@ -415,6 +416,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                 .read(todayControllerProvider.notifier)
                                 .save();
                             if (!mounted) return;
+                            if (success) {
+                              // 저장 완료 시 키보드를 닫아 완료 애니메이션이 가려지지 않게 함
+                              FocusScope.of(context).unfocus();
+                            }
                             if (success && isFirstSave) {
                               setState(
                                   () => _showCompletionAnimation = true);

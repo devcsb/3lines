@@ -10,6 +10,10 @@ class FakeNotificationService extends NotificationService {
   int cancelledCount = 0;
   String? lastScheduledBody;
 
+  int streakRiskScheduledCount = 0;
+  int streakRiskCancelledCount = 0;
+  int weeklyScheduledCount = 0;
+
   @override
   Future<void> initialize() async {}
 
@@ -41,13 +45,21 @@ class FakeNotificationService extends NotificationService {
   Future<bool> scheduleStreakAtRiskReminder({
     required int reminderHour,
     required int reminderMinute,
-  }) async => scheduleResult;
+  }) async {
+    streakRiskScheduledCount++;
+    return scheduleResult;
+  }
 
   @override
-  Future<void> cancelStreakAtRiskReminder() async {}
+  Future<void> cancelStreakAtRiskReminder() async {
+    streakRiskCancelledCount++;
+  }
 
   @override
-  Future<bool> scheduleWeeklyRetrospectiveReminder() async => scheduleResult;
+  Future<bool> scheduleWeeklyRetrospectiveReminder() async {
+    weeklyScheduledCount++;
+    return scheduleResult;
+  }
 
   @override
   Future<void> cancelWeeklyRetrospectiveReminder() async {}

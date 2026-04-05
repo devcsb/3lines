@@ -173,6 +173,10 @@ class _PromptCardState extends State<PromptCard> {
                               focusNode: _focusNode,
                               maxLines: 2,
                               maxLength: 200,
+                              // 마지막 프롬프트는 done, 나머지는 next로 다음 필드 이동
+                              textInputAction: widget.index < 2
+                                  ? TextInputAction.next
+                                  : TextInputAction.done,
                               style: theme.textTheme.bodyLarge?.copyWith(
                                 color: theme.colorScheme.onSurface
                                     .withValues(alpha: 0.8),
@@ -194,6 +198,15 @@ class _PromptCardState extends State<PromptCard> {
                                 ),
                               ),
                               onChanged: widget.onChanged,
+                              onSubmitted: (_) {
+                                if (widget.index < 2) {
+                                  // 다음 프롬프트 카드의 TextField로 포커스 이동
+                                  FocusScope.of(context).nextFocus();
+                                } else {
+                                  // 마지막 프롬프트: 키보드 닫기
+                                  FocusScope.of(context).unfocus();
+                                }
+                              },
                             ),
                           ),
                   ),
