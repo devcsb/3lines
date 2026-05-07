@@ -17,7 +17,7 @@ class PdfReportService {
     required String topKeyword,
   }) async {
     final doc = pw.Document();
-    final monthLabel = '$year년 ${month}월';
+    final monthLabel = '$year년 $month월';
     final daysInMonth = DateTime(year, month + 1, 0).day;
 
     doc.addPage(
@@ -60,12 +60,12 @@ class PdfReportService {
             style: pw.TextStyle(
               fontSize: 20,
               fontWeight: pw.FontWeight.bold,
-              color: PdfColor.fromInt(0xFF5B8A6A),
+              color: const PdfColor.fromInt(0xFF5B8A6A),
             ),
           ),
           pw.Text(
             '$monthLabel 리포트',
-            style: pw.TextStyle(
+            style: const pw.TextStyle(
               fontSize: 14,
               color: PdfColor.fromInt(0xFF888888),
             ),
@@ -104,7 +104,7 @@ class PdfReportService {
     return pw.Container(
       padding: const pw.EdgeInsets.all(16),
       decoration: pw.BoxDecoration(
-        color: PdfColor.fromInt(0xFFF5F3EF),
+        color: const PdfColor.fromInt(0xFFF5F3EF),
         borderRadius: pw.BorderRadius.circular(8),
       ),
       child: pw.Row(
@@ -128,7 +128,7 @@ class PdfReportService {
       children: [
         pw.Text(
           label,
-          style: pw.TextStyle(
+          style: const pw.TextStyle(
             fontSize: 9,
             color: PdfColor.fromInt(0xFF999999),
           ),
@@ -139,7 +139,7 @@ class PdfReportService {
           style: pw.TextStyle(
             fontSize: 13,
             fontWeight: pw.FontWeight.bold,
-            color: PdfColor.fromInt(0xFF333333),
+            color: const PdfColor.fromInt(0xFF333333),
           ),
         ),
       ],
@@ -156,7 +156,7 @@ class PdfReportService {
     return pw.Container(
       padding: const pw.EdgeInsets.all(16),
       decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColor.fromInt(0xFFE0DDD6)),
+        border: pw.Border.all(color: const PdfColor.fromInt(0xFFE0DDD6)),
         borderRadius: pw.BorderRadius.circular(8),
       ),
       child: pw.Column(
@@ -167,7 +167,7 @@ class PdfReportService {
             style: pw.TextStyle(
               fontSize: 12,
               fontWeight: pw.FontWeight.bold,
-              color: PdfColor.fromInt(0xFF666666),
+              color: const PdfColor.fromInt(0xFF666666),
             ),
           ),
           pw.SizedBox(height: 10),
@@ -188,7 +188,7 @@ class PdfReportService {
                     width: 40,
                     child: pw.Text(
                       label,
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 10,
                         color: PdfColor.fromInt(0xFF666666),
                       ),
@@ -204,7 +204,7 @@ class PdfReportService {
                             pw.Container(
                               height: 12,
                               decoration: pw.BoxDecoration(
-                                color: PdfColor.fromInt(0xFFEEECE6),
+                                color: const PdfColor.fromInt(0xFFEEECE6),
                                 borderRadius: pw.BorderRadius.circular(4),
                               ),
                             ),
@@ -226,7 +226,7 @@ class PdfReportService {
                     width: 24,
                     child: pw.Text(
                       '$count',
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 10,
                         color: PdfColor.fromInt(0xFF888888),
                       ),
@@ -246,7 +246,7 @@ class PdfReportService {
     if (entries.isEmpty) {
       return pw.Text(
         '이 달에 기록이 없습니다.',
-        style: pw.TextStyle(
+        style: const pw.TextStyle(
           fontSize: 11,
           color: PdfColor.fromInt(0xFF999999),
         ),
@@ -261,7 +261,7 @@ class PdfReportService {
           style: pw.TextStyle(
             fontSize: 14,
             fontWeight: pw.FontWeight.bold,
-            color: PdfColor.fromInt(0xFF444444),
+            color: const PdfColor.fromInt(0xFF444444),
           ),
         ),
         pw.SizedBox(height: 12),
@@ -289,7 +289,7 @@ class PdfReportService {
       margin: const pw.EdgeInsets.only(bottom: 10),
       padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColor.fromInt(0xFFE0DDD6)),
+        border: pw.Border.all(color: const PdfColor.fromInt(0xFFE0DDD6)),
         borderRadius: pw.BorderRadius.circular(6),
       ),
       child: pw.Column(
@@ -312,7 +312,7 @@ class PdfReportService {
                 style: pw.TextStyle(
                   fontSize: 11,
                   fontWeight: pw.FontWeight.bold,
-                  color: PdfColor.fromInt(0xFF444444),
+                  color: const PdfColor.fromInt(0xFF444444),
                 ),
               ),
               pw.SizedBox(width: 8),
@@ -334,7 +334,7 @@ class PdfReportService {
                   children: [
                     pw.Text(
                       pa.$1,
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 8,
                         color: PdfColor.fromInt(0xFFAAAAAA),
                       ),
@@ -342,7 +342,7 @@ class PdfReportService {
                     pw.SizedBox(height: 1),
                     pw.Text(
                       pa.$2,
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 10,
                         color: PdfColor.fromInt(0xFF333333),
                         lineSpacing: 2,
@@ -361,7 +361,7 @@ class PdfReportService {
     if (flutterColor != null) {
       return PdfColor.fromInt(flutterColor.toARGB32());
     }
-    return PdfColor.fromInt(0xFF888888);
+    return const PdfColor.fromInt(0xFF888888);
   }
 
   String _weekdayLabel(int weekday) {

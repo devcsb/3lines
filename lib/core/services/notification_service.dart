@@ -121,7 +121,7 @@ class NotificationService {
       await _plugin.cancel(_streakAtRiskId);
 
       // Calculate 1 hour before the regular reminder
-      var atRiskMinute = reminderMinute;
+      final atRiskMinute = reminderMinute;
       var atRiskHour = reminderHour - 1;
       if (atRiskHour < 0) atRiskHour = 23;
 

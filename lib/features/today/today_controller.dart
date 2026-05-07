@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -98,8 +99,17 @@ class TodayState {
 class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
   static const _milestones = [7, 30, 100, 365];
 
+  Timer? _midnightTimer;
+  String _scheduledDate = du.getTodayString();
+
   @override
   Future<TodayState> build() async {
+    ref.onDispose(() {
+      _midnightTimer?.cancel();
+    });
+
+    _scheduleMidnightRefresh();
+
     final entryRepo = ref.watch(entryRepositoryProvider);
     final settingsRepo = ref.watch(settingsRepositoryProvider);
 
@@ -310,6 +320,31 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
   Future<void> refresh() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => build());
+  }
+
+  /// Called by the view when the app returns from background.
+  /// Refreshes data if the day has rolled over while the app was suspended,
+  /// then re-arms the midnight timer.
+  void onAppResumed() {
+    final today = du.getTodayString();
+    if (today != _scheduledDate) {
+      _scheduledDate = today;
+      refresh();
+    } else {
+      _scheduleMidnightRefresh();
+    }
+  }
+
+  void _scheduleMidnightRefresh() {
+    _midnightTimer?.cancel();
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    final duration = nextMidnight.difference(now);
+
+    _midnightTimer = Timer(duration, () {
+      _scheduledDate = du.getTodayString();
+      refresh();
+    });
   }
 }
 

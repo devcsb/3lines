@@ -23,59 +23,49 @@ final biometricLockEnabledProvider = FutureProvider<bool>((ref) async {
   return repo.isBiometricLockEnabled();
 });
 
-/// Listenable that notifies GoRouter when onboarding or lock status changes.
-class _RouterNotifier extends ChangeNotifier {
-  bool _onboardingDone = false;
-  bool get onboardingDone => _onboardingDone;
-  set onboardingDone(bool value) {
-    if (_onboardingDone != value) {
-      _onboardingDone = value;
-      notifyListeners();
-    }
-  }
+/// 라우터가 의존하는 두 가지 상태(온보딩 완료, 잠금 여부)를 single source 로 합친다.
+/// 잠금 설정이 로딩 중이거나 활성화 + 잠금 상태일 때만 라우터가 잠금 화면으로 보낸다.
+/// 잠금 비활성화 시 lockState 의 강제 해제는 SettingsController.setBiometricLockEnabled 가 담당한다.
+final _routerStateProvider =
+    Provider<({bool onboardingDone, bool locked})>((ref) {
+  final onboardingDone = ref.watch(onboardingDoneProvider).valueOrNull ?? false;
+  final lockEnabled = ref.watch(biometricLockEnabledProvider);
+  final lockState = ref.watch(biometricLockStateProvider);
 
-  bool _locked = false;
-  bool get locked => _locked;
-  set locked(bool value) {
-    if (_locked != value) {
-      _locked = value;
-      notifyListeners();
+  // 설정 로딩 중에는 보안상 잠금 유지 (홈 화면이 순간 노출되는 것을 방지)
+  if (lockEnabled is AsyncLoading) {
+    return (onboardingDone: onboardingDone, locked: true);
+  }
+  final enabled = lockEnabled.valueOrNull ?? false;
+  return (
+    onboardingDone: onboardingDone,
+    locked: enabled && lockState,
+  );
+});
+
+/// GoRouter 의 redirect 가 사용하는 ChangeNotifier.
+/// _routerStateProvider 가 바뀔 때만 notifyListeners 를 호출한다.
+class _RouterNotifier extends ChangeNotifier {
+  bool onboardingDone = false;
+  bool locked = false;
+
+  void update(({bool onboardingDone, bool locked}) state) {
+    if (state.onboardingDone == onboardingDone && state.locked == locked) {
+      return;
     }
+    onboardingDone = state.onboardingDone;
+    locked = state.locked;
+    notifyListeners();
   }
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterNotifier();
-  ref.onDispose(() => notifier.dispose());
+  ref.onDispose(notifier.dispose);
 
-  // Listen (not watch) so the router is created once and refreshed via notifier
-  ref.listen(onboardingDoneProvider, (_, next) {
-    notifier.onboardingDone = next.valueOrNull ?? false;
-  });
-
-  ref.listen(biometricLockEnabledProvider, (_, next) {
-    if (next is AsyncLoading) {
-      // 로딩 중에는 잠금 상태 유지 (홈 화면 노출 방지)
-      notifier.locked = true;
-      return;
-    }
-    final enabled = next.valueOrNull ?? false;
-    if (enabled) {
-      // 앱 시작 시 잠금 복원은 biometricLockStateProvider 초기값(true)으로 처리하므로,
-      // 여기서는 현재 잠금 상태만 라우터에 반영한다.
-      // 설정에서 활성화한 직후에는 biometricLockStateProvider가 false이므로
-      // 사용자가 즉시 잠금 화면으로 튕기지 않는다.
-      notifier.locked = ref.read(biometricLockStateProvider);
-    } else {
-      // biometric lock이 비활성화된 경우 잠금 해제
-      ref.read(biometricLockStateProvider.notifier).state = false;
-      notifier.locked = false;
-    }
-  });
-
-  ref.listen(biometricLockStateProvider, (_, locked) {
-    notifier.locked = locked;
-  });
+  // 단일 derived provider 만 구독하므로 흐름이 일직선으로 단순해진다.
+  ref.listen(_routerStateProvider, (_, next) => notifier.update(next),
+      fireImmediately: true);
 
   return GoRouter(
     initialLocation: '/',

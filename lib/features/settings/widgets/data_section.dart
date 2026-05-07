@@ -62,13 +62,17 @@ class DataSection extends ConsumerWidget {
       final fileName =
           '3lines_export_${DateTime.now().millisecondsSinceEpoch}.json';
       if (context.mounted) {
-        await Share.shareXFiles([
-          XFile.fromData(
-            bytes,
-            name: fileName,
-            mimeType: 'application/json',
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [
+              XFile.fromData(
+                bytes,
+                name: fileName,
+                mimeType: 'application/json',
+              ),
+            ],
           ),
-        ]);
+        );
       }
     } catch (e) {
       if (context.mounted) {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -122,13 +123,13 @@ class _CompletionAnimationState extends State<CompletionAnimation>
   Future<void> _startSequence() async {
     // Fire haptic + particles + checkmark simultaneously
     HapticService.medium();
-    _checkController.forward();
-    _particleController.forward();
+    unawaited(_checkController.forward());
+    unawaited(_particleController.forward());
 
     // Text appears after checkmark settles
     await Future.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
-    _textController.forward();
+    unawaited(_textController.forward());
 
     // Second haptic tick when text appears
     HapticService.light();

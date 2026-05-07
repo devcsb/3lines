@@ -14,19 +14,18 @@ analyzer:
     - "**/*.g.dart"
 
 linter:
-  # The lint rules applied to this project can be customized in the
-  # section below to disable rules from the `package:flutter_lints/flutter.yaml`
-  # included above or to enable additional rules. A list of all available lints
-  # and their documentation is published at https://dart.dev/lints.
-  #
-  # Instead of disabling a lint rule for the entire project in the
-  # section below, it can also be suppressed for a single line of code
-  # or a specific dart file by using the `// ignore: name_of_lint` and
-  # `// ignore_for_file: name_of_lint` syntax on the line or in the file
-  # producing the lint.
+  # flutter_lints 기본 규칙에 더해 정적 검출 범위를 보수적으로 확장한다.
+  # 자동 수정 가능하거나 실수 방지에 효과가 큰 규칙 위주.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+    always_declare_return_types: true
+    avoid_dynamic_calls: true
+    prefer_final_locals: true
+    prefer_const_constructors: true
+    prefer_const_constructors_in_immutables: true
+    prefer_const_declarations: true
+    unawaited_futures: true
+    use_super_parameters: true
+    sort_child_properties_last: true
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

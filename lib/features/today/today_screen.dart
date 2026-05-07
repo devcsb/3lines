@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,47 +27,23 @@ class TodayScreen extends ConsumerStatefulWidget {
 class _TodayScreenState extends ConsumerState<TodayScreen>
     with WidgetsBindingObserver {
   bool _showCompletionAnimation = false;
-  String _currentDate = du.getTodayString();
-  Timer? _midnightTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _scheduleMidnightRefresh();
   }
 
   @override
   void dispose() {
-    _midnightTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
-  }
-
-  void _scheduleMidnightRefresh() {
-    _midnightTimer?.cancel();
-    final now = DateTime.now();
-    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
-    final duration = nextMidnight.difference(now);
-
-    _midnightTimer = Timer(duration, () {
-      if (mounted) {
-        _currentDate = du.getTodayString();
-        ref.read(todayControllerProvider.notifier).refresh();
-        _scheduleMidnightRefresh();
-      }
-    });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      final today = du.getTodayString();
-      if (today != _currentDate) {
-        _currentDate = today;
-        ref.read(todayControllerProvider.notifier).refresh();
-      }
-      _scheduleMidnightRefresh();
+      ref.read(todayControllerProvider.notifier).onAppResumed();
     }
   }
 

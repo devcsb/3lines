@@ -52,7 +52,7 @@ void main() {
   });
 
   group('importData', () {
-    final validJson = '''
+    const validJson = '''
 {
   "app": "3Lines",
   "version": "1.0.0",
@@ -214,7 +214,7 @@ void main() {
       final prompts = first['prompts'] as List<dynamic>;
       expect(prompts.length, greaterThan(0));
       // First prompt should carry the answer
-      final gratitudePrompt = (prompts as List)
+      final gratitudePrompt = (prompts)
           .cast<Map<String, dynamic>>()
           .firstWhere((p) => p['answer'] == '가족과 저녁', orElse: () => {});
       expect(gratitudePrompt, isNotEmpty);

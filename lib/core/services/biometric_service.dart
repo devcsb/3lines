@@ -24,10 +24,7 @@ class BiometricService {
     try {
       return await _auth.authenticate(
         localizedReason: '3Lines 잠금 해제',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: false,
-        ),
+        persistAcrossBackgrounding: true,
       );
     } catch (e, stack) {
       developer.log('Biometric auth failed', error: e, stackTrace: stack);

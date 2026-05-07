@@ -28,8 +28,45 @@ class PhotoService {
         await file.delete();
       }
     } catch (e, stack) {
-      developer.log('Failed to delete photo', error: e, stackTrace: stack);
+      developer.log('Failed to delete photo: $path',
+          name: 'PhotoService', error: e, stackTrace: stack);
     }
+  }
+
+  /// Removes any photo files in the photos directory that are not referenced
+  /// by [validPaths]. Returns the number of removed files.
+  ///
+  /// Safe to call on app start to recover from incomplete deletions
+  /// (e.g. process killed between DB delete and file delete).
+  Future<int> cleanupOrphanedPhotos(Set<String> validPaths) async {
+    if (kIsWeb) return 0;
+    try {
+      final dir = await _photosDir();
+      if (!await dir.exists()) return 0;
+
+      var removed = 0;
+      await for (final entity in dir.list()) {
+        if (entity is File && !validPaths.contains(entity.path)) {
+          try {
+            await entity.delete();
+            removed++;
+          } catch (e, stack) {
+            developer.log('Failed to remove orphan: ${entity.path}',
+                name: 'PhotoService', error: e, stackTrace: stack);
+          }
+        }
+      }
+      return removed;
+    } catch (e, stack) {
+      developer.log('Orphan cleanup failed',
+          name: 'PhotoService', error: e, stackTrace: stack);
+      return 0;
+    }
+  }
+
+  Future<Directory> _photosDir() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    return Directory(p.join(appDir.path, 'photos'));
   }
 
   Future<String?> _pickAndSave(ImageSource source) async {
@@ -42,9 +79,7 @@ class PhotoService {
       );
       if (picked == null) return null;
 
-      // Copy to app documents directory
-      final appDir = await getApplicationDocumentsDirectory();
-      final photosDir = Directory(p.join(appDir.path, 'photos'));
+      final photosDir = await _photosDir();
       if (!await photosDir.exists()) {
         await photosDir.create(recursive: true);
       }
@@ -59,7 +94,8 @@ class PhotoService {
       await File(picked.path).copy(savedPath);
       return savedPath;
     } catch (e, stack) {
-      developer.log('Failed to pick photo', error: e, stackTrace: stack);
+      developer.log('Failed to pick photo',
+          name: 'PhotoService', error: e, stackTrace: stack);
       return null;
     }
   }
