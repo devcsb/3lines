@@ -82,5 +82,20 @@ void main() {
       );
       expectValidPdf(bytes);
     });
+
+    test('한글 텍스트 렌더 시 번들 한글 폰트(나눔명조)가 임베딩된다', () async {
+      // 폰트 에셋이 제거되거나 로드가 깨지면 한글이 다시 깨지므로 회귀를 가드한다.
+      // PDF 폰트 디스크립터에 PostScript 폰트명이 ASCII로 들어간다.
+      final bytes = await service.generateMonthlyReport(
+        year: 2026,
+        month: 3,
+        entries: [entry('2026-03-01', emotion: 4, a1: '한글 감사 기록')],
+        averageEmotion: 4.0,
+        topKeyword: '감사',
+      );
+      final ascii = String.fromCharCodes(bytes);
+      expect(ascii.contains('NanumMyeongjo'), isTrue,
+          reason: '생성된 PDF에 나눔명조 폰트가 임베딩되어야 한다');
+    });
   });
 }
