@@ -389,7 +389,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                             final success = await ref
                                 .read(todayControllerProvider.notifier)
                                 .save();
-                            if (!mounted) return;
+                            if (!context.mounted) return;
                             if (success) {
                               // 저장 완료 시 키보드를 닫아 완료 애니메이션이 가려지지 않게 함
                               FocusScope.of(context).unfocus();
