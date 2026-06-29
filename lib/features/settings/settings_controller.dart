@@ -57,7 +57,7 @@ class SettingsState {
   }
 }
 
-class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
+class SettingsController extends AsyncNotifier<SettingsState> {
   @override
   Future<SettingsState> build() async {
     final settingsRepo = ref.watch(settingsRepositoryProvider);
@@ -88,7 +88,7 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
   Future<void> updatePrompt(int index, String value) async {
     final repo = ref.read(settingsRepositoryProvider);
     await repo.setSetting('prompt_${index + 1}', value);
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     final newPrompts = List<String>.from(current.prompts);
     newPrompts[index] = value;
@@ -102,7 +102,7 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
     for (int i = 0; i < 3; i++) {
       await repo.setSetting('prompt_${i + 1}', defaultPromptQuestions[i]);
     }
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     state = AsyncData(
         current.copyWith(prompts: List.from(defaultPromptQuestions)));
@@ -119,7 +119,7 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
       if (!granted) return false;
     }
 
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return false;
 
     if (enabled) {
@@ -155,7 +155,7 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
   Future<bool> setReminderTime(int hour, int minute) async {
     final repo = ref.read(settingsRepositoryProvider);
     final notifService = ref.read(notificationServiceProvider);
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return false;
 
     try {
@@ -205,7 +205,7 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
     }
 
     await repo.setSetting('biometric_lock_enabled', enabled.toString());
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return false;
     state = AsyncData(current.copyWith(biometricLockEnabled: enabled));
 
@@ -223,7 +223,7 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
   Future<void> setThemeMode(String mode) async {
     // Update via ThemeNotifier (which persists to DB and updates app theme)
     await ref.read(themeNotifierProvider.notifier).setThemeMode(mode);
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     state = AsyncData(current.copyWith(themeMode: mode));
   }
@@ -300,5 +300,5 @@ class SettingsController extends AutoDisposeAsyncNotifier<SettingsState> {
 }
 
 final settingsControllerProvider =
-    AutoDisposeAsyncNotifierProvider<SettingsController, SettingsState>(
-        SettingsController.new);
+    AsyncNotifierProvider<SettingsController, SettingsState>(
+        SettingsController.new, isAutoDispose: true);

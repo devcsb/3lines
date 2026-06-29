@@ -48,28 +48,40 @@ class PromptSuggestions extends StatelessWidget {
     final chips = _suggestions[promptIndex] ?? [];
     if (chips.isEmpty) return const SizedBox.shrink();
 
+    // 최소 48dp 탭 타깃 확보: 시각 칩은 compact 유지하고 투명 외곽으로 히트영역 확장.
     return SizedBox(
-      height: 34,
+      height: 48,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: chips.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
         itemBuilder: (context, index) {
-          return GestureDetector(
-            onTap: () => onTap(chips[index]),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(17),
-                border: Border.all(
-                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-                ),
-              ),
-              child: Text(
-                chips[index],
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          return Semantics(
+            button: true,
+            label: chips[index],
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onTap(chips[index]),
+              child: Container(
+                height: 48,
+                alignment: Alignment.center,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(17),
+                    border: Border.all(
+                      color: theme.colorScheme.outlineVariant
+                          .withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Text(
+                    chips[index],
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
                 ),
               ),
             ),

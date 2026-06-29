@@ -80,7 +80,7 @@
 
 | 영역 | 라이브러리 |
 |------|-----------|
-| 상태관리 | [flutter_riverpod](https://riverpod.dev) + riverpod_annotation |
+| 상태관리 | [flutter_riverpod](https://riverpod.dev) 3.x (수동 Notifier/AsyncNotifier) |
 | 라우팅 | [go_router](https://pub.dev/packages/go_router) |
 | 로컬 DB | [Drift](https://drift.simonbinder.eu) (SQLite) |
 | 차트 | [fl_chart](https://pub.dev/packages/fl_chart) |

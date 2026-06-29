@@ -204,12 +204,12 @@ class _EntryDetailContent extends StatelessWidget {
                   Icon(Icons.chevron_left_rounded,
                       size: 16,
                       color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.25)),
+                          .withValues(alpha: 0.6)),
                 Text(
                   '스와이프로 탐색',
                   style: theme.textTheme.labelSmall?.copyWith(
                     color:
-                        theme.colorScheme.onSurface.withValues(alpha: 0.25),
+                        theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     fontSize: 10,
                   ),
                 ),
@@ -217,7 +217,7 @@ class _EntryDetailContent extends StatelessWidget {
                   Icon(Icons.chevron_right_rounded,
                       size: 16,
                       color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.25)),
+                          .withValues(alpha: 0.6)),
               ],
             ),
           ],
@@ -232,7 +232,7 @@ class _EntryDetailContent extends StatelessWidget {
                 width: double.infinity,
                 height: 200,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
               ),
             ),
           ],

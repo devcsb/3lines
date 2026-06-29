@@ -15,9 +15,9 @@ class AppearanceSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final currentAccent =
-        ref.watch(accentThemeProvider).valueOrNull ?? 'sage';
+        ref.watch(accentThemeProvider).value ?? 'sage';
     final unlockedAsync = ref.watch(_unlockedMilestonesProvider);
-    final unlocked = unlockedAsync.valueOrNull ?? const {};
+    final unlocked = unlockedAsync.value ?? const {};
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

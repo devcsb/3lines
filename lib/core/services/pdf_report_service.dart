@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -8,7 +10,28 @@ import '../theme/app_colors.dart';
 
 /// Generates a monthly PDF journal report.
 class PdfReportService {
+  // 한글 글리프 폰트(나눔명조)를 1회 로드해 in-flight Future로 캐시한다.
+  // 오프라인 앱이라 런타임 fetch 대신 번들 TTF를 사용한다. Future를 캐시하므로
+  // 동시 호출이 같은 로드를 await 해 race 없이 안전하다.
+  Future<pw.ThemeData?>? _themeFuture;
+
+  Future<pw.ThemeData?> _koreanTheme() => _themeFuture ??= _loadKoreanTheme();
+
+  Future<pw.ThemeData?> _loadKoreanTheme() async {
+    try {
+      final base = pw.Font.ttf(
+          await rootBundle.load('assets/fonts/NanumMyeongjo-Regular.ttf'));
+      final bold = pw.Font.ttf(
+          await rootBundle.load('assets/fonts/NanumMyeongjo-Bold.ttf'));
+      return pw.ThemeData.withFont(base: base, bold: bold);
+    } catch (_) {
+      // 폰트 에셋 로드 실패 시 기본 폰트로 폴백(한글이 깨질 수 있으나 크래시는 없음).
+      return null;
+    }
+  }
+
   /// Builds a PDF document for the given month's entries and summary data.
+  /// 한글 렌더링을 위해 번들된 나눔명조를 기본 폰트로 적용한다.
   Future<Uint8List> generateMonthlyReport({
     required int year,
     required int month,
@@ -16,7 +39,7 @@ class PdfReportService {
     required double averageEmotion,
     required String topKeyword,
   }) async {
-    final doc = pw.Document();
+    final doc = pw.Document(theme: await _koreanTheme());
     final monthLabel = '$year년 $month월';
     final daysInMonth = DateTime(year, month + 1, 0).day;
 
@@ -369,3 +392,7 @@ class PdfReportService {
     return labels[(weekday - 1).clamp(0, 6)];
   }
 }
+
+final pdfReportServiceProvider = Provider<PdfReportService>((ref) {
+  return PdfReportService();
+});

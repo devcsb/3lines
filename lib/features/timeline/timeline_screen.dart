@@ -209,7 +209,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                                 _showEntryDetail(entry);
                               }
                             } catch (_) {
-                              if (!mounted) return;
+                              if (!context.mounted) return;
                               setState(() => _loadingEntry = false);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(

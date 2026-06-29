@@ -264,6 +264,7 @@ class EntryRepository {
 
     int longest = 1;
     int current = 1;
+    bool graceUsed = false;
 
     for (int i = 1; i < allEntries.length; i++) {
       final prev = DateTime.parse(allEntries[i - 1].date);
@@ -272,11 +273,14 @@ class EntryRepository {
 
       if (diff == 1) {
         current++;
-      } else if (diff == 2) {
-        // Grace day: 1 day gap allowed
+      } else if (diff == 2 && !graceUsed) {
+        // Grace day: 스트릭당 1일 공백을 1회만 허용(현재 스트릭 로직과 일치).
+        // 기존 코드는 횟수 제한이 없어 격일 기록도 무한 연속으로 셌다.
         current++;
+        graceUsed = true;
       } else {
         current = 1;
+        graceUsed = false;
       }
       if (current > longest) longest = current;
     }
@@ -286,7 +290,9 @@ class EntryRepository {
 
   /// Returns the entry from the same date one year ago, if it exists.
   Future<DailyEntry?> getOneYearAgoEntry() async {
-    final oneYearAgo = DateTime.now().subtract(const Duration(days: 365));
+    // subtractMonths(12)로 정확히 1년 전 같은 날짜를 구한다.
+    // Duration(days: 365)는 윤년에 하루 어긋난다.
+    final oneYearAgo = du.subtractMonths(DateTime.now(), 12);
     return getEntryByDate(du.dateToString(oneYearAgo));
   }
 
@@ -467,49 +473,55 @@ class EntryRepository {
     int skipped = 0;
     await _db.transaction(() async {
       for (final json in entries) {
-        final date = json['date'] as String?;
-        final emotionRaw = json['emotion'];
-        final emotion = emotionRaw is num ? emotionRaw.toInt() : null;
-        final prompts = json['prompts'] as List<dynamic>?;
-        if (date == null || emotion == null || prompts == null) {
-          skipped++;
-          continue;
-        }
-
-        String field(int i, String key) {
-          if (i < prompts.length) {
-            final p = prompts[i] as Map<String, dynamic>;
-            return (p[key] as String?) ?? '';
-          }
-          return '';
-        }
-
-        // Preserve original timestamps if available
-        final createdAtRaw = json['created_at'] as String?;
-        final createdAt = createdAtRaw != null
-            ? DateTime.tryParse(createdAtRaw)
-            : null;
-        final updatedAtRaw = json['updated_at'] as String?;
-        final updatedAt = updatedAtRaw != null
-            ? DateTime.tryParse(updatedAtRaw)
-            : null;
-        // Photo path is metadata-only on import (file may not exist)
-        final photoPath = json['photo_path'] as String?;
-
-        final entry = DailyEntry(
-          date: date,
-          emotion: emotion.clamp(1, 5),
-          prompt1: field(0, 'question'),
-          answer1: field(0, 'answer'),
-          prompt2: field(1, 'question'),
-          answer2: field(1, 'answer'),
-          prompt3: field(2, 'question'),
-          answer3: field(2, 'answer'),
-          createdAt: createdAt,
-          updatedAt: updatedAt,
-          photoPath: photoPath,
-        );
+        // 항목 단위로 전부 감싸 손상 데이터 1건이 transaction 전체를
+        // 중단시키지 않도록 한다(타입 캐스트 실패 포함).
         try {
+          final date = json['date'] as String?;
+          final emotionRaw = json['emotion'];
+          final emotion = emotionRaw is num ? emotionRaw.toInt() : null;
+          final prompts = json['prompts'] as List<dynamic>?;
+          if (date == null || emotion == null || prompts == null) {
+            skipped++;
+            continue;
+          }
+
+          // prompts 항목이 Map 이 아니거나 값이 String 이 아니면 빈 문자열로 처리.
+          String field(int i, String key) {
+            if (i < prompts.length) {
+              final p = prompts[i];
+              if (p is Map) {
+                final v = p[key];
+                if (v is String) return v;
+              }
+            }
+            return '';
+          }
+
+          // Preserve original timestamps if available
+          final createdAtRaw = json['created_at'] as String?;
+          final createdAt = createdAtRaw != null
+              ? DateTime.tryParse(createdAtRaw)
+              : null;
+          final updatedAtRaw = json['updated_at'] as String?;
+          final updatedAt = updatedAtRaw != null
+              ? DateTime.tryParse(updatedAtRaw)
+              : null;
+          // Photo path is metadata-only on import (file may not exist)
+          final photoPath = json['photo_path'] as String?;
+
+          final entry = DailyEntry(
+            date: date,
+            emotion: emotion.clamp(1, 5),
+            prompt1: field(0, 'question'),
+            answer1: field(0, 'answer'),
+            prompt2: field(1, 'question'),
+            answer2: field(1, 'answer'),
+            prompt3: field(2, 'question'),
+            answer3: field(2, 'answer'),
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            photoPath: photoPath,
+          );
           await saveEntry(entry, preserveTimestamps: true);
           imported++;
         } catch (_) {

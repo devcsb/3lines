@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -28,7 +29,7 @@ final biometricLockEnabledProvider = FutureProvider<bool>((ref) async {
 /// 잠금 비활성화 시 lockState 의 강제 해제는 SettingsController.setBiometricLockEnabled 가 담당한다.
 final _routerStateProvider =
     Provider<({bool onboardingDone, bool locked})>((ref) {
-  final onboardingDone = ref.watch(onboardingDoneProvider).valueOrNull ?? false;
+  final onboardingDone = ref.watch(onboardingDoneProvider).value ?? false;
   final lockEnabled = ref.watch(biometricLockEnabledProvider);
   final lockState = ref.watch(biometricLockStateProvider);
 
@@ -36,7 +37,7 @@ final _routerStateProvider =
   if (lockEnabled is AsyncLoading) {
     return (onboardingDone: onboardingDone, locked: true);
   }
-  final enabled = lockEnabled.valueOrNull ?? false;
+  final enabled = lockEnabled.value ?? false;
   return (
     onboardingDone: onboardingDone,
     locked: enabled && lockState,
@@ -88,7 +89,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/onboarding',
-        pageBuilder: (_, __) => CustomTransitionPage(
+        pageBuilder: (_, _) => CustomTransitionPage(
           child: const OnboardingScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             final curved =
@@ -109,30 +110,30 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/lock',
-        builder: (_, __) => const LockScreen(),
+        builder: (_, _) => const LockScreen(),
       ),
       StatefulShellRoute.indexedStack(
-        builder: (_, __, navigationShell) =>
+        builder: (_, _, navigationShell) =>
             ScaffoldWithNavBar(navigationShell),
         branches: [
           StatefulShellBranch(routes: [
             GoRoute(
-                path: '/', builder: (_, __) => const TodayScreen()),
+                path: '/', builder: (_, _) => const TodayScreen()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
                 path: '/timeline',
-                builder: (_, __) => const TimelineScreen()),
+                builder: (_, _) => const TimelineScreen()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
                 path: '/insights',
-                builder: (_, __) => const InsightsScreen()),
+                builder: (_, _) => const InsightsScreen()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
                 path: '/settings',
-                builder: (_, __) => const SettingsScreen()),
+                builder: (_, _) => const SettingsScreen()),
           ]),
         ],
       ),
@@ -147,8 +148,8 @@ class ThreeLinesApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final themeAsync = ref.watch(themeNotifierProvider);
-    final mode = themeAsync.valueOrNull ?? ThemeMode.system;
-    final accent = ref.watch(accentThemeProvider).valueOrNull ?? 'sage';
+    final mode = themeAsync.value ?? ThemeMode.system;
+    final accent = ref.watch(accentThemeProvider).value ?? 'sage';
 
     return MaterialApp.router(
       title: '3Lines',
@@ -158,6 +159,23 @@ class ThreeLinesApp extends ConsumerWidget {
       themeMode: mode,
       routerConfig: router,
       locale: const Locale('ko', 'KR'),
+      supportedLocales: const [Locale('ko', 'KR')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      builder: (context, child) {
+        // 큰 글자 접근성 설정에서 고정 높이 위젯이 오버플로하지 않도록
+        // 텍스트 배율 상한을 1.3으로 제한한다(접근성과 레이아웃 안정의 절충).
+        final mq = MediaQuery.of(context);
+        return MediaQuery(
+          data: mq.copyWith(
+            textScaler: mq.textScaler.clamp(maxScaleFactor: 1.3),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

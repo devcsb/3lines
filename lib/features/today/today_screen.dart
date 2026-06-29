@@ -371,15 +371,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                         )
                       : AnimatedSaveButton(
                           emotionSelected: state.emotion != null,
-                          filledCount: () {
-                            final count = [
-                              state.answer1,
-                              state.answer2,
-                              state.answer3,
-                            ].where((a) => a.isNotEmpty).length;
-                            // 감정 미선택 시 링이 100%로 오해되지 않도록 최대 2/3로 제한
-                            return state.emotion != null ? count : count.clamp(0, 2);
-                          }(),
+                          // 링은 3줄(답변) 작성 진척만 정직하게 표시한다.
+                          // 감정 선택 여부는 emotionSelected로 버튼 라벨/활성화에서 분리해 표현.
+                          filledCount: [
+                            state.answer1,
+                            state.answer2,
+                            state.answer3,
+                          ].where((a) => a.isNotEmpty).length,
                           canSave: state.canSave,
                           isSaving: state.isSaving,
                           onPressed: () async {
@@ -389,7 +387,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                             final success = await ref
                                 .read(todayControllerProvider.notifier)
                                 .save();
-                            if (!mounted) return;
+                            if (!context.mounted) return;
                             if (success) {
                               // 저장 완료 시 키보드를 닫아 완료 애니메이션이 가려지지 않게 함
                               FocusScope.of(context).unfocus();

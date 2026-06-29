@@ -513,7 +513,7 @@ class _PdfReportButtonState extends ConsumerState<_PdfReportButton> {
       }
 
       final summary = widget.monthlySummary;
-      final service = PdfReportService();
+      final service = ref.read(pdfReportServiceProvider);
       final pdfBytes = await service.generateMonthlyReport(
         year: now.year,
         month: now.month,

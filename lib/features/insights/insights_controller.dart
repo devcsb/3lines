@@ -95,7 +95,7 @@ class InsightsState {
   }
 }
 
-class InsightsController extends AutoDisposeAsyncNotifier<InsightsState> {
+class InsightsController extends AsyncNotifier<InsightsState> {
   @override
   Future<InsightsState> build() async {
     // Watch to rebuild when the repository changes (e.g. database reconnect)
@@ -186,12 +186,12 @@ class InsightsController extends AutoDisposeAsyncNotifier<InsightsState> {
   }
 
   Future<void> setPeriod(InsightsPeriod period) async {
-    // 이전 데이터를 유지하여 전체 화면 로딩 스피너를 방지한다.
-    state = const AsyncLoading<InsightsState>().copyWithPrevious(state);
+    // AsyncLoading 으로 전환하지 않고 새 데이터 준비 완료 시 교체한다.
+    // 전환 동안 이전 데이터가 그대로 노출되어 전체 화면 로딩 스피너를 방지한다.
     state = await AsyncValue.guard(() => _loadData(period));
   }
 }
 
 final insightsControllerProvider =
-    AutoDisposeAsyncNotifierProvider<InsightsController, InsightsState>(
-        InsightsController.new);
+    AsyncNotifierProvider<InsightsController, InsightsState>(
+        InsightsController.new, isAutoDispose: true);

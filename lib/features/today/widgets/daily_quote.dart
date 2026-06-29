@@ -33,7 +33,7 @@ class DailyQuote extends StatelessWidget {
     return Text(
       quote,
       style: theme.textTheme.bodySmall?.copyWith(
-        color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
         fontStyle: FontStyle.italic,
         height: 1.4,
       ),
