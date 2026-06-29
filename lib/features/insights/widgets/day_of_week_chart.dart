@@ -18,7 +18,7 @@ class DayOfWeekChart extends StatelessWidget {
       child: BarChart(
         BarChartData(
           maxY: 5.5,
-          barTouchData: BarTouchData(enabled: false),
+          barTouchData: const BarTouchData(enabled: false),
           titlesData: FlTitlesData(
             leftTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),
