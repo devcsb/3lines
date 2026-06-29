@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
+import 'package:flutter/foundation.dart'
+    show LicenseEntryWithLineBreaks, LicenseRegistry;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -32,6 +35,12 @@ void main() {
           name: _logName, error: error, stackTrace: stack);
       return true;
     };
+
+    // 번들된 나눔명조(OFL) 라이선스를 오픈소스 라이선스 페이지(showLicensePage)에 등록.
+    LicenseRegistry.addLicense(() async* {
+      final ofl = await rootBundle.loadString('assets/fonts/OFL.txt');
+      yield LicenseEntryWithLineBreaks(const ['NanumMyeongjo (나눔명조)'], ofl);
+    });
 
     await initializeDateFormatting('ko', null);
 

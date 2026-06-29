@@ -45,3 +45,5 @@ flutter:
     # 나눔명조(OFL): PDF 월간 리포트 한글 렌더링용 번들 폰트.
     - assets/fonts/NanumMyeongjo-Regular.ttf
     - assets/fonts/NanumMyeongjo-Bold.ttf
+    # OFL 라이선스 본문: 앱 내 오픈소스 라이선스 페이지에 노출.
+    - assets/fonts/OFL.txt
