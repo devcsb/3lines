@@ -10,6 +10,12 @@ import '../theme/app_colors.dart';
 /// Generates a monthly PDF journal report.
 class PdfReportService {
   /// Builds a PDF document for the given month's entries and summary data.
+  ///
+  /// ponytail: 현재 PDF에 한글 글리프 폰트가 임베딩돼 있지 않아 한국어 텍스트가
+  /// 깨진다(테스트 실행 시 "Unable to find a font to draw" 경고로 확인됨).
+  /// printing의 PdfGoogleFonts에는 Noto Sans KR(CJK)이 없으므로, 오프라인 앱
+  /// 원칙에 맞게 NotoSansKR TTF를 assets로 번들한 뒤 pw.Font.ttf로 로드해
+  /// pw.Document(theme: ThemeData.withFont(...))에 적용해야 한다(폰트 에셋 추가 필요).
   Future<Uint8List> generateMonthlyReport({
     required int year,
     required int month,
