@@ -34,7 +34,7 @@ class NotificationService {
       macOS: darwinSettings,
     );
 
-    await _plugin.initialize(settings);
+    await _plugin.initialize(settings: settings);
     _initialized = true;
   }
 
@@ -68,11 +68,11 @@ class NotificationService {
       }
 
       await _plugin.zonedSchedule(
-        _dailyReminderId,
-        '3Lines',
-        body ?? '오늘의 3줄을 기록할 시간이에요',
-        scheduledDate,
-        const NotificationDetails(
+        id: _dailyReminderId,
+        title: '3Lines',
+        body: body ?? '오늘의 3줄을 기록할 시간이에요',
+        scheduledDate: scheduledDate,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'daily_reminder',
             '매일 리마인더',
@@ -83,8 +83,6 @@ class NotificationService {
           iOS: DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
       );
       return true;
@@ -118,7 +116,7 @@ class NotificationService {
     if (!_initialized) await initialize();
     if (!_initialized) return false;
     try {
-      await _plugin.cancel(_streakAtRiskId);
+      await _plugin.cancel(id: _streakAtRiskId);
 
       // Calculate 1 hour before the regular reminder
       final atRiskMinute = reminderMinute;
@@ -140,11 +138,11 @@ class NotificationService {
       }
 
       await _plugin.zonedSchedule(
-        _streakAtRiskId,
-        '3Lines',
-        '스트릭이 위험해요! 오늘의 기록을 잊지 마세요 🔥',
-        scheduledDate,
-        const NotificationDetails(
+        id: _streakAtRiskId,
+        title: '3Lines',
+        body: '스트릭이 위험해요! 오늘의 기록을 잊지 마세요 🔥',
+        scheduledDate: scheduledDate,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'streak_at_risk',
             '스트릭 위험 알림',
@@ -155,8 +153,6 @@ class NotificationService {
           iOS: DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
       );
       return true;
@@ -171,7 +167,7 @@ class NotificationService {
   Future<void> cancelStreakAtRiskReminder() async {
     if (kIsWeb) return;
     try {
-      await _plugin.cancel(_streakAtRiskId);
+      await _plugin.cancel(id: _streakAtRiskId);
     } catch (e, stack) {
       developer.log('Failed to cancel streak-at-risk reminder',
           error: e, stackTrace: stack);
@@ -196,11 +192,11 @@ class NotificationService {
       }
 
       await _plugin.zonedSchedule(
-        _weeklyRetrospectiveId,
-        '3Lines 주간 회고',
-        '이번 주를 돌아볼 시간이에요. 7일간의 감정 흐름을 확인해보세요.',
-        scheduled,
-        const NotificationDetails(
+        id: _weeklyRetrospectiveId,
+        title: '3Lines 주간 회고',
+        body: '이번 주를 돌아볼 시간이에요. 7일간의 감정 흐름을 확인해보세요.',
+        scheduledDate: scheduled,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'weekly_retrospective',
             '주간 회고 알림',
@@ -211,8 +207,6 @@ class NotificationService {
           iOS: DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
       );
       return true;
@@ -226,7 +220,7 @@ class NotificationService {
   Future<void> cancelWeeklyRetrospectiveReminder() async {
     if (kIsWeb) return;
     try {
-      await _plugin.cancel(_weeklyRetrospectiveId);
+      await _plugin.cancel(id: _weeklyRetrospectiveId);
     } catch (e, stack) {
       developer.log('Failed to cancel weekly retrospective reminder',
           error: e, stackTrace: stack);
@@ -236,9 +230,9 @@ class NotificationService {
   Future<void> cancelReminder() async {
     if (kIsWeb) return;
     try {
-      await _plugin.cancel(_dailyReminderId);
-      await _plugin.cancel(_streakAtRiskId);
-      await _plugin.cancel(_weeklyRetrospectiveId);
+      await _plugin.cancel(id: _dailyReminderId);
+      await _plugin.cancel(id: _streakAtRiskId);
+      await _plugin.cancel(id: _weeklyRetrospectiveId);
     } catch (e, stack) {
       developer.log('Failed to cancel reminder', error: e, stackTrace: stack);
     }
