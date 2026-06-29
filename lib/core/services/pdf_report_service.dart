@@ -10,25 +10,24 @@ import '../theme/app_colors.dart';
 
 /// Generates a monthly PDF journal report.
 class PdfReportService {
-  // 한글 글리프 폰트(나눔명조)를 1회 로드 후 캐시한다. 오프라인 앱이라
-  // 런타임 fetch 대신 번들 TTF를 사용한다. 로드 실패 시 null로 폴백.
-  pw.ThemeData? _theme;
-  bool _themeLoaded = false;
+  // 한글 글리프 폰트(나눔명조)를 1회 로드해 in-flight Future로 캐시한다.
+  // 오프라인 앱이라 런타임 fetch 대신 번들 TTF를 사용한다. Future를 캐시하므로
+  // 동시 호출이 같은 로드를 await 해 race 없이 안전하다.
+  Future<pw.ThemeData?>? _themeFuture;
 
-  Future<pw.ThemeData?> _koreanTheme() async {
-    if (_themeLoaded) return _theme;
-    _themeLoaded = true;
+  Future<pw.ThemeData?> _koreanTheme() => _themeFuture ??= _loadKoreanTheme();
+
+  Future<pw.ThemeData?> _loadKoreanTheme() async {
     try {
       final base = pw.Font.ttf(
           await rootBundle.load('assets/fonts/NanumMyeongjo-Regular.ttf'));
       final bold = pw.Font.ttf(
           await rootBundle.load('assets/fonts/NanumMyeongjo-Bold.ttf'));
-      _theme = pw.ThemeData.withFont(base: base, bold: bold);
+      return pw.ThemeData.withFont(base: base, bold: bold);
     } catch (_) {
       // 폰트 에셋 로드 실패 시 기본 폰트로 폴백(한글이 깨질 수 있으나 크래시는 없음).
-      _theme = null;
+      return null;
     }
-    return _theme;
   }
 
   /// Builds a PDF document for the given month's entries and summary data.
