@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -369,3 +370,7 @@ class PdfReportService {
     return labels[(weekday - 1).clamp(0, 6)];
   }
 }
+
+final pdfReportServiceProvider = Provider<PdfReportService>((ref) {
+  return PdfReportService();
+});
