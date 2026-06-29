@@ -11,118 +11,169 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
-      'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
   @override
   late final GeneratedColumn<String> date = GeneratedColumn<String>(
-      'date', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: true,
-      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
-  static const VerificationMeta _prompt1Meta =
-      const VerificationMeta('prompt1');
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _prompt1Meta = const VerificationMeta(
+    'prompt1',
+  );
   @override
   late final GeneratedColumn<String> prompt1 = GeneratedColumn<String>(
-      'prompt1', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(''));
-  static const VerificationMeta _answer1Meta =
-      const VerificationMeta('answer1');
+    'prompt1',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _answer1Meta = const VerificationMeta(
+    'answer1',
+  );
   @override
   late final GeneratedColumn<String> answer1 = GeneratedColumn<String>(
-      'answer1', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(''));
-  static const VerificationMeta _prompt2Meta =
-      const VerificationMeta('prompt2');
+    'answer1',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _prompt2Meta = const VerificationMeta(
+    'prompt2',
+  );
   @override
   late final GeneratedColumn<String> prompt2 = GeneratedColumn<String>(
-      'prompt2', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(''));
-  static const VerificationMeta _answer2Meta =
-      const VerificationMeta('answer2');
+    'prompt2',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _answer2Meta = const VerificationMeta(
+    'answer2',
+  );
   @override
   late final GeneratedColumn<String> answer2 = GeneratedColumn<String>(
-      'answer2', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(''));
-  static const VerificationMeta _prompt3Meta =
-      const VerificationMeta('prompt3');
+    'answer2',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _prompt3Meta = const VerificationMeta(
+    'prompt3',
+  );
   @override
   late final GeneratedColumn<String> prompt3 = GeneratedColumn<String>(
-      'prompt3', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(''));
-  static const VerificationMeta _answer3Meta =
-      const VerificationMeta('answer3');
+    'prompt3',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _answer3Meta = const VerificationMeta(
+    'answer3',
+  );
   @override
   late final GeneratedColumn<String> answer3 = GeneratedColumn<String>(
-      'answer3', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(''));
-  static const VerificationMeta _emotionMeta =
-      const VerificationMeta('emotion');
+    'answer3',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _emotionMeta = const VerificationMeta(
+    'emotion',
+  );
   @override
   late final GeneratedColumn<int> emotion = GeneratedColumn<int>(
-      'emotion', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _createdAtMeta =
-      const VerificationMeta('createdAt');
+    'emotion',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
   @override
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-      'created_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
-  static const VerificationMeta _updatedAtMeta =
-      const VerificationMeta('updatedAt');
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
   @override
   late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
-      'updated_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
-  static const VerificationMeta _photoPathMeta =
-      const VerificationMeta('photoPath');
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _photoPathMeta = const VerificationMeta(
+    'photoPath',
+  );
   @override
   late final GeneratedColumn<String> photoPath = GeneratedColumn<String>(
-      'photo_path', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
+    'photo_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
-        id,
-        date,
-        prompt1,
-        answer1,
-        prompt2,
-        answer2,
-        prompt3,
-        answer3,
-        emotion,
-        createdAt,
-        updatedAt,
-        photoPath
-      ];
+    id,
+    date,
+    prompt1,
+    answer1,
+    prompt2,
+    answer2,
+    prompt3,
+    answer3,
+    emotion,
+    createdAt,
+    updatedAt,
+    photoPath,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
   static const String $name = 'entries';
   @override
-  VerificationContext validateIntegrity(Insertable<Entry> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<Entry> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
@@ -130,51 +181,73 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     }
     if (data.containsKey('date')) {
       context.handle(
-          _dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
     } else if (isInserting) {
       context.missing(_dateMeta);
     }
     if (data.containsKey('prompt1')) {
-      context.handle(_prompt1Meta,
-          prompt1.isAcceptableOrUnknown(data['prompt1']!, _prompt1Meta));
+      context.handle(
+        _prompt1Meta,
+        prompt1.isAcceptableOrUnknown(data['prompt1']!, _prompt1Meta),
+      );
     }
     if (data.containsKey('answer1')) {
-      context.handle(_answer1Meta,
-          answer1.isAcceptableOrUnknown(data['answer1']!, _answer1Meta));
+      context.handle(
+        _answer1Meta,
+        answer1.isAcceptableOrUnknown(data['answer1']!, _answer1Meta),
+      );
     }
     if (data.containsKey('prompt2')) {
-      context.handle(_prompt2Meta,
-          prompt2.isAcceptableOrUnknown(data['prompt2']!, _prompt2Meta));
+      context.handle(
+        _prompt2Meta,
+        prompt2.isAcceptableOrUnknown(data['prompt2']!, _prompt2Meta),
+      );
     }
     if (data.containsKey('answer2')) {
-      context.handle(_answer2Meta,
-          answer2.isAcceptableOrUnknown(data['answer2']!, _answer2Meta));
+      context.handle(
+        _answer2Meta,
+        answer2.isAcceptableOrUnknown(data['answer2']!, _answer2Meta),
+      );
     }
     if (data.containsKey('prompt3')) {
-      context.handle(_prompt3Meta,
-          prompt3.isAcceptableOrUnknown(data['prompt3']!, _prompt3Meta));
+      context.handle(
+        _prompt3Meta,
+        prompt3.isAcceptableOrUnknown(data['prompt3']!, _prompt3Meta),
+      );
     }
     if (data.containsKey('answer3')) {
-      context.handle(_answer3Meta,
-          answer3.isAcceptableOrUnknown(data['answer3']!, _answer3Meta));
+      context.handle(
+        _answer3Meta,
+        answer3.isAcceptableOrUnknown(data['answer3']!, _answer3Meta),
+      );
     }
     if (data.containsKey('emotion')) {
-      context.handle(_emotionMeta,
-          emotion.isAcceptableOrUnknown(data['emotion']!, _emotionMeta));
+      context.handle(
+        _emotionMeta,
+        emotion.isAcceptableOrUnknown(data['emotion']!, _emotionMeta),
+      );
     } else if (isInserting) {
       context.missing(_emotionMeta);
     }
     if (data.containsKey('created_at')) {
-      context.handle(_createdAtMeta,
-          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
     }
     if (data.containsKey('updated_at')) {
-      context.handle(_updatedAtMeta,
-          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
     }
     if (data.containsKey('photo_path')) {
-      context.handle(_photoPathMeta,
-          photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta));
+      context.handle(
+        _photoPathMeta,
+        photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta),
+      );
     }
     return context;
   }
@@ -185,30 +258,54 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
   Entry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Entry(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      date: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}date'])!,
-      prompt1: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}prompt1'])!,
-      answer1: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}answer1'])!,
-      prompt2: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}prompt2'])!,
-      answer2: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}answer2'])!,
-      prompt3: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}prompt3'])!,
-      answer3: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}answer3'])!,
-      emotion: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}emotion'])!,
-      createdAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
-      updatedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
-      photoPath: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}photo_path']),
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}date'],
+      )!,
+      prompt1: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prompt1'],
+      )!,
+      answer1: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}answer1'],
+      )!,
+      prompt2: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prompt2'],
+      )!,
+      answer2: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}answer2'],
+      )!,
+      prompt3: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prompt3'],
+      )!,
+      answer3: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}answer3'],
+      )!,
+      emotion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}emotion'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      photoPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_path'],
+      ),
     );
   }
 
@@ -231,19 +328,20 @@ class Entry extends DataClass implements Insertable<Entry> {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? photoPath;
-  const Entry(
-      {required this.id,
-      required this.date,
-      required this.prompt1,
-      required this.answer1,
-      required this.prompt2,
-      required this.answer2,
-      required this.prompt3,
-      required this.answer3,
-      required this.emotion,
-      required this.createdAt,
-      required this.updatedAt,
-      this.photoPath});
+  const Entry({
+    required this.id,
+    required this.date,
+    required this.prompt1,
+    required this.answer1,
+    required this.prompt2,
+    required this.answer2,
+    required this.prompt3,
+    required this.answer3,
+    required this.emotion,
+    required this.createdAt,
+    required this.updatedAt,
+    this.photoPath,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -283,8 +381,10 @@ class Entry extends DataClass implements Insertable<Entry> {
     );
   }
 
-  factory Entry.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory Entry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Entry(
       id: serializer.fromJson<int>(json['id']),
@@ -320,33 +420,33 @@ class Entry extends DataClass implements Insertable<Entry> {
     };
   }
 
-  Entry copyWith(
-          {int? id,
-          String? date,
-          String? prompt1,
-          String? answer1,
-          String? prompt2,
-          String? answer2,
-          String? prompt3,
-          String? answer3,
-          int? emotion,
-          DateTime? createdAt,
-          DateTime? updatedAt,
-          Value<String?> photoPath = const Value.absent()}) =>
-      Entry(
-        id: id ?? this.id,
-        date: date ?? this.date,
-        prompt1: prompt1 ?? this.prompt1,
-        answer1: answer1 ?? this.answer1,
-        prompt2: prompt2 ?? this.prompt2,
-        answer2: answer2 ?? this.answer2,
-        prompt3: prompt3 ?? this.prompt3,
-        answer3: answer3 ?? this.answer3,
-        emotion: emotion ?? this.emotion,
-        createdAt: createdAt ?? this.createdAt,
-        updatedAt: updatedAt ?? this.updatedAt,
-        photoPath: photoPath.present ? photoPath.value : this.photoPath,
-      );
+  Entry copyWith({
+    int? id,
+    String? date,
+    String? prompt1,
+    String? answer1,
+    String? prompt2,
+    String? answer2,
+    String? prompt3,
+    String? answer3,
+    int? emotion,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<String?> photoPath = const Value.absent(),
+  }) => Entry(
+    id: id ?? this.id,
+    date: date ?? this.date,
+    prompt1: prompt1 ?? this.prompt1,
+    answer1: answer1 ?? this.answer1,
+    prompt2: prompt2 ?? this.prompt2,
+    answer2: answer2 ?? this.answer2,
+    prompt3: prompt3 ?? this.prompt3,
+    answer3: answer3 ?? this.answer3,
+    emotion: emotion ?? this.emotion,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    photoPath: photoPath.present ? photoPath.value : this.photoPath,
+  );
   Entry copyWithCompanion(EntriesCompanion data) {
     return Entry(
       id: data.id.present ? data.id.value : this.id,
@@ -384,8 +484,20 @@ class Entry extends DataClass implements Insertable<Entry> {
   }
 
   @override
-  int get hashCode => Object.hash(id, date, prompt1, answer1, prompt2, answer2,
-      prompt3, answer3, emotion, createdAt, updatedAt, photoPath);
+  int get hashCode => Object.hash(
+    id,
+    date,
+    prompt1,
+    answer1,
+    prompt2,
+    answer2,
+    prompt3,
+    answer3,
+    emotion,
+    createdAt,
+    updatedAt,
+    photoPath,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -444,8 +556,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.photoPath = const Value.absent(),
-  })  : date = Value(date),
-        emotion = Value(emotion);
+  }) : date = Value(date),
+       emotion = Value(emotion);
   static Insertable<Entry> custom({
     Expression<int>? id,
     Expression<String>? date,
@@ -476,19 +588,20 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     });
   }
 
-  EntriesCompanion copyWith(
-      {Value<int>? id,
-      Value<String>? date,
-      Value<String>? prompt1,
-      Value<String>? answer1,
-      Value<String>? prompt2,
-      Value<String>? answer2,
-      Value<String>? prompt3,
-      Value<String>? answer3,
-      Value<int>? emotion,
-      Value<DateTime>? createdAt,
-      Value<DateTime>? updatedAt,
-      Value<String?>? photoPath}) {
+  EntriesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? date,
+    Value<String>? prompt1,
+    Value<String>? answer1,
+    Value<String>? prompt2,
+    Value<String>? answer2,
+    Value<String>? prompt3,
+    Value<String>? answer3,
+    Value<int>? emotion,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<String?>? photoPath,
+  }) {
     return EntriesCompanion(
       id: id ?? this.id,
       date: date ?? this.date,
@@ -575,13 +688,21 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
   static const VerificationMeta _keyMeta = const VerificationMeta('key');
   @override
   late final GeneratedColumn<String> key = GeneratedColumn<String>(
-      'key', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _valueMeta = const VerificationMeta('value');
   @override
   late final GeneratedColumn<String> value = GeneratedColumn<String>(
-      'value', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   @override
   List<GeneratedColumn> get $columns => [key, value];
   @override
@@ -590,19 +711,25 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
   String get actualTableName => $name;
   static const String $name = 'settings';
   @override
-  VerificationContext validateIntegrity(Insertable<Setting> instance,
-      {bool isInserting = false}) {
+  VerificationContext validateIntegrity(
+    Insertable<Setting> instance, {
+    bool isInserting = false,
+  }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('key')) {
       context.handle(
-          _keyMeta, key.isAcceptableOrUnknown(data['key']!, _keyMeta));
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
     } else if (isInserting) {
       context.missing(_keyMeta);
     }
     if (data.containsKey('value')) {
       context.handle(
-          _valueMeta, value.isAcceptableOrUnknown(data['value']!, _valueMeta));
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
     } else if (isInserting) {
       context.missing(_valueMeta);
     }
@@ -615,10 +742,14 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
   Setting map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Setting(
-      key: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}key'])!,
-      value: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}value'])!,
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
     );
   }
 
@@ -641,14 +772,13 @@ class Setting extends DataClass implements Insertable<Setting> {
   }
 
   SettingsCompanion toCompanion(bool nullToAbsent) {
-    return SettingsCompanion(
-      key: Value(key),
-      value: Value(value),
-    );
+    return SettingsCompanion(key: Value(key), value: Value(value));
   }
 
-  factory Setting.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
+  factory Setting.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Setting(
       key: serializer.fromJson<String>(json['key']),
@@ -664,10 +794,8 @@ class Setting extends DataClass implements Insertable<Setting> {
     };
   }
 
-  Setting copyWith({String? key, String? value}) => Setting(
-        key: key ?? this.key,
-        value: value ?? this.value,
-      );
+  Setting copyWith({String? key, String? value}) =>
+      Setting(key: key ?? this.key, value: value ?? this.value);
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
       key: data.key.present ? data.key.value : this.key,
@@ -705,8 +833,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     required String key,
     required String value,
     this.rowid = const Value.absent(),
-  })  : key = Value(key),
-        value = Value(value);
+  }) : key = Value(key),
+       value = Value(value);
   static Insertable<Setting> custom({
     Expression<String>? key,
     Expression<String>? value,
@@ -719,8 +847,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     });
   }
 
-  SettingsCompanion copyWith(
-      {Value<String>? key, Value<String>? value, Value<int>? rowid}) {
+  SettingsCompanion copyWith({
+    Value<String>? key,
+    Value<String>? value,
+    Value<int>? rowid,
+  }) {
     return SettingsCompanion(
       key: key ?? this.key,
       value: value ?? this.value,
@@ -766,315 +897,460 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [entries, settings];
 }
 
-typedef $$EntriesTableCreateCompanionBuilder = EntriesCompanion Function({
-  Value<int> id,
-  required String date,
-  Value<String> prompt1,
-  Value<String> answer1,
-  Value<String> prompt2,
-  Value<String> answer2,
-  Value<String> prompt3,
-  Value<String> answer3,
-  required int emotion,
-  Value<DateTime> createdAt,
-  Value<DateTime> updatedAt,
-  Value<String?> photoPath,
-});
-typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
-  Value<int> id,
-  Value<String> date,
-  Value<String> prompt1,
-  Value<String> answer1,
-  Value<String> prompt2,
-  Value<String> answer2,
-  Value<String> prompt3,
-  Value<String> answer3,
-  Value<int> emotion,
-  Value<DateTime> createdAt,
-  Value<DateTime> updatedAt,
-  Value<String?> photoPath,
-});
-
-class $$EntriesTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $EntriesTable,
-    Entry,
-    $$EntriesTableFilterComposer,
-    $$EntriesTableOrderingComposer,
-    $$EntriesTableCreateCompanionBuilder,
-    $$EntriesTableUpdateCompanionBuilder> {
-  $$EntriesTableTableManager(_$AppDatabase db, $EntriesTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          filteringComposer:
-              $$EntriesTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$EntriesTableOrderingComposer(ComposerState(db, table)),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String> date = const Value.absent(),
-            Value<String> prompt1 = const Value.absent(),
-            Value<String> answer1 = const Value.absent(),
-            Value<String> prompt2 = const Value.absent(),
-            Value<String> answer2 = const Value.absent(),
-            Value<String> prompt3 = const Value.absent(),
-            Value<String> answer3 = const Value.absent(),
-            Value<int> emotion = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
-            Value<DateTime> updatedAt = const Value.absent(),
-            Value<String?> photoPath = const Value.absent(),
-          }) =>
-              EntriesCompanion(
-            id: id,
-            date: date,
-            prompt1: prompt1,
-            answer1: answer1,
-            prompt2: prompt2,
-            answer2: answer2,
-            prompt3: prompt3,
-            answer3: answer3,
-            emotion: emotion,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            photoPath: photoPath,
-          ),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required String date,
-            Value<String> prompt1 = const Value.absent(),
-            Value<String> answer1 = const Value.absent(),
-            Value<String> prompt2 = const Value.absent(),
-            Value<String> answer2 = const Value.absent(),
-            Value<String> prompt3 = const Value.absent(),
-            Value<String> answer3 = const Value.absent(),
-            required int emotion,
-            Value<DateTime> createdAt = const Value.absent(),
-            Value<DateTime> updatedAt = const Value.absent(),
-            Value<String?> photoPath = const Value.absent(),
-          }) =>
-              EntriesCompanion.insert(
-            id: id,
-            date: date,
-            prompt1: prompt1,
-            answer1: answer1,
-            prompt2: prompt2,
-            answer2: answer2,
-            prompt3: prompt3,
-            answer3: answer3,
-            emotion: emotion,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            photoPath: photoPath,
-          ),
-        ));
-}
+typedef $$EntriesTableCreateCompanionBuilder =
+    EntriesCompanion Function({
+      Value<int> id,
+      required String date,
+      Value<String> prompt1,
+      Value<String> answer1,
+      Value<String> prompt2,
+      Value<String> answer2,
+      Value<String> prompt3,
+      Value<String> answer3,
+      required int emotion,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<String?> photoPath,
+    });
+typedef $$EntriesTableUpdateCompanionBuilder =
+    EntriesCompanion Function({
+      Value<int> id,
+      Value<String> date,
+      Value<String> prompt1,
+      Value<String> answer1,
+      Value<String> prompt2,
+      Value<String> answer2,
+      Value<String> prompt3,
+      Value<String> answer3,
+      Value<int> emotion,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<String?> photoPath,
+    });
 
 class $$EntriesTableFilterComposer
-    extends FilterComposer<_$AppDatabase, $EntriesTable> {
-  $$EntriesTableFilterComposer(super.$state);
-  ColumnFilters<int> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+    extends Composer<_$AppDatabase, $EntriesTable> {
+  $$EntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
 
-  ColumnFilters<String> get date => $state.composableBuilder(
-      column: $state.table.date,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+  ColumnFilters<String> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
 
-  ColumnFilters<String> get prompt1 => $state.composableBuilder(
-      column: $state.table.prompt1,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+  ColumnFilters<String> get prompt1 => $composableBuilder(
+    column: $table.prompt1,
+    builder: (column) => ColumnFilters(column),
+  );
 
-  ColumnFilters<String> get answer1 => $state.composableBuilder(
-      column: $state.table.answer1,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+  ColumnFilters<String> get answer1 => $composableBuilder(
+    column: $table.answer1,
+    builder: (column) => ColumnFilters(column),
+  );
 
-  ColumnFilters<String> get prompt2 => $state.composableBuilder(
-      column: $state.table.prompt2,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+  ColumnFilters<String> get prompt2 => $composableBuilder(
+    column: $table.prompt2,
+    builder: (column) => ColumnFilters(column),
+  );
 
-  ColumnFilters<String> get answer2 => $state.composableBuilder(
-      column: $state.table.answer2,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+  ColumnFilters<String> get answer2 => $composableBuilder(
+    column: $table.answer2,
+    builder: (column) => ColumnFilters(column),
+  );
 
-  ColumnFilters<String> get prompt3 => $state.composableBuilder(
-      column: $state.table.prompt3,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+  ColumnFilters<String> get prompt3 => $composableBuilder(
+    column: $table.prompt3,
+    builder: (column) => ColumnFilters(column),
+  );
 
-  ColumnFilters<String> get answer3 => $state.composableBuilder(
-      column: $state.table.answer3,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+  ColumnFilters<String> get answer3 => $composableBuilder(
+    column: $table.answer3,
+    builder: (column) => ColumnFilters(column),
+  );
 
-  ColumnFilters<int> get emotion => $state.composableBuilder(
-      column: $state.table.emotion,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+  ColumnFilters<int> get emotion => $composableBuilder(
+    column: $table.emotion,
+    builder: (column) => ColumnFilters(column),
+  );
 
-  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
 
-  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
-      column: $state.table.updatedAt,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
 
-  ColumnFilters<String> get photoPath => $state.composableBuilder(
-      column: $state.table.photoPath,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+  ColumnFilters<String> get photoPath => $composableBuilder(
+    column: $table.photoPath,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$EntriesTableOrderingComposer
-    extends OrderingComposer<_$AppDatabase, $EntriesTable> {
-  $$EntriesTableOrderingComposer(super.$state);
-  ColumnOrderings<int> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+    extends Composer<_$AppDatabase, $EntriesTable> {
+  $$EntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
 
-  ColumnOrderings<String> get date => $state.composableBuilder(
-      column: $state.table.date,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+  ColumnOrderings<String> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
 
-  ColumnOrderings<String> get prompt1 => $state.composableBuilder(
-      column: $state.table.prompt1,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+  ColumnOrderings<String> get prompt1 => $composableBuilder(
+    column: $table.prompt1,
+    builder: (column) => ColumnOrderings(column),
+  );
 
-  ColumnOrderings<String> get answer1 => $state.composableBuilder(
-      column: $state.table.answer1,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+  ColumnOrderings<String> get answer1 => $composableBuilder(
+    column: $table.answer1,
+    builder: (column) => ColumnOrderings(column),
+  );
 
-  ColumnOrderings<String> get prompt2 => $state.composableBuilder(
-      column: $state.table.prompt2,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+  ColumnOrderings<String> get prompt2 => $composableBuilder(
+    column: $table.prompt2,
+    builder: (column) => ColumnOrderings(column),
+  );
 
-  ColumnOrderings<String> get answer2 => $state.composableBuilder(
-      column: $state.table.answer2,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+  ColumnOrderings<String> get answer2 => $composableBuilder(
+    column: $table.answer2,
+    builder: (column) => ColumnOrderings(column),
+  );
 
-  ColumnOrderings<String> get prompt3 => $state.composableBuilder(
-      column: $state.table.prompt3,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+  ColumnOrderings<String> get prompt3 => $composableBuilder(
+    column: $table.prompt3,
+    builder: (column) => ColumnOrderings(column),
+  );
 
-  ColumnOrderings<String> get answer3 => $state.composableBuilder(
-      column: $state.table.answer3,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+  ColumnOrderings<String> get answer3 => $composableBuilder(
+    column: $table.answer3,
+    builder: (column) => ColumnOrderings(column),
+  );
 
-  ColumnOrderings<int> get emotion => $state.composableBuilder(
-      column: $state.table.emotion,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+  ColumnOrderings<int> get emotion => $composableBuilder(
+    column: $table.emotion,
+    builder: (column) => ColumnOrderings(column),
+  );
 
-  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 
-  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
-      column: $state.table.updatedAt,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 
-  ColumnOrderings<String> get photoPath => $state.composableBuilder(
-      column: $state.table.photoPath,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+  ColumnOrderings<String> get photoPath => $composableBuilder(
+    column: $table.photoPath,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
-typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
-  required String key,
-  required String value,
-  Value<int> rowid,
-});
-typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
-  Value<String> key,
-  Value<String> value,
-  Value<int> rowid,
-});
+class $$EntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $EntriesTable> {
+  $$EntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
 
-class $$SettingsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $SettingsTable,
-    Setting,
-    $$SettingsTableFilterComposer,
-    $$SettingsTableOrderingComposer,
-    $$SettingsTableCreateCompanionBuilder,
-    $$SettingsTableUpdateCompanionBuilder> {
-  $$SettingsTableTableManager(_$AppDatabase db, $SettingsTable table)
-      : super(TableManagerState(
+  GeneratedColumn<String> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get prompt1 =>
+      $composableBuilder(column: $table.prompt1, builder: (column) => column);
+
+  GeneratedColumn<String> get answer1 =>
+      $composableBuilder(column: $table.answer1, builder: (column) => column);
+
+  GeneratedColumn<String> get prompt2 =>
+      $composableBuilder(column: $table.prompt2, builder: (column) => column);
+
+  GeneratedColumn<String> get answer2 =>
+      $composableBuilder(column: $table.answer2, builder: (column) => column);
+
+  GeneratedColumn<String> get prompt3 =>
+      $composableBuilder(column: $table.prompt3, builder: (column) => column);
+
+  GeneratedColumn<String> get answer3 =>
+      $composableBuilder(column: $table.answer3, builder: (column) => column);
+
+  GeneratedColumn<int> get emotion =>
+      $composableBuilder(column: $table.emotion, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get photoPath =>
+      $composableBuilder(column: $table.photoPath, builder: (column) => column);
+}
+
+class $$EntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $EntriesTable,
+          Entry,
+          $$EntriesTableFilterComposer,
+          $$EntriesTableOrderingComposer,
+          $$EntriesTableAnnotationComposer,
+          $$EntriesTableCreateCompanionBuilder,
+          $$EntriesTableUpdateCompanionBuilder,
+          (Entry, BaseReferences<_$AppDatabase, $EntriesTable, Entry>),
+          Entry,
+          PrefetchHooks Function()
+        > {
+  $$EntriesTableTableManager(_$AppDatabase db, $EntriesTable table)
+    : super(
+        TableManagerState(
           db: db,
           table: table,
-          filteringComposer:
-              $$SettingsTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$SettingsTableOrderingComposer(ComposerState(db, table)),
-          updateCompanionCallback: ({
-            Value<String> key = const Value.absent(),
-            Value<String> value = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              SettingsCompanion(
-            key: key,
-            value: value,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required String key,
-            required String value,
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              SettingsCompanion.insert(
-            key: key,
-            value: value,
-            rowid: rowid,
-          ),
-        ));
+          createFilteringComposer: () =>
+              $$EntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$EntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$EntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> date = const Value.absent(),
+                Value<String> prompt1 = const Value.absent(),
+                Value<String> answer1 = const Value.absent(),
+                Value<String> prompt2 = const Value.absent(),
+                Value<String> answer2 = const Value.absent(),
+                Value<String> prompt3 = const Value.absent(),
+                Value<String> answer3 = const Value.absent(),
+                Value<int> emotion = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> photoPath = const Value.absent(),
+              }) => EntriesCompanion(
+                id: id,
+                date: date,
+                prompt1: prompt1,
+                answer1: answer1,
+                prompt2: prompt2,
+                answer2: answer2,
+                prompt3: prompt3,
+                answer3: answer3,
+                emotion: emotion,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                photoPath: photoPath,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String date,
+                Value<String> prompt1 = const Value.absent(),
+                Value<String> answer1 = const Value.absent(),
+                Value<String> prompt2 = const Value.absent(),
+                Value<String> answer2 = const Value.absent(),
+                Value<String> prompt3 = const Value.absent(),
+                Value<String> answer3 = const Value.absent(),
+                required int emotion,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> photoPath = const Value.absent(),
+              }) => EntriesCompanion.insert(
+                id: id,
+                date: date,
+                prompt1: prompt1,
+                answer1: answer1,
+                prompt2: prompt2,
+                answer2: answer2,
+                prompt3: prompt3,
+                answer3: answer3,
+                emotion: emotion,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                photoPath: photoPath,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
 }
 
-class $$SettingsTableFilterComposer
-    extends FilterComposer<_$AppDatabase, $SettingsTable> {
-  $$SettingsTableFilterComposer(super.$state);
-  ColumnFilters<String> get key => $state.composableBuilder(
-      column: $state.table.key,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+typedef $$EntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $EntriesTable,
+      Entry,
+      $$EntriesTableFilterComposer,
+      $$EntriesTableOrderingComposer,
+      $$EntriesTableAnnotationComposer,
+      $$EntriesTableCreateCompanionBuilder,
+      $$EntriesTableUpdateCompanionBuilder,
+      (Entry, BaseReferences<_$AppDatabase, $EntriesTable, Entry>),
+      Entry,
+      PrefetchHooks Function()
+    >;
+typedef $$SettingsTableCreateCompanionBuilder =
+    SettingsCompanion Function({
+      required String key,
+      required String value,
+      Value<int> rowid,
+    });
+typedef $$SettingsTableUpdateCompanionBuilder =
+    SettingsCompanion Function({
+      Value<String> key,
+      Value<String> value,
+      Value<int> rowid,
+    });
 
-  ColumnFilters<String> get value => $state.composableBuilder(
-      column: $state.table.value,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
+class $$SettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $SettingsTable> {
+  $$SettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$SettingsTableOrderingComposer
-    extends OrderingComposer<_$AppDatabase, $SettingsTable> {
-  $$SettingsTableOrderingComposer(super.$state);
-  ColumnOrderings<String> get key => $state.composableBuilder(
-      column: $state.table.key,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+    extends Composer<_$AppDatabase, $SettingsTable> {
+  $$SettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
 
-  ColumnOrderings<String> get value => $state.composableBuilder(
-      column: $state.table.value,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
+
+class $$SettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SettingsTable> {
+  $$SettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+}
+
+class $$SettingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SettingsTable,
+          Setting,
+          $$SettingsTableFilterComposer,
+          $$SettingsTableOrderingComposer,
+          $$SettingsTableAnnotationComposer,
+          $$SettingsTableCreateCompanionBuilder,
+          $$SettingsTableUpdateCompanionBuilder,
+          (Setting, BaseReferences<_$AppDatabase, $SettingsTable, Setting>),
+          Setting,
+          PrefetchHooks Function()
+        > {
+  $$SettingsTableTableManager(_$AppDatabase db, $SettingsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SettingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> key = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SettingsCompanion(key: key, value: value, rowid: rowid),
+          createCompanionCallback:
+              ({
+                required String key,
+                required String value,
+                Value<int> rowid = const Value.absent(),
+              }) => SettingsCompanion.insert(
+                key: key,
+                value: value,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SettingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SettingsTable,
+      Setting,
+      $$SettingsTableFilterComposer,
+      $$SettingsTableOrderingComposer,
+      $$SettingsTableAnnotationComposer,
+      $$SettingsTableCreateCompanionBuilder,
+      $$SettingsTableUpdateCompanionBuilder,
+      (Setting, BaseReferences<_$AppDatabase, $SettingsTable, Setting>),
+      Setting,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
