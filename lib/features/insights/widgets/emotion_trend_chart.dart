@@ -148,7 +148,7 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
         barWidth: 2,
         dotData: FlDotData(
           show: true,
-          getDotPainter: (spot, _, __, ___) {
+          getDotPainter: (spot, _, _, _) {
             final emotion = spot.y.toInt();
             return FlDotCirclePainter(
               radius: 4,

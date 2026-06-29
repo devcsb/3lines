@@ -88,7 +88,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/onboarding',
-        pageBuilder: (_, __) => CustomTransitionPage(
+        pageBuilder: (_, _) => CustomTransitionPage(
           child: const OnboardingScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             final curved =
@@ -109,30 +109,30 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/lock',
-        builder: (_, __) => const LockScreen(),
+        builder: (_, _) => const LockScreen(),
       ),
       StatefulShellRoute.indexedStack(
-        builder: (_, __, navigationShell) =>
+        builder: (_, _, navigationShell) =>
             ScaffoldWithNavBar(navigationShell),
         branches: [
           StatefulShellBranch(routes: [
             GoRoute(
-                path: '/', builder: (_, __) => const TodayScreen()),
+                path: '/', builder: (_, _) => const TodayScreen()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
                 path: '/timeline',
-                builder: (_, __) => const TimelineScreen()),
+                builder: (_, _) => const TimelineScreen()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
                 path: '/insights',
-                builder: (_, __) => const InsightsScreen()),
+                builder: (_, _) => const InsightsScreen()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
                 path: '/settings',
-                builder: (_, __) => const SettingsScreen()),
+                builder: (_, _) => const SettingsScreen()),
           ]),
         ],
       ),
