@@ -96,7 +96,7 @@ class TodayState {
   }
 }
 
-class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
+class TodayController extends AsyncNotifier<TodayState> {
   static const _milestones = [7, 30, 100, 365];
 
   Timer? _midnightTimer;
@@ -166,13 +166,13 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
   }
 
   void setEmotion(int value) {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null || value < 1 || value > 5) return;
     state = AsyncData(current.copyWith(emotion: () => value));
   }
 
   void setAnswer(int index, String value) {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     switch (index) {
       case 0:
@@ -186,7 +186,7 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
 
   /// Saves the current entry. Returns true on success, false on failure.
   Future<bool> save() async {
-    final current = state.valueOrNull;
+    final current = state.value;
     final emotion = current?.emotion;
     if (current == null || emotion == null || !current.canSave || current.isSaving) return false;
 
@@ -250,7 +250,7 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
       ));
 
       // Reschedule reminder: cancel today's and ensure tomorrow's fires
-      final settings = ref.read(settingsControllerProvider).valueOrNull;
+      final settings = ref.read(settingsControllerProvider).value;
       if (settings != null && settings.reminderEnabled) {
         final notifService = ref.read(notificationServiceProvider);
         // Personalize tomorrow's notification with today's gratitude answer
@@ -279,13 +279,13 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
   }
 
   void toggleEdit() {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     state = AsyncData(current.copyWith(isEditing: !current.isEditing));
   }
 
   void attachPhoto(String path) {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
 
     // 기존에 선택한 미저장 사진이 있으면 디스크에서 정리한다.
@@ -301,7 +301,7 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
   }
 
   Future<void> removePhoto() async {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null || current.photoPath == null) return;
 
     // DB에 저장된 사진은 여기서 삭제하지 않는다.
@@ -349,5 +349,5 @@ class TodayController extends AutoDisposeAsyncNotifier<TodayState> {
 }
 
 final todayControllerProvider =
-    AutoDisposeAsyncNotifierProvider<TodayController, TodayState>(
-        TodayController.new);
+    AsyncNotifierProvider<TodayController, TodayState>(
+        TodayController.new, isAutoDispose: true);

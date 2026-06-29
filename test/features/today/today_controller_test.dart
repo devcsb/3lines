@@ -73,7 +73,7 @@ void main() {
       await container.read(todayControllerProvider.future);
       final notifier = container.read(todayControllerProvider.notifier);
       notifier.setEmotion(5);
-      final state = container.read(todayControllerProvider).valueOrNull;
+      final state = container.read(todayControllerProvider).value;
       expect(state?.emotion, 5);
     });
 
@@ -82,7 +82,7 @@ void main() {
       final notifier = container.read(todayControllerProvider.notifier);
       notifier.setEmotion(0);
       notifier.setEmotion(6);
-      final state = container.read(todayControllerProvider).valueOrNull;
+      final state = container.read(todayControllerProvider).value;
       expect(state?.emotion, isNull);
     });
   });
@@ -94,7 +94,7 @@ void main() {
       notifier.setAnswer(0, '답변1');
       notifier.setAnswer(1, '답변2');
       notifier.setAnswer(2, '답변3');
-      final state = container.read(todayControllerProvider).valueOrNull;
+      final state = container.read(todayControllerProvider).value;
       expect(state?.answer1, '답변1');
       expect(state?.answer2, '답변2');
       expect(state?.answer3, '답변3');
@@ -112,7 +112,7 @@ void main() {
       final success = await notifier.save();
       expect(success, isTrue);
 
-      final state = container.read(todayControllerProvider).valueOrNull;
+      final state = container.read(todayControllerProvider).value;
       expect(state?.isCompleted, isTrue);
       expect(state?.isEditing, isFalse);
       expect(state?.isSaving, isFalse);
@@ -131,7 +131,7 @@ void main() {
       final success = await notifier.save();
       expect(success, isFalse);
 
-      final state = container.read(todayControllerProvider).valueOrNull;
+      final state = container.read(todayControllerProvider).value;
       expect(state?.isCompleted, isFalse);
     });
 
@@ -210,7 +210,7 @@ void main() {
       await container.read(todayControllerProvider.future);
       final notifier = container.read(todayControllerProvider.notifier);
       notifier.attachPhoto('/photos/new.jpg');
-      final state = container.read(todayControllerProvider).valueOrNull;
+      final state = container.read(todayControllerProvider).value;
       expect(state?.photoPath, '/photos/new.jpg');
     });
 
@@ -224,7 +224,7 @@ void main() {
       notifier.attachPhoto('/photos/second.jpg');
 
       expect(fakePhoto.deletedPaths, contains('/photos/first.jpg'));
-      final state = container.read(todayControllerProvider).valueOrNull;
+      final state = container.read(todayControllerProvider).value;
       expect(state?.photoPath, '/photos/second.jpg');
     });
 
@@ -264,11 +264,11 @@ void main() {
       await container.read(todayControllerProvider.future);
       final notifier = container.read(todayControllerProvider.notifier);
 
-      expect(container.read(todayControllerProvider).valueOrNull?.isEditing, isFalse);
+      expect(container.read(todayControllerProvider).value?.isEditing, isFalse);
       notifier.toggleEdit();
-      expect(container.read(todayControllerProvider).valueOrNull?.isEditing, isTrue);
+      expect(container.read(todayControllerProvider).value?.isEditing, isTrue);
       notifier.toggleEdit();
-      expect(container.read(todayControllerProvider).valueOrNull?.isEditing, isFalse);
+      expect(container.read(todayControllerProvider).value?.isEditing, isFalse);
     });
   });
 
@@ -309,7 +309,7 @@ void main() {
 
       await notifier.save();
 
-      final state = container.read(todayControllerProvider).valueOrNull;
+      final state = container.read(todayControllerProvider).value;
       expect(state?.milestone, 7);
     });
 
@@ -321,7 +321,7 @@ void main() {
 
       await notifier.save();
 
-      final state = container.read(todayControllerProvider).valueOrNull;
+      final state = container.read(todayControllerProvider).value;
       // 1 is not a milestone (7, 30, 100, 365)
       expect(state?.milestone, isNull);
     });
@@ -338,7 +338,7 @@ void main() {
       final success = await notifier.save();
 
       expect(success, isFalse);
-      final state = container.read(todayControllerProvider).valueOrNull;
+      final state = container.read(todayControllerProvider).value;
       expect(state?.isSaving, isFalse);
 
       // Re-open for tearDown
@@ -353,7 +353,7 @@ void main() {
       notifier.setAnswer(-1, '무효');
       notifier.setAnswer(3, '무효');
       notifier.setAnswer(99, '무효');
-      final state = container.read(todayControllerProvider).valueOrNull;
+      final state = container.read(todayControllerProvider).value;
       expect(state?.answer1, '');
       expect(state?.answer2, '');
       expect(state?.answer3, '');
@@ -366,7 +366,7 @@ void main() {
       final notifier = container.read(todayControllerProvider.notifier);
       notifier.attachPhoto('/photos/some.jpg');
       await notifier.removePhoto();
-      final state = container.read(todayControllerProvider).valueOrNull;
+      final state = container.read(todayControllerProvider).value;
       expect(state?.photoPath, isNull);
     });
 
@@ -401,7 +401,7 @@ void main() {
 
       // DB photo must NOT be deleted here — it's cleaned up only on save()
       expect(fakePhoto.deletedPaths, isNot(contains('/db/photo.jpg')));
-      final state = container.read(todayControllerProvider).valueOrNull;
+      final state = container.read(todayControllerProvider).value;
       expect(state?.photoPath, isNull);
     });
   });

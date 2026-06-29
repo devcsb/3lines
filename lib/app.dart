@@ -28,7 +28,7 @@ final biometricLockEnabledProvider = FutureProvider<bool>((ref) async {
 /// 잠금 비활성화 시 lockState 의 강제 해제는 SettingsController.setBiometricLockEnabled 가 담당한다.
 final _routerStateProvider =
     Provider<({bool onboardingDone, bool locked})>((ref) {
-  final onboardingDone = ref.watch(onboardingDoneProvider).valueOrNull ?? false;
+  final onboardingDone = ref.watch(onboardingDoneProvider).value ?? false;
   final lockEnabled = ref.watch(biometricLockEnabledProvider);
   final lockState = ref.watch(biometricLockStateProvider);
 
@@ -36,7 +36,7 @@ final _routerStateProvider =
   if (lockEnabled is AsyncLoading) {
     return (onboardingDone: onboardingDone, locked: true);
   }
-  final enabled = lockEnabled.valueOrNull ?? false;
+  final enabled = lockEnabled.value ?? false;
   return (
     onboardingDone: onboardingDone,
     locked: enabled && lockState,
@@ -147,8 +147,8 @@ class ThreeLinesApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final themeAsync = ref.watch(themeNotifierProvider);
-    final mode = themeAsync.valueOrNull ?? ThemeMode.system;
-    final accent = ref.watch(accentThemeProvider).valueOrNull ?? 'sage';
+    final mode = themeAsync.value ?? ThemeMode.system;
+    final accent = ref.watch(accentThemeProvider).value ?? 'sage';
 
     return MaterialApp.router(
       title: '3Lines',

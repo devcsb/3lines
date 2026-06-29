@@ -56,7 +56,7 @@ class TimelineState {
       DateTime.now().subtract(Duration(days: period.days));
 }
 
-class TimelineController extends AutoDisposeAsyncNotifier<TimelineState> {
+class TimelineController extends AsyncNotifier<TimelineState> {
   @override
   Future<TimelineState> build() async {
     // Watch to rebuild when the repository changes (e.g. database reconnect)
@@ -89,7 +89,7 @@ class TimelineController extends AutoDisposeAsyncNotifier<TimelineState> {
   }
 
   Future<void> search(String query) async {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     if (query.isEmpty) {
       clearSearch();
@@ -104,7 +104,7 @@ class TimelineController extends AutoDisposeAsyncNotifier<TimelineState> {
   }
 
   void clearSearch() {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     state = AsyncData(current.copyWith(
       searchQuery: '',
@@ -130,7 +130,7 @@ class TimelineController extends AutoDisposeAsyncNotifier<TimelineState> {
       await photoService.deletePhoto(entry!.photoPath!);
     }
 
-    final period = state.valueOrNull?.period ?? TimelinePeriod.weeks12;
+    final period = state.value?.period ?? TimelinePeriod.weeks12;
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => _loadData(period));
 
@@ -141,5 +141,5 @@ class TimelineController extends AutoDisposeAsyncNotifier<TimelineState> {
 }
 
 final timelineControllerProvider =
-    AutoDisposeAsyncNotifierProvider<TimelineController, TimelineState>(
-        TimelineController.new);
+    AsyncNotifierProvider<TimelineController, TimelineState>(
+        TimelineController.new, isAutoDispose: true);

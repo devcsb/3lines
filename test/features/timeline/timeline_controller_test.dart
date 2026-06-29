@@ -158,7 +158,7 @@ void main() {
       final notifier = container.read(timelineControllerProvider.notifier);
       await notifier.search('여행');
 
-      final state = container.read(timelineControllerProvider).valueOrNull;
+      final state = container.read(timelineControllerProvider).value;
       expect(state?.isSearching, isTrue);
       expect(state?.searchResults.length, 1);
       expect(state?.searchResults.first.date, '2026-03-01');
@@ -170,7 +170,7 @@ void main() {
       await notifier.search('테스트');
       notifier.clearSearch();
 
-      final state = container.read(timelineControllerProvider).valueOrNull;
+      final state = container.read(timelineControllerProvider).value;
       expect(state?.isSearching, isFalse);
       expect(state?.searchResults, isEmpty);
     });

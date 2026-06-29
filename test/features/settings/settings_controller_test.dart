@@ -327,7 +327,7 @@ void main() {
       final result = await notifier.setBiometricLockEnabled(true);
       expect(result, isTrue);
 
-      final state = container.read(settingsControllerProvider).valueOrNull;
+      final state = container.read(settingsControllerProvider).value;
       expect(state?.biometricLockEnabled, isTrue);
     });
 
@@ -341,7 +341,7 @@ void main() {
       final result = await notifier.setBiometricLockEnabled(false);
       expect(result, isTrue);
 
-      final state = container.read(settingsControllerProvider).valueOrNull;
+      final state = container.read(settingsControllerProvider).value;
       expect(state?.biometricLockEnabled, isFalse);
     });
   });
@@ -366,7 +366,7 @@ void main() {
       expect(result, isTrue);
       expect(fakeNotif.scheduledCount, greaterThan(0));
 
-      final state = container.read(settingsControllerProvider).valueOrNull;
+      final state = container.read(settingsControllerProvider).value;
       expect(state?.reminderEnabled, isTrue);
     });
 
@@ -378,7 +378,7 @@ void main() {
       await notifier.setReminderEnabled(false);
 
       expect(fakeNotif.cancelledCount, greaterThan(0));
-      final state = container.read(settingsControllerProvider).valueOrNull;
+      final state = container.read(settingsControllerProvider).value;
       expect(state?.reminderEnabled, isFalse);
     });
   });
