@@ -120,5 +120,16 @@ void main() {
       expect(result.month, 2);
       expect(result.day, 28);
     });
+
+    test('12개월(1년) 전 같은 날짜를 윤년과 무관하게 구한다', () {
+      // getOneYearAgoEntry가 이 함수에 의존한다. Duration(365) 방식은
+      // 사이에 윤일이 끼면 하루 어긋나므로 회귀를 방지한다.
+      expect(subtractMonths(DateTime(2025, 3, 1), 12), DateTime(2024, 3, 1));
+      expect(subtractMonths(DateTime(2026, 1, 15), 12), DateTime(2025, 1, 15));
+    });
+
+    test('윤년 2월 29일의 12개월 전은 2월 28일로 clamp된다', () {
+      expect(subtractMonths(DateTime(2024, 2, 29), 12), DateTime(2023, 2, 28));
+    });
   });
 }

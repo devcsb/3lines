@@ -137,4 +137,43 @@ void main() {
       expect(result['커피'], 2);
     });
   });
+
+  group('stripParticle', () {
+    test('일반 조사를 분리한다', () {
+      expect(stripParticle('커피를'), '커피');
+      expect(stripParticle('가족이'), '가족');
+      expect(stripParticle('산책에'), '산책');
+    });
+
+    test('긴 조사를 짧은 조사보다 우선 분리한다', () {
+      expect(stripParticle('학교에서는'), '학교');
+      expect(stripParticle('친구에게서'), '친구');
+    });
+
+    test('분리하면 명사가 1자가 되는 경우 분리하지 않는다', () {
+      // noun.length >= 2 가드. 과도한 분리로 의미 손실을 막는다.
+      expect(stripParticle('집에'), '집에');
+      expect(stripParticle('차를'), '차를');
+    });
+
+    test('조사로 끝나지 않으면 원형을 유지한다', () {
+      expect(stripParticle('바나나'), '바나나');
+      expect(stripParticle('사과'), '사과');
+    });
+
+    test('명사 끝 글자가 1자 조사와 같아도 오분리하지 않는다', () {
+      // 바나나는 조사로 끝나지 않으므로 그대로, 바나나가는 가만 분리.
+      expect(stripParticle('바나나'), '바나나');
+      expect(stripParticle('바나나가'), '바나나');
+    });
+
+    test('extractKeywords에서 같은 명사의 다른 조사형이 병합된다', () {
+      final result = extractKeywords([
+        '산책을 했다',
+        '산책은 즐겁다',
+        '산책에 나섰다',
+      ]);
+      expect(result['산책'], 3);
+    });
+  });
 }

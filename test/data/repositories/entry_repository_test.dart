@@ -207,6 +207,23 @@ void main() {
       await repo.saveEntry(makeEntry('2026-03-01'));
       expect(await repo.getLongestStreak(), 1);
     });
+
+    test('grace day는 스트릭당 1회만 허용 (격일 기록은 무한 연속이 아님)', () async {
+      // 03-01, 03-03, 03-05: 각각 1일 공백. grace는 1회만 적용되어야 하므로
+      // 두 번째 공백에서 끊겨 최장 2가 된다(무제한 grace 회귀 방지).
+      await repo.saveEntry(makeEntry('2026-03-01'));
+      await repo.saveEntry(makeEntry('2026-03-03'));
+      await repo.saveEntry(makeEntry('2026-03-05'));
+      expect(await repo.getLongestStreak(), 2);
+    });
+
+    test('연속 기록 후 1일 공백은 grace로 이어진다', () async {
+      // 03-01,03-02 연속 → 03-04 1일 공백(grace) = 최장 3
+      await repo.saveEntry(makeEntry('2026-03-01'));
+      await repo.saveEntry(makeEntry('2026-03-02'));
+      await repo.saveEntry(makeEntry('2026-03-04'));
+      expect(await repo.getLongestStreak(), 3);
+    });
   });
 
   group('getEmotionMap', () {
@@ -471,6 +488,69 @@ void main() {
       await repo.importEntries(entries);
       final entry = await repo.getEntryByDate('2026-03-01');
       expect(entry!.emotion, 5); // clamped to max
+    });
+
+    test('손상된 prompts(비-Map) 항목이 있어도 다음 정상 항목은 import된다', () async {
+      // 회귀 방지: 과거엔 prompts[i] as Map의 ClassCastError가 try-catch 밖에서
+      // 발생해 transaction 전체가 중단되며 정상 항목까지 누락됐다.
+      final entries = [
+        {
+          'date': '2026-03-01',
+          'emotion': 3,
+          'prompts': ['not-a-map', 123, null],
+        },
+        {
+          'date': '2026-03-02',
+          'emotion': 4,
+          'prompts': [
+            {'question': 'q', 'answer': '정상'},
+          ],
+        },
+      ];
+      await repo.importEntries(entries);
+      final ok = await repo.getEntryByDate('2026-03-02');
+      expect(ok, isNotNull);
+      expect(ok!.answer1, '정상');
+    });
+
+    test('깨진 created_at/updated_at 문자열도 throw 없이 import된다', () async {
+      final entries = [
+        {
+          'date': '2026-03-03',
+          'emotion': 2,
+          'prompts': [
+            {'question': 'q', 'answer': 'a'},
+          ],
+          'created_at': 'not-a-date',
+          'updated_at': '!!!',
+        },
+      ];
+      final result = await repo.importEntries(entries);
+      expect(result.imported, 1);
+      expect(await repo.getEntryByDate('2026-03-03'), isNotNull);
+    });
+
+    test('emotion이 숫자가 아니면 해당 항목만 skip되고 나머지는 import된다', () async {
+      final entries = [
+        {
+          'date': '2026-03-04',
+          'emotion': 'oops',
+          'prompts': [
+            {'question': 'q', 'answer': 'a'},
+          ],
+        },
+        {
+          'date': '2026-03-05',
+          'emotion': 4,
+          'prompts': [
+            {'question': 'q', 'answer': 'ok'},
+          ],
+        },
+      ];
+      final result = await repo.importEntries(entries);
+      expect(result.skipped, 1);
+      expect(result.imported, 1);
+      expect(await repo.getEntryByDate('2026-03-05'), isNotNull);
     });
   });
 
