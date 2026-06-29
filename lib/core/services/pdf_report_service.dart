@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -9,13 +10,29 @@ import '../theme/app_colors.dart';
 
 /// Generates a monthly PDF journal report.
 class PdfReportService {
+  // 한글 글리프 폰트(나눔명조)를 1회 로드 후 캐시한다. 오프라인 앱이라
+  // 런타임 fetch 대신 번들 TTF를 사용한다. 로드 실패 시 null로 폴백.
+  pw.ThemeData? _theme;
+  bool _themeLoaded = false;
+
+  Future<pw.ThemeData?> _koreanTheme() async {
+    if (_themeLoaded) return _theme;
+    _themeLoaded = true;
+    try {
+      final base = pw.Font.ttf(
+          await rootBundle.load('assets/fonts/NanumMyeongjo-Regular.ttf'));
+      final bold = pw.Font.ttf(
+          await rootBundle.load('assets/fonts/NanumMyeongjo-Bold.ttf'));
+      _theme = pw.ThemeData.withFont(base: base, bold: bold);
+    } catch (_) {
+      // 폰트 에셋 로드 실패 시 기본 폰트로 폴백(한글이 깨질 수 있으나 크래시는 없음).
+      _theme = null;
+    }
+    return _theme;
+  }
+
   /// Builds a PDF document for the given month's entries and summary data.
-  ///
-  /// ponytail: 현재 PDF에 한글 글리프 폰트가 임베딩돼 있지 않아 한국어 텍스트가
-  /// 깨진다(테스트 실행 시 "Unable to find a font to draw" 경고로 확인됨).
-  /// printing의 PdfGoogleFonts에는 Noto Sans KR(CJK)이 없으므로, 오프라인 앱
-  /// 원칙에 맞게 NotoSansKR TTF를 assets로 번들한 뒤 pw.Font.ttf로 로드해
-  /// pw.Document(theme: ThemeData.withFont(...))에 적용해야 한다(폰트 에셋 추가 필요).
+  /// 한글 렌더링을 위해 번들된 나눔명조를 기본 폰트로 적용한다.
   Future<Uint8List> generateMonthlyReport({
     required int year,
     required int month,
@@ -23,7 +40,7 @@ class PdfReportService {
     required double averageEmotion,
     required String topKeyword,
   }) async {
-    final doc = pw.Document();
+    final doc = pw.Document(theme: await _koreanTheme());
     final monthLabel = '$year년 $month월';
     final daysInMonth = DateTime(year, month + 1, 0).day;
 

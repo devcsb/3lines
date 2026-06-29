@@ -41,3 +41,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    # 나눔명조(OFL): PDF 월간 리포트 한글 렌더링용 번들 폰트.
+    - assets/fonts/NanumMyeongjo-Regular.ttf
+    - assets/fonts/NanumMyeongjo-Bold.ttf

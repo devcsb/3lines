@@ -5,6 +5,9 @@ import 'package:three_lines/data/models/daily_entry.dart';
 /// PDF 생성 경로는 기존에 테스트가 전혀 없었다(audit). 빈/단일/경계 입력에서
 /// throw 없이 유효한 PDF 바이트(%PDF 헤더)를 반환하는지 검증한다.
 void main() {
+  // rootBundle로 번들 폰트(나눔명조)를 로드하려면 바인딩 초기화가 필요하다.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   final service = PdfReportService();
 
   DailyEntry entry(
