@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:three_lines/features/today/today_controller.dart';
+import 'package:three_lines/features/today/today_state.dart';
 
 void main() {
   group('TodayState', () {

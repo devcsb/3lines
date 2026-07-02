@@ -8,6 +8,7 @@ import 'package:three_lines/data/models/daily_entry.dart';
 import 'package:three_lines/data/repositories/entry_repository.dart';
 import 'package:three_lines/data/repositories/settings_repository.dart';
 import 'package:three_lines/features/timeline/timeline_controller.dart';
+import 'package:three_lines/features/timeline/timeline_state.dart';
 
 import '../../helpers/fake_photo_service.dart';
 
@@ -24,11 +25,13 @@ void main() {
     settingsRepo = SettingsRepository(db);
     fakePhoto = FakePhotoService();
 
-    container = ProviderContainer(overrides: [
-      entryRepositoryProvider.overrideWithValue(entryRepo),
-      settingsRepositoryProvider.overrideWithValue(settingsRepo),
-      photoServiceProvider.overrideWithValue(fakePhoto),
-    ]);
+    container = ProviderContainer(
+      overrides: [
+        entryRepositoryProvider.overrideWithValue(entryRepo),
+        settingsRepositoryProvider.overrideWithValue(settingsRepo),
+        photoServiceProvider.overrideWithValue(fakePhoto),
+      ],
+    );
   });
 
   tearDown(() async {
@@ -88,10 +91,9 @@ void main() {
 
     test('deletes photo file when entry has a photo', () async {
       const photoPath = '/photos/diary_photo.jpg';
-      await entryRepo.saveEntry(makeEntry(
-        du.getTodayString(),
-        photoPath: photoPath,
-      ));
+      await entryRepo.saveEntry(
+        makeEntry(du.getTodayString(), photoPath: photoPath),
+      );
       await container.read(timelineControllerProvider.future);
 
       final notifier = container.read(timelineControllerProvider.notifier);
@@ -138,20 +140,24 @@ void main() {
 
   group('search', () {
     test('returns matching entries', () async {
-      await entryRepo.saveEntry(DailyEntry(
-        date: '2026-03-01',
-        emotion: 4,
-        answer1: '가족과 여행',
-        answer2: '',
-        answer3: '',
-      ));
-      await entryRepo.saveEntry(DailyEntry(
-        date: '2026-03-02',
-        emotion: 3,
-        answer1: '운동을 했다',
-        answer2: '',
-        answer3: '',
-      ));
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-03-01',
+          emotion: 4,
+          answer1: '가족과 여행',
+          answer2: '',
+          answer3: '',
+        ),
+      );
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-03-02',
+          emotion: 3,
+          answer1: '운동을 했다',
+          answer2: '',
+          answer3: '',
+        ),
+      );
 
       await container.read(timelineControllerProvider.future);
       final notifier = container.read(timelineControllerProvider.notifier);

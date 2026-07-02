@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/services/haptic_service.dart';
+import '../../core/time/app_clock.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../data/models/daily_entry.dart';
 import '../../shared/widgets/staggered_fade_in.dart';
 import 'timeline_controller.dart';
+import 'timeline_state.dart';
 import 'widgets/entry_detail_sheet.dart';
 import 'widgets/heatmap_grid.dart';
 import 'widgets/streak_badge.dart';
@@ -46,11 +48,12 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('데이터를 불러올 수 없어요',
-                  style: Theme.of(context).textTheme.bodyLarge),
+              Text(
+                '데이터를 불러올 수 없어요',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
               TextButton(
-                onPressed: () =>
-                    ref.invalidate(timelineControllerProvider),
+                onPressed: () => ref.invalidate(timelineControllerProvider),
                 child: const Text('다시 시도'),
               ),
             ],
@@ -79,21 +82,28 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer
-                            .withValues(alpha: 0.3),
+                        color: theme.colorScheme.primaryContainer.withValues(
+                          alpha: 0.3,
+                        ),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.grid_view_rounded,
-                          size: 28,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.3)),
+                      child: Icon(
+                        Icons.grid_view_rounded,
+                        size: 28,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.3,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
-                    Text('첫 기록을 시작해보세요',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.5),
-                        )),
+                    Text(
+                      '첫 기록을 시작해보세요',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.5,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -102,146 +112,155 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
 
           return SafeArea(
             child: RefreshIndicator(
-            onRefresh: () async {
-              HapticService.light();
-              ref.invalidate(timelineControllerProvider);
-            },
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 8),
-                  Text('타임라인', style: theme.textTheme.headlineSmall),
-                  const SizedBox(height: 16),
-                  // Search bar
-                  SearchBar(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    hintText: '기록 검색...',
-                    leading: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Icon(Icons.search_rounded,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.4)),
-                    ),
-                    trailing: [
-                      if (state.isSearching)
-                        IconButton(
-                          icon: const Icon(Icons.clear_rounded),
-                          onPressed: () {
-                            _searchController.clear();
-                            _searchFocusNode.unfocus();
-                            ref
-                                .read(timelineControllerProvider.notifier)
-                                .clearSearch();
-                          },
+              onRefresh: () async {
+                HapticService.light();
+                ref.invalidate(timelineControllerProvider);
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    Text('타임라인', style: theme.textTheme.headlineSmall),
+                    const SizedBox(height: 16),
+                    // Search bar
+                    SearchBar(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      hintText: '기록 검색...',
+                      leading: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Icon(
+                          Icons.search_rounded,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.4,
+                          ),
                         ),
-                    ],
-                    onChanged: (query) {
-                      _debounceTimer?.cancel();
-                      if (query.trim().isEmpty) {
-                        ref
-                            .read(timelineControllerProvider.notifier)
-                            .clearSearch();
-                        return;
-                      }
-                      _debounceTimer = Timer(
-                          const Duration(milliseconds: 300), () {
-                        ref
-                            .read(timelineControllerProvider.notifier)
-                            .search(query.trim());
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  if (state.isSearching)
-                    _buildSearchResults(theme, state)
-                  else ...[
-                    StreakBadge(
-                      currentStreak: state.currentStreak,
-                      longestStreak: state.longestStreak,
-                    ),
-                    const SizedBox(height: 24),
-                    // Period toggle
-                    Semantics(
-                      label: '타임라인 기간 선택',
-                      child: SegmentedButton<TimelinePeriod>(
-                        segments: const [
-                          ButtonSegment(
-                            value: TimelinePeriod.weeks12,
-                            label: Text('12주'),
+                      ),
+                      trailing: [
+                        if (state.isSearching)
+                          IconButton(
+                            icon: const Icon(Icons.clear_rounded),
+                            onPressed: () {
+                              _searchController.clear();
+                              _searchFocusNode.unfocus();
+                              ref
+                                  .read(timelineControllerProvider.notifier)
+                                  .clearSearch();
+                            },
                           ),
-                          ButtonSegment(
-                            value: TimelinePeriod.months6,
-                            label: Text('6개월'),
-                          ),
-                          ButtonSegment(
-                            value: TimelinePeriod.year1,
-                            label: Text('1년'),
-                          ),
-                        ],
-                        selected: {state.period},
-                        onSelectionChanged: (selection) {
+                      ],
+                      onChanged: (query) {
+                        _debounceTimer?.cancel();
+                        if (query.trim().isEmpty) {
                           ref
                               .read(timelineControllerProvider.notifier)
-                              .setPeriod(selection.first);
-                        },
-                      ),
+                              .clearSearch();
+                          return;
+                        }
+                        _debounceTimer = Timer(
+                          const Duration(milliseconds: 300),
+                          () {
+                            ref
+                                .read(timelineControllerProvider.notifier)
+                                .search(query.trim());
+                          },
+                        );
+                      },
                     ),
-                    const SizedBox(height: 24),
-                    Stack(
-                      children: [
-                        HeatmapGrid(
-                          emotionMap: state.emotionMap,
-                          startDate: state.startDate,
-                          onCellTap: (dateStr) async {
-                            if (_loadingEntry) return;
-                            setState(() => _loadingEntry = true);
-                            try {
-                              final entry = await ref
-                                  .read(timelineControllerProvider.notifier)
-                                  .getEntryByDate(dateStr);
-                              if (!mounted) return;
-                              setState(() => _loadingEntry = false);
-                              if (entry != null) {
-                                _showEntryDetail(entry);
-                              }
-                            } catch (_) {
-                              if (!context.mounted) return;
-                              setState(() => _loadingEntry = false);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('기록을 불러올 수 없어요')),
-                              );
-                            }
+                    const SizedBox(height: 20),
+                    if (state.isSearching)
+                      _buildSearchResults(theme, state)
+                    else ...[
+                      StreakBadge(
+                        currentStreak: state.currentStreak,
+                        longestStreak: state.longestStreak,
+                      ),
+                      const SizedBox(height: 24),
+                      // Period toggle
+                      Semantics(
+                        label: '타임라인 기간 선택',
+                        child: SegmentedButton<TimelinePeriod>(
+                          segments: const [
+                            ButtonSegment(
+                              value: TimelinePeriod.weeks12,
+                              label: Text('12주'),
+                            ),
+                            ButtonSegment(
+                              value: TimelinePeriod.months6,
+                              label: Text('6개월'),
+                            ),
+                            ButtonSegment(
+                              value: TimelinePeriod.year1,
+                              label: Text('1년'),
+                            ),
+                          ],
+                          selected: {state.period},
+                          onSelectionChanged: (selection) {
+                            ref
+                                .read(timelineControllerProvider.notifier)
+                                .setPeriod(selection.first);
                           },
                         ),
-                        if (_loadingEntry)
-                          Positioned.fill(
-                            child: Container(
-                              color: theme.colorScheme.surface
-                                  .withValues(alpha: 0.6),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(height: 24),
+                      Stack(
+                        children: [
+                          HeatmapGrid(
+                            emotionMap: state.emotionMap,
+                            startDate: state.startDateFrom(
+                              ref.read(appClockProvider).now(),
+                            ),
+                            onCellTap: (dateStr) async {
+                              if (_loadingEntry) return;
+                              setState(() => _loadingEntry = true);
+                              try {
+                                final entry = await ref
+                                    .read(timelineControllerProvider.notifier)
+                                    .getEntryByDate(dateStr);
+                                if (!mounted) return;
+                                setState(() => _loadingEntry = false);
+                                if (entry != null) {
+                                  _showEntryDetail(entry);
+                                }
+                              } catch (_) {
+                                if (!context.mounted) return;
+                                setState(() => _loadingEntry = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('기록을 불러올 수 없어요'),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                          if (_loadingEntry)
+                            Positioned.fill(
+                              child: Container(
+                                color: theme.colorScheme.surface.withValues(
+                                  alpha: 0.6,
+                                ),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: theme.colorScheme.primary,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
           );
         },
       ),
@@ -276,68 +295,78 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
         ...List.generate(state.searchResults.length, (i) {
           final entry = state.searchResults[i];
           final emotionColor =
-              AppColors.emotionColors[entry.emotion] ?? theme.colorScheme.outline;
+              AppColors.emotionColors[entry.emotion] ??
+              theme.colorScheme.outline;
           return StaggeredFadeIn(
             index: i,
             child: Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: () => _showEntryDetail(entry),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: theme.colorScheme.outlineVariant
-                        .withValues(alpha: 0.5),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () => _showEntryDetail(entry),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
                   ),
-                ),
-                child: Row(
-                  children: [
-                    // Emotion dot
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: emotionColor,
-                        shape: BoxShape.circle,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: theme.colorScheme.outlineVariant.withValues(
+                        alpha: 0.5,
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            du.formatDateString(entry.date),
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.5),
+                  ),
+                  child: Row(
+                    children: [
+                      // Emotion dot
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: emotionColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              du.formatDateString(entry.date),
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            [entry.answer1, entry.answer2, entry.answer3]
-                                .where((a) => a.isNotEmpty)
-                                .join(' · '),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            Text(
+                              [
+                                entry.answer1,
+                                entry.answer2,
+                                entry.answer3,
+                              ].where((a) => a.isNotEmpty).join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Icon(Icons.chevron_right_rounded,
+                      Icon(
+                        Icons.chevron_right_rounded,
                         size: 20,
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.3)),
-                  ],
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
           );
         }),
       ],

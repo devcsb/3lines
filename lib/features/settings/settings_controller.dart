@@ -3,59 +3,21 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import '../../app.dart';
+import '../../app/router.dart';
 import '../../core/constants/default_prompts.dart';
+import '../../core/events/journal_changes.dart';
 import '../../core/services/biometric_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/photo_service.dart';
+import '../../core/settings/settings_keys.dart';
 import '../../core/theme/theme_notifier.dart';
-import '../lock/lock_screen.dart';
+import '../../core/time/app_clock.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/settings_repository.dart';
-import '../insights/insights_controller.dart';
-import '../timeline/timeline_controller.dart';
+import '../lock/lock_screen.dart';
 import '../today/today_controller.dart';
-
-class SettingsState {
-  final List<String> prompts;
-  final bool reminderEnabled;
-  final int reminderHour;
-  final int reminderMinute;
-  final String themeMode;
-  final String appVersion;
-  final bool biometricLockEnabled;
-
-  const SettingsState({
-    this.prompts = const ['', '', ''],
-    this.reminderEnabled = false,
-    this.reminderHour = 21,
-    this.reminderMinute = 0,
-    this.themeMode = 'system',
-    this.appVersion = '',
-    this.biometricLockEnabled = false,
-  });
-
-  SettingsState copyWith({
-    List<String>? prompts,
-    bool? reminderEnabled,
-    int? reminderHour,
-    int? reminderMinute,
-    String? themeMode,
-    String? appVersion,
-    bool? biometricLockEnabled,
-  }) {
-    return SettingsState(
-      prompts: prompts ?? this.prompts,
-      reminderEnabled: reminderEnabled ?? this.reminderEnabled,
-      reminderHour: reminderHour ?? this.reminderHour,
-      reminderMinute: reminderMinute ?? this.reminderMinute,
-      themeMode: themeMode ?? this.themeMode,
-      appVersion: appVersion ?? this.appVersion,
-      biometricLockEnabled: biometricLockEnabled ?? this.biometricLockEnabled,
-    );
-  }
-}
+import 'settings_state.dart';
 
 class SettingsController extends AsyncNotifier<SettingsState> {
   @override
@@ -65,7 +27,9 @@ class SettingsController extends AsyncNotifier<SettingsState> {
       settingsRepo.getPrompts(),
       settingsRepo.getReminderSettings(),
       settingsRepo.getThemeMode(),
-      PackageInfo.fromPlatform().then((info) => info.version).catchError((_) => '1.0.0'),
+      PackageInfo.fromPlatform()
+          .then((info) => info.version)
+          .catchError((_) => '1.0.0'),
       settingsRepo.isBiometricLockEnabled(),
     ]);
     final prompts = results[0] as List<String>;
@@ -86,8 +50,12 @@ class SettingsController extends AsyncNotifier<SettingsState> {
   }
 
   Future<void> updatePrompt(int index, String value) async {
+    if (index < 0 || index >= SettingKeys.promptKeys.length) {
+      return;
+    }
+
     final repo = ref.read(settingsRepositoryProvider);
-    await repo.setSetting('prompt_${index + 1}', value);
+    await repo.setSetting(SettingKeys.promptKeys[index], value);
     final current = state.value;
     if (current == null) return;
     final newPrompts = List<String>.from(current.prompts);
@@ -100,12 +68,16 @@ class SettingsController extends AsyncNotifier<SettingsState> {
   Future<void> resetPrompts() async {
     final repo = ref.read(settingsRepositoryProvider);
     for (int i = 0; i < 3; i++) {
-      await repo.setSetting('prompt_${i + 1}', defaultPromptQuestions[i]);
+      await repo.setSetting(
+        SettingKeys.promptKeys[i],
+        defaultPromptQuestions[i],
+      );
     }
     final current = state.value;
     if (current == null) return;
     state = AsyncData(
-        current.copyWith(prompts: List.from(defaultPromptQuestions)));
+      current.copyWith(prompts: List.from(defaultPromptQuestions)),
+    );
     ref.invalidate(todayControllerProvider);
   }
 
@@ -146,7 +118,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
       await notifService.cancelReminder();
     }
 
-    await repo.setSetting('reminder_enabled', enabled.toString());
+    await repo.setSetting(SettingKeys.reminderEnabled, enabled.toString());
     state = AsyncData(current.copyWith(reminderEnabled: enabled));
     return true;
   }
@@ -159,8 +131,8 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     if (current == null) return false;
 
     try {
-      await repo.setSetting('reminder_hour', hour.toString());
-      await repo.setSetting('reminder_minute', minute.toString());
+      await repo.setSetting(SettingKeys.reminderHour, hour.toString());
+      await repo.setSetting(SettingKeys.reminderMinute, minute.toString());
 
       if (current.reminderEnabled) {
         final entryRepo = ref.read(entryRepositoryProvider);
@@ -184,7 +156,8 @@ class SettingsController extends AsyncNotifier<SettingsState> {
       }
 
       state = AsyncData(
-          current.copyWith(reminderHour: hour, reminderMinute: minute));
+        current.copyWith(reminderHour: hour, reminderMinute: minute),
+      );
       return true;
     } catch (e) {
       return false;
@@ -204,7 +177,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
       if (!authenticated) return false;
     }
 
-    await repo.setSetting('biometric_lock_enabled', enabled.toString());
+    await repo.setSetting(SettingKeys.biometricLockEnabled, enabled.toString());
     final current = state.value;
     if (current == null) return false;
     state = AsyncData(current.copyWith(biometricLockEnabled: enabled));
@@ -234,7 +207,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     final data = {
       'app': '3Lines',
       'version': '1.0.0',
-      'exported_at': du.formatWithTimezone(DateTime.now()),
+      'exported_at': du.formatWithTimezone(ref.read(appClockProvider).now()),
       'total_entries': entries.length,
       'entries': entries,
     };
@@ -265,9 +238,8 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     final result = await entryRepo.importEntries(entries);
 
     // Refresh dependent screens
+    ref.read(journalChangesProvider.notifier).markChanged();
     ref.invalidate(todayControllerProvider);
-    ref.invalidate(timelineControllerProvider);
-    ref.invalidate(insightsControllerProvider);
 
     return (imported: result.imported, skipped: result.skipped + skippedByType);
   }
@@ -288,10 +260,8 @@ class SettingsController extends AsyncNotifier<SettingsState> {
         await photoService.deletePhoto(path);
       }
 
-      // Invalidate all data-dependent screens
+      ref.read(journalChangesProvider.notifier).markChanged();
       ref.invalidate(todayControllerProvider);
-      ref.invalidate(timelineControllerProvider);
-      ref.invalidate(insightsControllerProvider);
       return true;
     } catch (e) {
       return false;
@@ -301,4 +271,6 @@ class SettingsController extends AsyncNotifier<SettingsState> {
 
 final settingsControllerProvider =
     AsyncNotifierProvider<SettingsController, SettingsState>(
-        SettingsController.new, isAutoDispose: true);
+      SettingsController.new,
+      isAutoDispose: true,
+    );

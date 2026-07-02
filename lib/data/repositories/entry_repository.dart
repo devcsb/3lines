@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/date_utils.dart' as du;
+import '../../core/time/app_clock.dart';
 import '../../core/utils/text_analysis.dart';
 import '../database/app_database.dart';
 import '../models/daily_entry.dart';
@@ -9,8 +10,10 @@ import '../models/weekly_retrospective.dart';
 
 class EntryRepository {
   final AppDatabase _db;
+  final AppClock _clock;
 
-  EntryRepository(this._db);
+  EntryRepository(this._db, {AppClock clock = const AppClock()})
+    : _clock = clock;
 
   // -- Drift ↔ DailyEntry mapping (kept in repository layer) --
 
@@ -31,7 +34,10 @@ class EntryRepository {
     );
   }
 
-  EntriesCompanion _toCompanion(DailyEntry entry, {bool preserveTimestamps = false}) {
+  EntriesCompanion _toCompanion(
+    DailyEntry entry, {
+    bool preserveTimestamps = false,
+  }) {
     return EntriesCompanion(
       id: entry.id != null ? Value(entry.id!) : const Value.absent(),
       date: Value(entry.date),
@@ -43,41 +49,48 @@ class EntryRepository {
       prompt3: Value(entry.prompt3),
       answer3: Value(entry.answer3),
       createdAt: Value(entry.createdAt),
-      updatedAt: Value(preserveTimestamps ? entry.updatedAt : DateTime.now()),
+      updatedAt: Value(preserveTimestamps ? entry.updatedAt : _clock.now()),
       photoPath: Value(entry.photoPath),
     );
   }
 
   // -- CRUD --
 
-  Future<DailyEntry?> getTodayEntry() => getEntryByDate(du.getTodayString());
+  Future<DailyEntry?> getTodayEntry() => getEntryByDate(_clock.todayString());
 
   Future<DailyEntry?> getEntryByDate(String date) async {
-    final query = _db.select(_db.entries)
-      ..where((t) => t.date.equals(date));
+    final query = _db.select(_db.entries)..where((t) => t.date.equals(date));
     final result = await query.getSingleOrNull();
     return result != null ? _fromEntry(result) : null;
   }
 
-  Future<void> saveEntry(DailyEntry entry, {bool preserveTimestamps = false}) async {
-    final companion = _toCompanion(entry, preserveTimestamps: preserveTimestamps);
-    await _db.into(_db.entries).insert(
-      companion,
-      onConflict: DoUpdate(
-        (old) => EntriesCompanion(
-          emotion: companion.emotion,
-          prompt1: companion.prompt1,
-          answer1: companion.answer1,
-          prompt2: companion.prompt2,
-          answer2: companion.answer2,
-          prompt3: companion.prompt3,
-          answer3: companion.answer3,
-          updatedAt: companion.updatedAt,
-          photoPath: companion.photoPath,
-        ),
-        target: [_db.entries.date],
-      ),
+  Future<void> saveEntry(
+    DailyEntry entry, {
+    bool preserveTimestamps = false,
+  }) async {
+    final companion = _toCompanion(
+      entry,
+      preserveTimestamps: preserveTimestamps,
     );
+    await _db
+        .into(_db.entries)
+        .insert(
+          companion,
+          onConflict: DoUpdate(
+            (old) => EntriesCompanion(
+              emotion: companion.emotion,
+              prompt1: companion.prompt1,
+              answer1: companion.answer1,
+              prompt2: companion.prompt2,
+              answer2: companion.answer2,
+              prompt3: companion.prompt3,
+              answer3: companion.answer3,
+              updatedAt: companion.updatedAt,
+              photoPath: companion.photoPath,
+            ),
+            target: [_db.entries.date],
+          ),
+        );
   }
 
   Future<void> deleteAllEntries() async {
@@ -93,10 +106,7 @@ class EntryRepository {
     final query = _db.select(_db.entries)
       ..where((t) => t.photoPath.isNotNull());
     final results = await query.get();
-    return results
-        .map((e) => e.photoPath)
-        .whereType<String>()
-        .toList();
+    return results.map((e) => e.photoPath).whereType<String>().toList();
   }
 
   /// Returns the entry immediately before [currentDate], or null.
@@ -140,22 +150,26 @@ class EntryRepository {
       readsFrom: {_db.entries},
     );
     final results = await dbQuery.get();
-    return results.map((row) => _fromEntry(
-      Entry(
-        id: row.read<int>('id'),
-        date: row.read<String>('date'),
-        emotion: row.read<int>('emotion'),
-        prompt1: row.read<String>('prompt1'),
-        answer1: row.read<String>('answer1'),
-        prompt2: row.read<String>('prompt2'),
-        answer2: row.read<String>('answer2'),
-        prompt3: row.read<String>('prompt3'),
-        answer3: row.read<String>('answer3'),
-        createdAt: row.read<DateTime>('created_at'),
-        updatedAt: row.read<DateTime>('updated_at'),
-        photoPath: row.readNullable<String>('photo_path'),
-      ),
-    )).toList();
+    return results
+        .map(
+          (row) => _fromEntry(
+            Entry(
+              id: row.read<int>('id'),
+              date: row.read<String>('date'),
+              emotion: row.read<int>('emotion'),
+              prompt1: row.read<String>('prompt1'),
+              answer1: row.read<String>('answer1'),
+              prompt2: row.read<String>('prompt2'),
+              answer2: row.read<String>('answer2'),
+              prompt3: row.read<String>('prompt3'),
+              answer3: row.read<String>('answer3'),
+              createdAt: row.read<DateTime>('created_at'),
+              updatedAt: row.read<DateTime>('updated_at'),
+              photoPath: row.readNullable<String>('photo_path'),
+            ),
+          ),
+        )
+        .toList();
   }
 
   // -- Queries --
@@ -167,20 +181,23 @@ class EntryRepository {
     return result.read(count) ?? 0;
   }
 
-  Future<Map<String, int>> getEmotionMap(
-      DateTime start, DateTime end) async {
+  Future<Map<String, int>> getEmotionMap(DateTime start, DateTime end) async {
     final results = await _queryByDateRange(start, end);
     return {for (final r in results) r.date: r.emotion};
   }
 
   Future<List<({DateTime date, int emotion})>> getEmotionTrend(
-      DateTime start, DateTime end) async {
+    DateTime start,
+    DateTime end,
+  ) async {
     final startStr = du.dateToString(start);
     final endStr = du.dateToString(end);
     final query = _db.select(_db.entries)
-      ..where((t) =>
-          t.date.isBiggerOrEqualValue(startStr) &
-          t.date.isSmallerOrEqualValue(endStr))
+      ..where(
+        (t) =>
+            t.date.isBiggerOrEqualValue(startStr) &
+            t.date.isSmallerOrEqualValue(endStr),
+      )
       ..orderBy([(t) => OrderingTerm.asc(t.date)]);
     final results = await query.get();
     return results
@@ -195,8 +212,10 @@ class EntryRepository {
     final avg = _db.entries.emotion.avg();
     final query = _db.selectOnly(_db.entries)
       ..addColumns([avg])
-      ..where(_db.entries.date.isBiggerOrEqualValue(startStr) &
-          _db.entries.date.isSmallerOrEqualValue(endStr));
+      ..where(
+        _db.entries.date.isBiggerOrEqualValue(startStr) &
+            _db.entries.date.isSmallerOrEqualValue(endStr),
+      );
     final result = await query.getSingle();
     return result.read(avg) ?? 0.0;
   }
@@ -206,14 +225,15 @@ class EntryRepository {
   /// Returns (streak, usedGraceDay). Grace day allows 1 missed day
   /// without breaking the streak.
   Future<({int count, bool usedGraceDay})> getCurrentStreakWithGrace() async {
-    final now = DateTime.now();
+    final now = _clock.now();
     final cutoff = now.subtract(const Duration(days: 400));
     final cutoffStr = du.dateToString(cutoff);
 
-    final recentEntries = await (_db.select(_db.entries)
-          ..where((t) => t.date.isBiggerOrEqualValue(cutoffStr))
-          ..orderBy([(t) => OrderingTerm.desc(t.date)]))
-        .get();
+    final recentEntries =
+        await (_db.select(_db.entries)
+              ..where((t) => t.date.isBiggerOrEqualValue(cutoffStr))
+              ..orderBy([(t) => OrderingTerm.desc(t.date)]))
+            .get();
 
     if (recentEntries.isEmpty) return (count: 0, usedGraceDay: false);
 
@@ -233,11 +253,19 @@ class EntryRepository {
       final dateStr = du.dateToString(checkDate);
       if (dateSet.contains(dateStr)) {
         streak++;
-        checkDate = DateTime(checkDate.year, checkDate.month, checkDate.day - 1);
+        checkDate = DateTime(
+          checkDate.year,
+          checkDate.month,
+          checkDate.day - 1,
+        );
       } else if (!usedGraceDay && streak > 0) {
         // Allow one grace day (skip this gap, continue checking)
         usedGraceDay = true;
-        checkDate = DateTime(checkDate.year, checkDate.month, checkDate.day - 1);
+        checkDate = DateTime(
+          checkDate.year,
+          checkDate.month,
+          checkDate.day - 1,
+        );
       } else {
         break;
       }
@@ -253,12 +281,13 @@ class EntryRepository {
 
   Future<int> getLongestStreak() async {
     // Bound to last 3 years for performance
-    final cutoff = DateTime.now().subtract(const Duration(days: 1095));
+    final cutoff = _clock.daysAgo(1095);
     final cutoffStr = du.dateToString(cutoff);
-    final allEntries = await (_db.select(_db.entries)
-          ..where((t) => t.date.isBiggerOrEqualValue(cutoffStr))
-          ..orderBy([(t) => OrderingTerm.asc(t.date)]))
-        .get();
+    final allEntries =
+        await (_db.select(_db.entries)
+              ..where((t) => t.date.isBiggerOrEqualValue(cutoffStr))
+              ..orderBy([(t) => OrderingTerm.asc(t.date)]))
+            .get();
 
     if (allEntries.isEmpty) return 0;
 
@@ -292,34 +321,35 @@ class EntryRepository {
   Future<DailyEntry?> getOneYearAgoEntry() async {
     // subtractMonths(12)로 정확히 1년 전 같은 날짜를 구한다.
     // Duration(days: 365)는 윤년에 하루 어긋난다.
-    final oneYearAgo = du.subtractMonths(DateTime.now(), 12);
+    final oneYearAgo = _clock.sameDateMonthsAgo(12);
     return getEntryByDate(du.dateToString(oneYearAgo));
   }
 
   /// Returns the entry from the same date 6 months ago, if it exists.
   Future<DailyEntry?> getSixMonthsAgoEntry() async {
-    final sixMonthsAgo = du.subtractMonths(DateTime.now(), 6);
+    final sixMonthsAgo = _clock.sameDateMonthsAgo(6);
     return getEntryByDate(du.dateToString(sixMonthsAgo));
   }
 
   /// Returns the entry from the same date 1 month ago, if it exists.
   Future<DailyEntry?> getOneMonthAgoEntry() async {
-    final oneMonthAgo = du.subtractMonths(DateTime.now(), 1);
+    final oneMonthAgo = _clock.sameDateMonthsAgo(1);
     return getEntryByDate(du.dateToString(oneMonthAgo));
   }
 
   /// Returns average emotion for a date range.
   /// Used for weekly delta calculation.
-  Future<double?> getAverageEmotionOrNull(
-      DateTime start, DateTime end) async {
+  Future<double?> getAverageEmotionOrNull(DateTime start, DateTime end) async {
     final startStr = du.dateToString(start);
     final endStr = du.dateToString(end);
     final avg = _db.entries.emotion.avg();
     final count = _db.entries.id.count();
     final query = _db.selectOnly(_db.entries)
       ..addColumns([avg, count])
-      ..where(_db.entries.date.isBiggerOrEqualValue(startStr) &
-          _db.entries.date.isSmallerOrEqualValue(endStr));
+      ..where(
+        _db.entries.date.isBiggerOrEqualValue(startStr) &
+            _db.entries.date.isSmallerOrEqualValue(endStr),
+      );
     final result = await query.getSingle();
     final n = result.read(count) ?? 0;
     if (n == 0) return null;
@@ -327,7 +357,9 @@ class EntryRepository {
   }
 
   Future<Map<int, double>> getEmotionByDayOfWeek(
-      DateTime start, DateTime end) async {
+    DateTime start,
+    DateTime end,
+  ) async {
     final results = await _queryByDateRange(start, end);
     final dayEmotions = <int, List<int>>{};
 
@@ -336,12 +368,17 @@ class EntryRepository {
       dayEmotions.putIfAbsent(weekday, () => []).add(entry.emotion);
     }
 
-    return dayEmotions.map((key, values) =>
-        MapEntry(key, values.fold(0, (a, b) => a + b) / values.length));
+    return dayEmotions.map(
+      (key, values) =>
+          MapEntry(key, values.fold(0, (a, b) => a + b) / values.length),
+    );
   }
 
   Future<Map<String, int>> getKeywordFrequency(
-      DateTime start, DateTime end, {int limit = 10}) async {
+    DateTime start,
+    DateTime end, {
+    int limit = 10,
+  }) async {
     final results = await _queryByDateRange(start, end);
     final texts = <String>[];
     for (final e in results) {
@@ -351,7 +388,10 @@ class EntryRepository {
   }
 
   Future<Map<String, int>> getGratitudeKeywords(
-      DateTime start, DateTime end, {int limit = 5}) async {
+    DateTime start,
+    DateTime end, {
+    int limit = 5,
+  }) async {
     final results = await _queryByDateRange(start, end);
     final texts = results.map((e) => e.answer1).toList();
     return extractKeywords(texts, limit: limit);
@@ -361,8 +401,10 @@ class EntryRepository {
   /// Returns null if fewer than 2 entries exist in the period.
   /// [currentStreak] avoids a redundant DB round-trip when the caller
   /// already has the value (e.g. InsightsController).
-  Future<WeeklyRetrospective?> getWeeklyRetrospective({int? currentStreak}) async {
-    final now = DateTime.now();
+  Future<WeeklyRetrospective?> getWeeklyRetrospective({
+    int? currentStreak,
+  }) async {
+    final now = _clock.now();
     final start = now.subtract(const Duration(days: 7));
     final entries = await _queryByDateRange(start, now);
 
@@ -425,7 +467,7 @@ class EntryRepository {
   /// Returns a summary for the given month: average emotion, entry count,
   /// and top keyword.
   Future<({double averageEmotion, int entryCount, String topKeyword})>
-      getMonthlySummary(int year, int month) async {
+  getMonthlySummary(int year, int month) async {
     final start = DateTime(year, month, 1);
     final end = DateTime(year, month + 1, 0); // last day of month
 
@@ -461,14 +503,15 @@ class EntryRepository {
   // -- Export / Import --
 
   Future<List<Map<String, dynamic>>> exportAllEntries() async {
-    final allEntries = await (_db.select(_db.entries)
-          ..orderBy([(t) => OrderingTerm.asc(t.date)]))
-        .get();
+    final allEntries = await (_db.select(
+      _db.entries,
+    )..orderBy([(t) => OrderingTerm.asc(t.date)])).get();
     return allEntries.map((e) => _fromEntry(e).toJson()).toList();
   }
 
   Future<({int imported, int skipped})> importEntries(
-      List<Map<String, dynamic>> entries) async {
+    List<Map<String, dynamic>> entries,
+  ) async {
     int imported = 0;
     int skipped = 0;
     await _db.transaction(() async {
@@ -538,14 +581,19 @@ class EntryRepository {
     final startStr = du.dateToString(start);
     final endStr = du.dateToString(end);
     final query = _db.select(_db.entries)
-      ..where((t) =>
-          t.date.isBiggerOrEqualValue(startStr) &
-          t.date.isSmallerOrEqualValue(endStr))
+      ..where(
+        (t) =>
+            t.date.isBiggerOrEqualValue(startStr) &
+            t.date.isSmallerOrEqualValue(endStr),
+      )
       ..orderBy([(t) => OrderingTerm.asc(t.date)]);
     return query.get();
   }
 }
 
 final entryRepositoryProvider = Provider<EntryRepository>((ref) {
-  return EntryRepository(ref.watch(appDatabaseProvider));
+  return EntryRepository(
+    ref.watch(appDatabaseProvider),
+    clock: ref.watch(appClockProvider),
+  );
 });

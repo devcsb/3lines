@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../app.dart';
+import '../../app/router.dart';
+import '../../core/settings/settings_keys.dart';
 import '../../core/services/haptic_service.dart';
 import '../../data/repositories/settings_repository.dart';
 
@@ -47,7 +48,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Future<void> _completeOnboarding() async {
     HapticService.medium();
     final repo = ref.read(settingsRepositoryProvider);
-    await repo.setSetting('onboarding_done', 'true');
+    await repo.setSetting(SettingKeys.onboardingDone, 'true');
     ref.invalidate(onboardingDoneProvider);
     if (mounted) {
       context.go('/');
@@ -75,8 +76,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         child: Text(
                           '건너뛰기',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.4),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.4,
+                            ),
                           ),
                         ),
                       ),
@@ -168,8 +170,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                               child: OutlinedButton(
                                 onPressed: () {
                                   _pageController.nextPage(
-                                    duration:
-                                        const Duration(milliseconds: 300),
+                                    duration: const Duration(milliseconds: 300),
                                     curve: Curves.easeInOut,
                                   );
                                 },
@@ -245,11 +246,7 @@ class _OnboardingPage extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: accentColor.withValues(alpha: 0.12),
                       ),
-                      child: Icon(
-                        icon,
-                        size: 32,
-                        color: accentColor,
-                      ),
+                      child: Icon(icon, size: 32, color: accentColor),
                     ),
                   ),
                 ),
@@ -264,9 +261,7 @@ class _OnboardingPage extends StatelessWidget {
                 opacity: textOpacity,
                 child: Text(
                   title,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    height: 1.3,
-                  ),
+                  style: theme.textTheme.headlineMedium?.copyWith(height: 1.3),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -281,8 +276,7 @@ class _OnboardingPage extends StatelessWidget {
                 child: Text(
                   subtitle,
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.5),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                   textAlign: TextAlign.center,
                 ),

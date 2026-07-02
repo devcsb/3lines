@@ -8,6 +8,7 @@ import '../../core/services/pdf_report_service.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../shared/widgets/staggered_fade_in.dart';
 import 'insights_controller.dart';
+import 'insights_state.dart';
 import 'widgets/day_of_week_chart.dart';
 import 'widgets/emotion_trend_chart.dart';
 import 'widgets/gratitude_keywords_list.dart';
@@ -33,11 +34,12 @@ class InsightsScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('데이터를 불러올 수 없어요',
-                  style: Theme.of(context).textTheme.bodyLarge),
+              Text(
+                '데이터를 불러올 수 없어요',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
               TextButton(
-                onPressed: () =>
-                    ref.invalidate(insightsControllerProvider),
+                onPressed: () => ref.invalidate(insightsControllerProvider),
                 child: const Text('다시 시도'),
               ),
             ],
@@ -54,160 +56,163 @@ class InsightsScreen extends ConsumerWidget {
 
           return SafeArea(
             child: RefreshIndicator(
-            onRefresh: () async {
-              HapticService.light();
-              ref.invalidate(insightsControllerProvider);
-            },
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 8),
-                  Text('인사이트', style: theme.textTheme.headlineSmall),
-                  const SizedBox(height: 16),
+              onRefresh: () async {
+                HapticService.light();
+                ref.invalidate(insightsControllerProvider);
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    Text('인사이트', style: theme.textTheme.headlineSmall),
+                    const SizedBox(height: 16),
 
-                  // Congratulation banner on first unlock
-                  if (state.totalCount == state.requiredCount)
-                    _CongratsBanner(requiredCount: state.requiredCount),
+                    // Congratulation banner on first unlock
+                    if (state.totalCount == state.requiredCount)
+                      _CongratsBanner(requiredCount: state.requiredCount),
 
-                  // Period selector + weekly delta
-                  Row(
-                    children: [
-                      Expanded(child: _PeriodSelector(period: state.period)),
-                      if (state.weeklyDelta != null) ...[
-                        const SizedBox(width: 12),
-                        _WeeklyDeltaBadge(delta: state.weeklyDelta!),
+                    // Period selector + weekly delta
+                    Row(
+                      children: [
+                        Expanded(child: _PeriodSelector(period: state.period)),
+                        if (state.weeklyDelta != null) ...[
+                          const SizedBox(width: 12),
+                          _WeeklyDeltaBadge(delta: state.weeklyDelta!),
+                        ],
                       ],
-                    ],
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // Emotion trend chart
-                  StaggeredFadeIn(
-                    index: 0,
-                    child: _SectionCard(
-                      title: '감정 추이',
-                      child: EmotionTrendChart(data: state.emotionTrend),
                     ),
-                  ),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 28),
 
-                  // Stats grid
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 1.3,
-                    children: [
-                      StaggeredFadeIn(
-                        index: 1,
-                        child: StatCard(
-                          title: '평균 감정',
-                          value: state.averageEmotion.toStringAsFixed(1),
-                          icon: Icons.favorite_rounded,
-                        ),
-                      ),
-                      StaggeredFadeIn(
-                        index: 2,
-                        child: StatCard(
-                          title: '현재 스트릭',
-                          value: '${state.currentStreak}일',
-                          icon: Icons.local_fire_department_rounded,
-                        ),
-                      ),
-                      StaggeredFadeIn(
-                        index: 3,
-                        child: StatCard(
-                          title: '총 기록',
-                          value: '${state.totalCount}개',
-                          icon: Icons.description_outlined,
-                        ),
-                      ),
-                      StaggeredFadeIn(
-                        index: 4,
-                        child: StatCard(
-                          title: '최고의 요일',
-                          value: state.bestDayOfWeek,
-                          icon: Icons.calendar_today_rounded,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Day of week chart
-                  StaggeredFadeIn(
-                    index: 5,
-                    child: _SectionCard(
-                      title: '요일별 감정',
-                      child: DayOfWeekChart(data: state.dayOfWeekEmotions),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Keywords
-                  StaggeredFadeIn(
-                    index: 6,
-                    child: _SectionCard(
-                      title: '자주 쓴 키워드',
-                      child: KeywordCloud(keywords: state.keywords),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Gratitude keywords
-                  StaggeredFadeIn(
-                    index: 7,
-                    child: _SectionCard(
-                      title: '감사 키워드 TOP 5',
-                      child: GratitudeKeywordsList(
-                          keywords: state.gratitudeKeywords),
-                    ),
-                  ),
-
-                  // Monthly summary card
-                  if (state.monthlySummary != null) ...[
-                    const SizedBox(height: 16),
+                    // Emotion trend chart
                     StaggeredFadeIn(
-                      index: 8,
-                      child: MonthlySummaryCard(
-                          summary: state.monthlySummary!),
+                      index: 0,
+                      child: _SectionCard(
+                        title: '감정 추이',
+                        child: EmotionTrendChart(data: state.emotionTrend),
+                      ),
                     ),
-                  ],
 
-                  // Weekly retrospective
-                  if (state.weeklyRetrospective != null) ...[
                     const SizedBox(height: 16),
+
+                    // Stats grid
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 1.3,
+                      children: [
+                        StaggeredFadeIn(
+                          index: 1,
+                          child: StatCard(
+                            title: '평균 감정',
+                            value: state.averageEmotion.toStringAsFixed(1),
+                            icon: Icons.favorite_rounded,
+                          ),
+                        ),
+                        StaggeredFadeIn(
+                          index: 2,
+                          child: StatCard(
+                            title: '현재 스트릭',
+                            value: '${state.currentStreak}일',
+                            icon: Icons.local_fire_department_rounded,
+                          ),
+                        ),
+                        StaggeredFadeIn(
+                          index: 3,
+                          child: StatCard(
+                            title: '총 기록',
+                            value: '${state.totalCount}개',
+                            icon: Icons.description_outlined,
+                          ),
+                        ),
+                        StaggeredFadeIn(
+                          index: 4,
+                          child: StatCard(
+                            title: '최고의 요일',
+                            value: state.bestDayOfWeek,
+                            icon: Icons.calendar_today_rounded,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Day of week chart
                     StaggeredFadeIn(
-                      index: 9,
-                      child: WeeklyRetrospectiveCard(
-                          retrospective: state.weeklyRetrospective!),
+                      index: 5,
+                      child: _SectionCard(
+                        title: '요일별 감정',
+                        child: DayOfWeekChart(data: state.dayOfWeekEmotions),
+                      ),
                     ),
+
+                    const SizedBox(height: 16),
+
+                    // Keywords
+                    StaggeredFadeIn(
+                      index: 6,
+                      child: _SectionCard(
+                        title: '자주 쓴 키워드',
+                        child: KeywordCloud(keywords: state.keywords),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Gratitude keywords
+                    StaggeredFadeIn(
+                      index: 7,
+                      child: _SectionCard(
+                        title: '감사 키워드 TOP 5',
+                        child: GratitudeKeywordsList(
+                          keywords: state.gratitudeKeywords,
+                        ),
+                      ),
+                    ),
+
+                    // Monthly summary card
+                    if (state.monthlySummary != null) ...[
+                      const SizedBox(height: 16),
+                      StaggeredFadeIn(
+                        index: 8,
+                        child: MonthlySummaryCard(
+                          summary: state.monthlySummary!,
+                        ),
+                      ),
+                    ],
+
+                    // Weekly retrospective
+                    if (state.weeklyRetrospective != null) ...[
+                      const SizedBox(height: 16),
+                      StaggeredFadeIn(
+                        index: 9,
+                        child: WeeklyRetrospectiveCard(
+                          retrospective: state.weeklyRetrospective!,
+                        ),
+                      ),
+                    ],
+
+                    // Monthly PDF report button
+                    const SizedBox(height: 20),
+                    StaggeredFadeIn(
+                      index: 10,
+                      child: _PdfReportButton(
+                        monthlySummary: state.monthlySummary,
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
                   ],
-
-                  // Monthly PDF report button
-                  const SizedBox(height: 20),
-                  StaggeredFadeIn(
-                    index: 10,
-                    child: _PdfReportButton(
-                      monthlySummary: state.monthlySummary,
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-                ],
+                ),
               ),
             ),
-          ),
           );
         },
       ),
@@ -239,9 +244,12 @@ class _SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: theme.textTheme.titleSmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-          )),
+          Text(
+            title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
           const SizedBox(height: 14),
           child,
         ],
@@ -272,12 +280,14 @@ class _CongratsBannerState extends State<_CongratsBanner>
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    _slideAnimation = Tween<double>(begin: -20, end: 0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _slideAnimation = Tween<double>(
+      begin: -20,
+      end: 0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
     HapticService.medium();
   }
@@ -304,34 +314,34 @@ class _CongratsBannerState extends State<_CongratsBanner>
         );
       },
       child: Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          children: [
-            Text(
-              '인사이트가 열렸어요!',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.bold,
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              Text(
+                '인사이트가 열렸어요!',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${widget.requiredCount}일 기록을 축하해요',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              const SizedBox(height: 4),
+              Text(
+                '${widget.requiredCount}일 기록을 축하해요',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 }
@@ -402,15 +412,9 @@ class _PeriodChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: selected
-              ? cs.primary
-              : Colors.transparent,
+          color: selected ? cs.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected
-                ? cs.primary
-                : cs.outlineVariant,
-          ),
+          border: Border.all(color: selected ? cs.primary : cs.outlineVariant),
         ),
         child: Text(
           label,
@@ -441,14 +445,14 @@ class _WeeklyDeltaBadge extends StatelessWidget {
     final color = isNeutral
         ? theme.colorScheme.onSurface.withValues(alpha: 0.4)
         : isPositive
-            ? const Color(0xFF5B8A6A)
-            : const Color(0xFFC4736A);
+        ? const Color(0xFF5B8A6A)
+        : const Color(0xFFC4736A);
 
     final icon = isNeutral
         ? Icons.remove_rounded
         : isPositive
-            ? Icons.arrow_upward_rounded
-            : Icons.arrow_downward_rounded;
+        ? Icons.arrow_upward_rounded
+        : Icons.arrow_downward_rounded;
 
     final label = isNeutral
         ? '변화 없음'
@@ -505,9 +509,9 @@ class _PdfReportButtonState extends ConsumerState<_PdfReportButton> {
 
       if (entries.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('이번 달 기록이 없어요')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('이번 달 기록이 없어요')));
         }
         return;
       }
@@ -526,13 +530,14 @@ class _PdfReportButtonState extends ConsumerState<_PdfReportButton> {
 
       await Printing.sharePdf(
         bytes: pdfBytes,
-        filename: 'three_lines_${now.year}_${now.month.toString().padLeft(2, '0')}.pdf',
+        filename:
+            'three_lines_${now.year}_${now.month.toString().padLeft(2, '0')}.pdf',
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('PDF 생성 중 오류가 발생했어요: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('PDF 생성 중 오류가 발생했어요: $e')));
       }
     } finally {
       if (mounted) setState(() => _generating = false);

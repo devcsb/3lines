@@ -1,5 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:three_lines/core/time/app_clock.dart';
 import 'package:three_lines/core/utils/date_utils.dart' as du;
 import 'package:three_lines/data/database/app_database.dart';
 import 'package:three_lines/data/models/daily_entry.dart';
@@ -18,7 +19,11 @@ void main() {
     await db.close();
   });
 
-  DailyEntry makeEntry(String date, {int emotion = 3, String answer1 = 'test'}) {
+  DailyEntry makeEntry(
+    String date, {
+    int emotion = 3,
+    String answer1 = 'test',
+  }) {
     return DailyEntry(
       date: date,
       emotion: emotion,
@@ -47,6 +52,20 @@ void main() {
       final result = await repo.getTodayEntry();
       expect(result, isNotNull);
       expect(result!.emotion, 4);
+    });
+
+    test('uses injected clock when resolving today', () async {
+      final fixedRepo = EntryRepository(
+        db,
+        clock: _FixedClock(DateTime(2026, 3, 10)),
+      );
+      await fixedRepo.saveEntry(makeEntry('2026-03-10', emotion: 5));
+
+      final result = await fixedRepo.getTodayEntry();
+
+      expect(result, isNotNull);
+      expect(result!.date, '2026-03-10');
+      expect(result.emotion, 5);
     });
   });
 
@@ -102,10 +121,12 @@ void main() {
       final today = DateTime.now();
       await repo.saveEntry(makeEntry(du.dateToString(today)));
       await repo.saveEntry(
-          makeEntry(du.dateToString(today.subtract(const Duration(days: 1)))));
+        makeEntry(du.dateToString(today.subtract(const Duration(days: 1)))),
+      );
       // Gap at day -2, entry at day -3
       await repo.saveEntry(
-          makeEntry(du.dateToString(today.subtract(const Duration(days: 3)))));
+        makeEntry(du.dateToString(today.subtract(const Duration(days: 3)))),
+      );
       // Grace day bridges the gap: streak = 3
       expect(await repo.getCurrentStreak(), 3);
     });
@@ -114,10 +135,12 @@ void main() {
       final today = DateTime.now();
       await repo.saveEntry(makeEntry(du.dateToString(today)));
       await repo.saveEntry(
-          makeEntry(du.dateToString(today.subtract(const Duration(days: 1)))));
+        makeEntry(du.dateToString(today.subtract(const Duration(days: 1)))),
+      );
       // Two-day gap (days -2 and -3 missing), entry at day -4
       await repo.saveEntry(
-          makeEntry(du.dateToString(today.subtract(const Duration(days: 4)))));
+        makeEntry(du.dateToString(today.subtract(const Duration(days: 4)))),
+      );
       expect(await repo.getCurrentStreak(), 2);
     });
   });
@@ -132,8 +155,9 @@ void main() {
     test('returns correct count for consecutive streak', () async {
       final today = DateTime.now();
       for (int i = 0; i < 3; i++) {
-        await repo.saveEntry(makeEntry(
-            du.dateToString(today.subtract(Duration(days: i)))));
+        await repo.saveEntry(
+          makeEntry(du.dateToString(today.subtract(Duration(days: i)))),
+        );
       }
       final result = await repo.getCurrentStreakWithGrace();
       // Grace day is consumed at the natural end-of-history boundary,
@@ -146,10 +170,12 @@ void main() {
       final today = DateTime.now();
       await repo.saveEntry(makeEntry(du.dateToString(today)));
       await repo.saveEntry(
-          makeEntry(du.dateToString(today.subtract(const Duration(days: 1)))));
+        makeEntry(du.dateToString(today.subtract(const Duration(days: 1)))),
+      );
       // gap at day -2
       await repo.saveEntry(
-          makeEntry(du.dateToString(today.subtract(const Duration(days: 3)))));
+        makeEntry(du.dateToString(today.subtract(const Duration(days: 3)))),
+      );
 
       final result = await repo.getCurrentStreakWithGrace();
       expect(result.count, 3);
@@ -171,10 +197,12 @@ void main() {
       await repo.saveEntry(makeEntry(du.dateToString(today)));
       // gap day -1 (grace used here)
       await repo.saveEntry(
-          makeEntry(du.dateToString(today.subtract(const Duration(days: 2)))));
+        makeEntry(du.dateToString(today.subtract(const Duration(days: 2)))),
+      );
       // two-day gap (days -3 and -4 missing) — grace already used
       await repo.saveEntry(
-          makeEntry(du.dateToString(today.subtract(const Duration(days: 5)))));
+        makeEntry(du.dateToString(today.subtract(const Duration(days: 5)))),
+      );
 
       final result = await repo.getCurrentStreakWithGrace();
       // Streak is 1 (today) + grace + 1 (day-2) = count 2, then breaks
@@ -318,10 +346,12 @@ void main() {
       final today = DateTime.now();
       for (int i = 0; i < 3; i++) {
         final date = today.subtract(Duration(days: i));
-        await repo.saveEntry(makeEntry(
-          du.dateToString(date),
-          emotion: (i + 3).clamp(1, 5), // emotions: 3, 4, 5
-        ));
+        await repo.saveEntry(
+          makeEntry(
+            du.dateToString(date),
+            emotion: (i + 3).clamp(1, 5), // emotions: 3, 4, 5
+          ),
+        );
       }
       final start = today.subtract(const Duration(days: 2));
       final result = await repo.getAverageEmotion(start, today);
@@ -336,7 +366,9 @@ void main() {
     });
 
     test('respects date range', () async {
-      await repo.saveEntry(makeEntry('2026-02-15', emotion: 1)); // outside range
+      await repo.saveEntry(
+        makeEntry('2026-02-15', emotion: 1),
+      ); // outside range
       await repo.saveEntry(makeEntry('2026-03-10', emotion: 4)); // inside range
       final result = await repo.getEmotionByDayOfWeek(
         DateTime(2026, 3, 1),
@@ -354,22 +386,21 @@ void main() {
     });
 
     test('returns empty for entries with empty answers', () async {
-      await repo.saveEntry(DailyEntry(
-        date: '2026-03-01',
-        emotion: 3,
-      ));
+      await repo.saveEntry(DailyEntry(date: '2026-03-01', emotion: 3));
       final result = await repo.getKeywordFrequency(allStart, allEnd);
       expect(result, isEmpty);
     });
 
     test('extracts keywords from answers', () async {
-      await repo.saveEntry(DailyEntry(
-        date: '2026-03-01',
-        emotion: 4,
-        answer1: '가족과 저녁 식사',
-        answer2: '오늘 가족 모임',
-        answer3: '내일도 가족과 함께',
-      ));
+      await repo.saveEntry(
+        DailyEntry(
+          date: '2026-03-01',
+          emotion: 4,
+          answer1: '가족과 저녁 식사',
+          answer2: '오늘 가족 모임',
+          answer3: '내일도 가족과 함께',
+        ),
+      );
       final result = await repo.getKeywordFrequency(allStart, allEnd);
       expect(result, isNotEmpty);
       expect(result.containsKey('가족'), isTrue);
@@ -378,13 +409,15 @@ void main() {
 
   group('getGratitudeKeywords', () {
     test('extracts from first answer only', () async {
-      await repo.saveEntry(DailyEntry(
-        date: '2026-03-01',
-        emotion: 4,
-        answer1: '가족과 저녁 식사',
-        answer2: '운동을 시작했다',
-        answer3: '내일 운동 계획',
-      ));
+      await repo.saveEntry(
+        DailyEntry(
+          date: '2026-03-01',
+          emotion: 4,
+          answer1: '가족과 저녁 식사',
+          answer2: '운동을 시작했다',
+          answer3: '내일 운동 계획',
+        ),
+      );
       final result = await repo.getGratitudeKeywords(allStart, allEnd);
       expect(result, isNotEmpty);
     });
@@ -556,26 +589,30 @@ void main() {
 
   group('export/import round-trip', () {
     test('exported data can be re-imported faithfully', () async {
-      await repo.saveEntry(DailyEntry(
-        date: '2026-03-01',
-        emotion: 4,
-        prompt1: '감사한 것은?',
-        answer1: '가족과 저녁',
-        prompt2: '수용할 것은?',
-        answer2: '실수를 인정',
-        prompt3: '내일의 의도는?',
-        answer3: '일찍 일어나기',
-      ));
-      await repo.saveEntry(DailyEntry(
-        date: '2026-03-02',
-        emotion: 2,
-        prompt1: '감사한 것은?',
-        answer1: '좋은 날씨',
-        prompt2: '수용할 것은?',
-        answer2: '',
-        prompt3: '내일의 의도는?',
-        answer3: '운동하기',
-      ));
+      await repo.saveEntry(
+        DailyEntry(
+          date: '2026-03-01',
+          emotion: 4,
+          prompt1: '감사한 것은?',
+          answer1: '가족과 저녁',
+          prompt2: '수용할 것은?',
+          answer2: '실수를 인정',
+          prompt3: '내일의 의도는?',
+          answer3: '일찍 일어나기',
+        ),
+      );
+      await repo.saveEntry(
+        DailyEntry(
+          date: '2026-03-02',
+          emotion: 2,
+          prompt1: '감사한 것은?',
+          answer1: '좋은 날씨',
+          prompt2: '수용할 것은?',
+          answer2: '',
+          prompt3: '내일의 의도는?',
+          answer3: '운동하기',
+        ),
+      );
 
       final exported = await repo.exportAllEntries();
       expect(exported.length, 2);
@@ -609,33 +646,39 @@ void main() {
     });
 
     test('finds matches in answer1', () async {
-      await repo.saveEntry(DailyEntry(
-        date: '2026-03-01',
-        emotion: 4,
-        answer1: '가족과 여행',
-        answer2: '',
-        answer3: '',
-      ));
+      await repo.saveEntry(
+        DailyEntry(
+          date: '2026-03-01',
+          emotion: 4,
+          answer1: '가족과 여행',
+          answer2: '',
+          answer3: '',
+        ),
+      );
       final result = await repo.searchEntries('여행');
       expect(result.length, 1);
       expect(result.first.date, '2026-03-01');
     });
 
     test('finds matches in answer2 and answer3', () async {
-      await repo.saveEntry(DailyEntry(
-        date: '2026-03-01',
-        emotion: 3,
-        answer1: '',
-        answer2: '프로젝트 완료',
-        answer3: '',
-      ));
-      await repo.saveEntry(DailyEntry(
-        date: '2026-03-02',
-        emotion: 4,
-        answer1: '',
-        answer2: '',
-        answer3: '프로젝트 시작',
-      ));
+      await repo.saveEntry(
+        DailyEntry(
+          date: '2026-03-01',
+          emotion: 3,
+          answer1: '',
+          answer2: '프로젝트 완료',
+          answer3: '',
+        ),
+      );
+      await repo.saveEntry(
+        DailyEntry(
+          date: '2026-03-02',
+          emotion: 4,
+          answer1: '',
+          answer2: '',
+          answer3: '프로젝트 시작',
+        ),
+      );
       final result = await repo.searchEntries('프로젝트');
       expect(result.length, 2);
     });
@@ -687,17 +730,21 @@ void main() {
     });
 
     test('returns paths only for entries with photos', () async {
-      await repo.saveEntry(DailyEntry(
-        date: '2026-03-01',
-        emotion: 3,
-        photoPath: '/photos/photo1.jpg',
-      ));
+      await repo.saveEntry(
+        DailyEntry(
+          date: '2026-03-01',
+          emotion: 3,
+          photoPath: '/photos/photo1.jpg',
+        ),
+      );
       await repo.saveEntry(makeEntry('2026-03-02')); // no photo
-      await repo.saveEntry(DailyEntry(
-        date: '2026-03-03',
-        emotion: 4,
-        photoPath: '/photos/photo2.jpg',
-      ));
+      await repo.saveEntry(
+        DailyEntry(
+          date: '2026-03-03',
+          emotion: 4,
+          photoPath: '/photos/photo2.jpg',
+        ),
+      );
       final paths = await repo.getAllPhotoPaths();
       expect(paths.length, 2);
       expect(paths, containsAll(['/photos/photo1.jpg', '/photos/photo2.jpg']));
@@ -770,10 +817,12 @@ void main() {
 
     test('returns null for single entry', () async {
       final today = DateTime.now();
-      await repo.saveEntry(makeEntry(
-        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}',
-        emotion: 4,
-      ));
+      await repo.saveEntry(
+        makeEntry(
+          '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}',
+          emotion: 4,
+        ),
+      );
       expect(await repo.getWeeklyRetrospective(), isNull);
     });
 
@@ -783,8 +832,9 @@ void main() {
         final d = now.subtract(Duration(days: i));
         final dateStr =
             '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-        await repo.saveEntry(makeEntry(dateStr,
-            emotion: i == 0 ? 5 : 3, answer1: '산책이 좋았다'));
+        await repo.saveEntry(
+          makeEntry(dateStr, emotion: i == 0 ? 5 : 3, answer1: '산책이 좋았다'),
+        );
       }
       final retro = await repo.getWeeklyRetrospective();
       expect(retro, isNotNull);
@@ -801,8 +851,7 @@ void main() {
         final d = now.subtract(Duration(days: i));
         final dateStr =
             '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-        await repo.saveEntry(makeEntry(dateStr,
-            emotion: i > 3 ? 1 : 5));
+        await repo.saveEntry(makeEntry(dateStr, emotion: i > 3 ? 1 : 5));
       }
       final retro = await repo.getWeeklyRetrospective();
       expect(retro, isNotNull);
@@ -819,12 +868,15 @@ void main() {
     });
 
     test('returns correct summary for month with entries', () async {
-      await repo.saveEntry(makeEntry('2026-03-01',
-          emotion: 4, answer1: '맑은 날씨가 좋았다'));
-      await repo.saveEntry(makeEntry('2026-03-02',
-          emotion: 2, answer1: '맑은 하늘이 예뻤다'));
-      await repo.saveEntry(makeEntry('2026-03-03',
-          emotion: 3, answer1: '산책이 즐거웠다'));
+      await repo.saveEntry(
+        makeEntry('2026-03-01', emotion: 4, answer1: '맑은 날씨가 좋았다'),
+      );
+      await repo.saveEntry(
+        makeEntry('2026-03-02', emotion: 2, answer1: '맑은 하늘이 예뻤다'),
+      );
+      await repo.saveEntry(
+        makeEntry('2026-03-03', emotion: 3, answer1: '산책이 즐거웠다'),
+      );
 
       final result = await repo.getMonthlySummary(2026, 3);
       expect(result.entryCount, 3);
@@ -842,4 +894,13 @@ void main() {
       expect(result.averageEmotion, 3.0);
     });
   });
+}
+
+class _FixedClock extends AppClock {
+  const _FixedClock(this.value);
+
+  final DateTime value;
+
+  @override
+  DateTime now() => value;
 }

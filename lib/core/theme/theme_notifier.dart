@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../settings/settings_keys.dart';
 import '../../data/repositories/settings_repository.dart';
 
 class ThemeNotifier extends AsyncNotifier<ThemeMode> {
@@ -11,7 +12,9 @@ class ThemeNotifier extends AsyncNotifier<ThemeMode> {
   }
 
   Future<void> setThemeMode(String mode) async {
-    await ref.read(settingsRepositoryProvider).setSetting('theme_mode', mode);
+    await ref
+        .read(settingsRepositoryProvider)
+        .setSetting(SettingKeys.themeMode, mode);
     state = AsyncData(_parseMode(mode));
   }
 
@@ -24,8 +27,9 @@ class ThemeNotifier extends AsyncNotifier<ThemeMode> {
   }
 }
 
-final themeNotifierProvider =
-    AsyncNotifierProvider<ThemeNotifier, ThemeMode>(ThemeNotifier.new);
+final themeNotifierProvider = AsyncNotifierProvider<ThemeNotifier, ThemeMode>(
+  ThemeNotifier.new,
+);
 
 // ── Accent theme notifier ──────────────────────────────────────────
 
@@ -41,6 +45,6 @@ class AccentThemeNotifier extends AsyncNotifier<String> {
   }
 }
 
-final accentThemeProvider =
-    AsyncNotifierProvider<AccentThemeNotifier, String>(
-        AccentThemeNotifier.new);
+final accentThemeProvider = AsyncNotifierProvider<AccentThemeNotifier, String>(
+  AccentThemeNotifier.new,
+);

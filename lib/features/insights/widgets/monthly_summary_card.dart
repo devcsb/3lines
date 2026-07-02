@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../insights_controller.dart';
+import '../insights_state.dart';
 
 /// Displays a compact summary card for the current month's journal stats.
 class MonthlySummaryCard extends StatelessWidget {
@@ -39,9 +39,11 @@ class MonthlySummaryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.calendar_month_rounded,
-                  size: 16,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+              Icon(
+                Icons.calendar_month_rounded,
+                size: 16,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
               const SizedBox(width: 6),
               Text(
                 '${summary.monthLabel} 요약',
@@ -96,8 +98,9 @@ class MonthlySummaryCard extends StatelessWidget {
                 Container(
                   width: 1,
                   height: 32,
-                  color:
-                      theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.3,
+                  ),
                 ),
                 Expanded(
                   child: _SummaryItem(
@@ -119,11 +122,7 @@ class _SummaryItem extends StatelessWidget {
   final String value;
   final Widget? trailing;
 
-  const _SummaryItem({
-    required this.label,
-    required this.value,
-    this.trailing,
-  });
+  const _SummaryItem({required this.label, required this.value, this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -148,10 +147,7 @@ class _SummaryItem extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          if (trailing != null) ...[
-            const SizedBox(height: 2),
-            trailing!,
-          ],
+          if (trailing != null) ...[const SizedBox(height: 2), trailing!],
         ],
       ),
     );

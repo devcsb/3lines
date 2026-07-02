@@ -3,104 +3,23 @@ import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme/theme_notifier.dart';
-import '../../core/utils/date_utils.dart' as du;
-import '../../data/models/daily_entry.dart';
+import '../../core/events/journal_changes.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/photo_service.dart';
+import '../../core/theme/theme_notifier.dart';
+import '../../core/time/app_clock.dart';
+import '../../core/utils/date_utils.dart' as du;
+import '../../data/models/daily_entry.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/settings_repository.dart';
-import '../insights/insights_controller.dart';
 import '../settings/settings_controller.dart';
-import '../timeline/timeline_controller.dart';
-
-class TodayState {
-  final int? emotion;
-  final String answer1;
-  final String answer2;
-  final String answer3;
-  final List<String> prompts;
-  final bool isCompleted;
-  final bool isEditing;
-  final int currentStreak;
-  final bool usedGraceDay;
-  final DailyEntry? existingEntry;
-  final bool isSaving;
-  final DailyEntry? oneYearAgoEntry;
-  final DailyEntry? sixMonthsAgoEntry;
-  final DailyEntry? oneMonthAgoEntry;
-  final int? milestone; // non-null when a milestone is reached (7, 30, 100, 365)
-  final String? photoPath;
-  final List<({DateTime date, int emotion})> recentEmotions;
-
-  const TodayState({
-    this.emotion,
-    this.answer1 = '',
-    this.answer2 = '',
-    this.answer3 = '',
-    this.prompts = const ['', '', ''],
-    this.isCompleted = false,
-    this.isEditing = false,
-    this.currentStreak = 0,
-    this.usedGraceDay = false,
-    this.existingEntry,
-    this.isSaving = false,
-    this.oneYearAgoEntry,
-    this.sixMonthsAgoEntry,
-    this.oneMonthAgoEntry,
-    this.milestone,
-    this.photoPath,
-    this.recentEmotions = const [],
-  });
-
-  bool get canSave => emotion != null && (answer1.isNotEmpty || answer2.isNotEmpty || answer3.isNotEmpty);
-
-  TodayState copyWith({
-    int? Function()? emotion,
-    String? answer1,
-    String? answer2,
-    String? answer3,
-    List<String>? prompts,
-    bool? isCompleted,
-    bool? isEditing,
-    int? currentStreak,
-    bool? usedGraceDay,
-    DailyEntry? Function()? existingEntry,
-    bool? isSaving,
-    DailyEntry? Function()? oneYearAgoEntry,
-    DailyEntry? Function()? sixMonthsAgoEntry,
-    DailyEntry? Function()? oneMonthAgoEntry,
-    int? Function()? milestone,
-    String? Function()? photoPath,
-    List<({DateTime date, int emotion})>? recentEmotions,
-  }) {
-    return TodayState(
-      emotion: emotion != null ? emotion() : this.emotion,
-      answer1: answer1 ?? this.answer1,
-      answer2: answer2 ?? this.answer2,
-      answer3: answer3 ?? this.answer3,
-      prompts: prompts ?? this.prompts,
-      isCompleted: isCompleted ?? this.isCompleted,
-      isEditing: isEditing ?? this.isEditing,
-      currentStreak: currentStreak ?? this.currentStreak,
-      usedGraceDay: usedGraceDay ?? this.usedGraceDay,
-      existingEntry: existingEntry != null ? existingEntry() : this.existingEntry,
-      isSaving: isSaving ?? this.isSaving,
-      oneYearAgoEntry: oneYearAgoEntry != null ? oneYearAgoEntry() : this.oneYearAgoEntry,
-      sixMonthsAgoEntry: sixMonthsAgoEntry != null ? sixMonthsAgoEntry() : this.sixMonthsAgoEntry,
-      oneMonthAgoEntry: oneMonthAgoEntry != null ? oneMonthAgoEntry() : this.oneMonthAgoEntry,
-      milestone: milestone != null ? milestone() : this.milestone,
-      photoPath: photoPath != null ? photoPath() : this.photoPath,
-      recentEmotions: recentEmotions ?? this.recentEmotions,
-    );
-  }
-}
+import 'today_state.dart';
 
 class TodayController extends AsyncNotifier<TodayState> {
   static const _milestones = [7, 30, 100, 365];
 
   Timer? _midnightTimer;
-  String _scheduledDate = du.getTodayString();
+  String _scheduledDate = '';
 
   @override
   Future<TodayState> build() async {
@@ -108,21 +27,19 @@ class TodayController extends AsyncNotifier<TodayState> {
       _midnightTimer?.cancel();
     });
 
-    _scheduleMidnightRefresh();
-
     final entryRepo = ref.watch(entryRepositoryProvider);
     final settingsRepo = ref.watch(settingsRepositoryProvider);
+    final clock = ref.watch(appClockProvider);
+    _scheduledDate = clock.todayString();
+    _scheduleMidnightRefresh();
 
-    final now = DateTime.now();
+    final now = clock.now();
     final results = await Future.wait([
       settingsRepo.getRotatingPrompts(),
       entryRepo.getTodayEntry(),
       entryRepo.getCurrentStreakWithGrace(),
       entryRepo.getOneYearAgoEntry(),
-      entryRepo.getEmotionTrend(
-        now.subtract(const Duration(days: 6)),
-        now,
-      ),
+      entryRepo.getEmotionTrend(now.subtract(const Duration(days: 6)), now),
       entryRepo.getSixMonthsAgoEntry(),
       entryRepo.getOneMonthAgoEntry(),
     ]);
@@ -188,7 +105,12 @@ class TodayController extends AsyncNotifier<TodayState> {
   Future<bool> save() async {
     final current = state.value;
     final emotion = current?.emotion;
-    if (current == null || emotion == null || !current.canSave || current.isSaving) return false;
+    if (current == null ||
+        emotion == null ||
+        !current.canSave ||
+        current.isSaving) {
+      return false;
+    }
 
     state = AsyncData(current.copyWith(isSaving: true));
 
@@ -197,7 +119,7 @@ class TodayController extends AsyncNotifier<TodayState> {
 
       final entry = DailyEntry(
         id: current.existingEntry?.id,
-        date: du.getTodayString(),
+        date: ref.read(appClockProvider).todayString(),
         emotion: emotion,
         prompt1: current.prompts[0],
         answer1: current.answer1,
@@ -239,15 +161,17 @@ class TodayController extends AsyncNotifier<TodayState> {
         ref.invalidate(accentThemeProvider);
       }
 
-      state = AsyncData(current.copyWith(
-        isCompleted: true,
-        isEditing: false,
-        isSaving: false,
-        currentStreak: streakResult.count,
-        usedGraceDay: streakResult.usedGraceDay,
-        existingEntry: () => saved,
-        milestone: () => milestone,
-      ));
+      state = AsyncData(
+        current.copyWith(
+          isCompleted: true,
+          isEditing: false,
+          isSaving: false,
+          currentStreak: streakResult.count,
+          usedGraceDay: streakResult.usedGraceDay,
+          existingEntry: () => saved,
+          milestone: () => milestone,
+        ),
+      );
 
       // Reschedule reminder: cancel today's and ensure tomorrow's fires
       final settings = ref.read(settingsControllerProvider).value;
@@ -267,9 +191,7 @@ class TodayController extends AsyncNotifier<TodayState> {
         await notifService.cancelStreakAtRiskReminder();
       }
 
-      // Invalidate dependent screens so they reload fresh data
-      ref.invalidate(timelineControllerProvider);
-      ref.invalidate(insightsControllerProvider);
+      ref.read(journalChangesProvider.notifier).markChanged();
       return true;
     } catch (e, stack) {
       developer.log('Failed to save entry', error: e, stackTrace: stack);
@@ -326,7 +248,7 @@ class TodayController extends AsyncNotifier<TodayState> {
   /// Refreshes data if the day has rolled over while the app was suspended,
   /// then re-arms the midnight timer.
   void onAppResumed() {
-    final today = du.getTodayString();
+    final today = ref.read(appClockProvider).todayString();
     if (today != _scheduledDate) {
       _scheduledDate = today;
       refresh();
@@ -337,8 +259,9 @@ class TodayController extends AsyncNotifier<TodayState> {
 
   void _scheduleMidnightRefresh() {
     _midnightTimer?.cancel();
-    final now = DateTime.now();
-    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    final clock = ref.read(appClockProvider);
+    final now = clock.now();
+    final nextMidnight = clock.nextMidnight();
     final duration = nextMidnight.difference(now);
 
     _midnightTimer = Timer(duration, () {
@@ -350,4 +273,6 @@ class TodayController extends AsyncNotifier<TodayState> {
 
 final todayControllerProvider =
     AsyncNotifierProvider<TodayController, TodayState>(
-        TodayController.new, isAutoDispose: true);
+      TodayController.new,
+      isAutoDispose: true,
+    );

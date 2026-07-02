@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:three_lines/features/insights/insights_controller.dart';
+import 'package:three_lines/features/insights/insights_state.dart';
 
 void main() {
   group('InsightsState', () {

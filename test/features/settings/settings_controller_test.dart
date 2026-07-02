@@ -34,21 +34,37 @@ void main() {
     fakeNotif = FakeNotificationService();
     fakeBio = FakeBiometricService();
 
-    container = ProviderContainer(overrides: [
-      entryRepositoryProvider.overrideWithValue(entryRepo),
-      settingsRepositoryProvider.overrideWithValue(settingsRepo),
-      photoServiceProvider.overrideWithValue(fakePhoto),
-      notificationServiceProvider.overrideWithValue(fakeNotif),
-      biometricServiceProvider.overrideWithValue(fakeBio),
-      // Stub the FutureProvider so invalidate() doesn't hit real DB path
-      biometricLockEnabledProvider
-          .overrideWith((_) => Future.value(false)),
-    ]);
+    container = ProviderContainer(
+      overrides: [
+        entryRepositoryProvider.overrideWithValue(entryRepo),
+        settingsRepositoryProvider.overrideWithValue(settingsRepo),
+        photoServiceProvider.overrideWithValue(fakePhoto),
+        notificationServiceProvider.overrideWithValue(fakeNotif),
+        biometricServiceProvider.overrideWithValue(fakeBio),
+        // Stub the FutureProvider so invalidate() doesn't hit real DB path
+        biometricLockEnabledProvider.overrideWith((_) => Future.value(false)),
+      ],
+    );
   });
 
   tearDown(() async {
     container.dispose();
     await db.close();
+  });
+
+  group('updatePrompt', () {
+    test('ignores invalid prompt indexes', () async {
+      final initial = await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+
+      await notifier.updatePrompt(-1, '무효');
+      await notifier.updatePrompt(3, '무효');
+
+      final state = container.read(settingsControllerProvider).value;
+      expect(state?.prompts, initial.prompts);
+      expect(await settingsRepo.getSetting('prompt_0', defaultValue: ''), '');
+      expect(await settingsRepo.getSetting('prompt_4', defaultValue: ''), '');
+    });
   });
 
   group('importData', () {
@@ -113,7 +129,10 @@ void main() {
     test('throws FormatException for completely invalid JSON', () async {
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
-      expect(() => notifier.importData('not json at all'), throwsA(isA<FormatException>()));
+      expect(
+        () => notifier.importData('not json at all'),
+        throwsA(isA<FormatException>()),
+      );
     });
 
     test('throws FormatException when entries key is missing', () async {
@@ -148,7 +167,8 @@ void main() {
     });
 
     test('returns zero imported for empty entries list', () async {
-      const emptyEntriesJson = '{"app": "3Lines", "version": "1.0.0", "entries": []}';
+      const emptyEntriesJson =
+          '{"app": "3Lines", "version": "1.0.0", "entries": []}';
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
 
@@ -160,41 +180,48 @@ void main() {
   });
 
   group('exportData', () {
-    test('returns valid JSON with correct wrapper structure for empty database', () async {
-      await container.read(settingsControllerProvider.future);
-      final notifier = container.read(settingsControllerProvider.notifier);
+    test(
+      'returns valid JSON with correct wrapper structure for empty database',
+      () async {
+        await container.read(settingsControllerProvider.future);
+        final notifier = container.read(settingsControllerProvider.notifier);
 
-      final jsonStr = await notifier.exportData();
-      final decoded = json.decode(jsonStr) as Map<String, dynamic>;
+        final jsonStr = await notifier.exportData();
+        final decoded = json.decode(jsonStr) as Map<String, dynamic>;
 
-      expect(decoded['app'], '3Lines');
-      expect(decoded['version'], isNotEmpty);
-      expect(decoded['exported_at'], isNotEmpty);
-      expect(decoded['total_entries'], 0);
-      expect(decoded['entries'], isEmpty);
-    });
+        expect(decoded['app'], '3Lines');
+        expect(decoded['version'], isNotEmpty);
+        expect(decoded['exported_at'], isNotEmpty);
+        expect(decoded['total_entries'], 0);
+        expect(decoded['entries'], isEmpty);
+      },
+    );
 
     test('exports all entries with correct field mapping', () async {
-      await entryRepo.saveEntry(DailyEntry(
-        date: '2026-03-01',
-        emotion: 4,
-        prompt1: '감사한 것은?',
-        answer1: '가족과 저녁',
-        prompt2: '수용할 것은?',
-        answer2: '실수 인정',
-        prompt3: '내일의 의도는?',
-        answer3: '일찍 일어나기',
-      ));
-      await entryRepo.saveEntry(DailyEntry(
-        date: '2026-03-02',
-        emotion: 2,
-        prompt1: '감사한 것은?',
-        answer1: '좋은 날씨',
-        prompt2: '',
-        answer2: '',
-        prompt3: '',
-        answer3: '',
-      ));
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-03-01',
+          emotion: 4,
+          prompt1: '감사한 것은?',
+          answer1: '가족과 저녁',
+          prompt2: '수용할 것은?',
+          answer2: '실수 인정',
+          prompt3: '내일의 의도는?',
+          answer3: '일찍 일어나기',
+        ),
+      );
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-03-02',
+          emotion: 2,
+          prompt1: '감사한 것은?',
+          answer1: '좋은 날씨',
+          prompt2: '',
+          answer2: '',
+          prompt3: '',
+          answer3: '',
+        ),
+      );
 
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
@@ -214,23 +241,26 @@ void main() {
       final prompts = first['prompts'] as List<dynamic>;
       expect(prompts.length, greaterThan(0));
       // First prompt should carry the answer
-      final gratitudePrompt = (prompts)
-          .cast<Map<String, dynamic>>()
-          .firstWhere((p) => p['answer'] == '가족과 저녁', orElse: () => {});
+      final gratitudePrompt = (prompts).cast<Map<String, dynamic>>().firstWhere(
+        (p) => p['answer'] == '가족과 저녁',
+        orElse: () => {},
+      );
       expect(gratitudePrompt, isNotEmpty);
     });
 
     test('exported JSON can be re-imported with correct counts', () async {
-      await entryRepo.saveEntry(DailyEntry(
-        date: '2026-03-10',
-        emotion: 3,
-        prompt1: '감사',
-        answer1: '건강',
-        prompt2: '',
-        answer2: '',
-        prompt3: '',
-        answer3: '',
-      ));
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-03-10',
+          emotion: 3,
+          prompt1: '감사',
+          answer1: '건강',
+          prompt2: '',
+          answer2: '',
+          prompt3: '',
+          answer3: '',
+        ),
+      );
 
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
@@ -249,12 +279,12 @@ void main() {
 
   group('deleteAllData', () {
     test('removes all entries from the database', () async {
-      await entryRepo.saveEntry(DailyEntry(
-        date: '2026-03-01', emotion: 3, answer1: 'test',
-      ));
-      await entryRepo.saveEntry(DailyEntry(
-        date: '2026-03-02', emotion: 4, answer1: 'test2',
-      ));
+      await entryRepo.saveEntry(
+        DailyEntry(date: '2026-03-01', emotion: 3, answer1: 'test'),
+      );
+      await entryRepo.saveEntry(
+        DailyEntry(date: '2026-03-02', emotion: 4, answer1: 'test2'),
+      );
 
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
@@ -265,27 +295,36 @@ void main() {
     });
 
     test('deletes photo files for entries that had photos', () async {
-      await entryRepo.saveEntry(DailyEntry(
-        date: '2026-03-01',
-        emotion: 3,
-        photoPath: '/photos/pic1.jpg',
-      ));
-      await entryRepo.saveEntry(DailyEntry(
-        date: '2026-03-02',
-        emotion: 4,
-        photoPath: '/photos/pic2.jpg',
-      ));
-      await entryRepo.saveEntry(DailyEntry(
-        date: '2026-03-03',
-        emotion: 2, // no photo
-      ));
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-03-01',
+          emotion: 3,
+          photoPath: '/photos/pic1.jpg',
+        ),
+      );
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-03-02',
+          emotion: 4,
+          photoPath: '/photos/pic2.jpg',
+        ),
+      );
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-03-03',
+          emotion: 2, // no photo
+        ),
+      );
 
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
 
       await notifier.deleteAllData();
 
-      expect(fakePhoto.deletedPaths, containsAll(['/photos/pic1.jpg', '/photos/pic2.jpg']));
+      expect(
+        fakePhoto.deletedPaths,
+        containsAll(['/photos/pic1.jpg', '/photos/pic2.jpg']),
+      );
       expect(fakePhoto.deletedPaths.length, 2);
     });
 

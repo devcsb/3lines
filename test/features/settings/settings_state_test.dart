@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:three_lines/features/settings/settings_controller.dart';
+import 'package:three_lines/features/settings/settings_state.dart';
 
 void main() {
   group('SettingsState', () {

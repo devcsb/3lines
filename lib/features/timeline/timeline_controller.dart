@@ -1,72 +1,25 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/events/journal_changes.dart';
 import '../../core/services/photo_service.dart';
+import '../../core/time/app_clock.dart';
 import '../../data/models/daily_entry.dart';
 import '../../data/repositories/entry_repository.dart';
-import '../insights/insights_controller.dart';
 import '../today/today_controller.dart';
-
-enum TimelinePeriod {
-  weeks12(84),
-  months6(182),
-  year1(365);
-
-  final int days;
-  const TimelinePeriod(this.days);
-}
-
-class TimelineState {
-  final int currentStreak;
-  final int longestStreak;
-  final Map<String, int> emotionMap;
-  final TimelinePeriod period;
-  final String searchQuery;
-  final List<DailyEntry> searchResults;
-
-  const TimelineState({
-    this.currentStreak = 0,
-    this.longestStreak = 0,
-    this.emotionMap = const {},
-    this.period = TimelinePeriod.weeks12,
-    this.searchQuery = '',
-    this.searchResults = const [],
-  });
-
-  bool get isSearching => searchQuery.isNotEmpty;
-
-  TimelineState copyWith({
-    int? currentStreak,
-    int? longestStreak,
-    Map<String, int>? emotionMap,
-    TimelinePeriod? period,
-    String? searchQuery,
-    List<DailyEntry>? searchResults,
-  }) {
-    return TimelineState(
-      currentStreak: currentStreak ?? this.currentStreak,
-      longestStreak: longestStreak ?? this.longestStreak,
-      emotionMap: emotionMap ?? this.emotionMap,
-      period: period ?? this.period,
-      searchQuery: searchQuery ?? this.searchQuery,
-      searchResults: searchResults ?? this.searchResults,
-    );
-  }
-
-  DateTime get startDate =>
-      DateTime.now().subtract(Duration(days: period.days));
-}
+import 'timeline_state.dart';
 
 class TimelineController extends AsyncNotifier<TimelineState> {
   @override
   Future<TimelineState> build() async {
     // Watch to rebuild when the repository changes (e.g. database reconnect)
     ref.watch(entryRepositoryProvider);
+    ref.watch(journalChangesProvider);
     return _loadData(TimelinePeriod.weeks12);
   }
 
   Future<TimelineState> _loadData(TimelinePeriod period) async {
     final repo = ref.read(entryRepositoryProvider);
-    final now = DateTime.now();
+    final now = ref.read(appClockProvider).now();
     final start = now.subtract(Duration(days: period.days));
 
     final results = await Future.wait([
@@ -97,19 +50,17 @@ class TimelineController extends AsyncNotifier<TimelineState> {
     }
     final repo = ref.read(entryRepositoryProvider);
     final results = await repo.searchEntries(query);
-    state = AsyncData(current.copyWith(
-      searchQuery: query,
-      searchResults: results,
-    ));
+    state = AsyncData(
+      current.copyWith(searchQuery: query, searchResults: results),
+    );
   }
 
   void clearSearch() {
     final current = state.value;
     if (current == null) return;
-    state = AsyncData(current.copyWith(
-      searchQuery: '',
-      searchResults: const [],
-    ));
+    state = AsyncData(
+      current.copyWith(searchQuery: '', searchResults: const []),
+    );
   }
 
   Future<DailyEntry?> getEntryByDate(String date) async {
@@ -134,12 +85,13 @@ class TimelineController extends AsyncNotifier<TimelineState> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => _loadData(period));
 
-    // 오늘/인사이트 화면도 함께 갱신하여 삭제된 데이터가 즉시 반영되게 한다.
+    ref.read(journalChangesProvider.notifier).markChanged();
     ref.invalidate(todayControllerProvider);
-    ref.invalidate(insightsControllerProvider);
   }
 }
 
 final timelineControllerProvider =
     AsyncNotifierProvider<TimelineController, TimelineState>(
-        TimelineController.new, isAutoDispose: true);
+      TimelineController.new,
+      isAutoDispose: true,
+    );
