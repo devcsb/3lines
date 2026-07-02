@@ -563,6 +563,30 @@ void main() {
       expect(await repo.getEntryByDate('2026-03-03'), isNotNull);
     });
 
+    test('created_at/updated_at 타임스탬프를 보존한다', () async {
+      final createdAt = DateTime.parse('2026-03-03T09:10:11.000+09:00');
+      final updatedAt = DateTime.parse('2026-03-04T10:11:12.000+09:00');
+      final entries = [
+        {
+          'date': '2026-03-03',
+          'emotion': 2,
+          'prompts': [
+            {'question': 'q', 'answer': 'a'},
+          ],
+          'created_at': createdAt.toIso8601String(),
+          'updated_at': updatedAt.toIso8601String(),
+        },
+      ];
+
+      final result = await repo.importEntries(entries);
+      final entry = await repo.getEntryByDate('2026-03-03');
+
+      expect(result.imported, 1);
+      expect(entry, isNotNull);
+      expect(entry!.createdAt.toUtc(), createdAt.toUtc());
+      expect(entry.updatedAt.toUtc(), updatedAt.toUtc());
+    });
+
     test('emotion이 숫자가 아니면 해당 항목만 skip되고 나머지는 import된다', () async {
       final entries = [
         {

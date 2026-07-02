@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'app/app_lifecycle_lock.dart';
 import 'app/router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_notifier.dart';
@@ -41,7 +42,7 @@ class ThreeLinesApp extends ConsumerWidget {
           data: mq.copyWith(
             textScaler: mq.textScaler.clamp(maxScaleFactor: 1.3),
           ),
-          child: child ?? const SizedBox.shrink(),
+          child: AppLifecycleLock(child: child ?? const SizedBox.shrink()),
         );
       },
     );
