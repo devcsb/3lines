@@ -60,12 +60,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('데이터를 불러올 수 없어요',
-                  style: theme.textTheme.bodyLarge),
+              Text('데이터를 불러올 수 없어요', style: theme.textTheme.bodyLarge),
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () =>
-                    ref.invalidate(todayControllerProvider),
+                onPressed: () => ref.invalidate(todayControllerProvider),
                 child: const Text('다시 시도'),
               ),
             ],
@@ -83,6 +81,11 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           }
 
           final isReadMode = state.isCompleted && !state.isEditing;
+          final filledCount = [
+            state.answer1,
+            state.answer2,
+            state.answer3,
+          ].where((a) => a.trim().isNotEmpty).length;
 
           return SafeArea(
             bottom: false,
@@ -99,8 +102,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                         Text(
                           du.formatKoreanDate(DateTime.now()),
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.45),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.45,
+                            ),
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -151,7 +155,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                   Container(
                                     width: double.infinity,
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 12),
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: theme.colorScheme.primaryContainer
                                           .withValues(alpha: 0.3),
@@ -161,17 +167,20 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
-                                        Icon(Icons.check_circle_rounded,
-                                            color: theme.colorScheme.primary,
-                                            size: 18),
+                                        Icon(
+                                          Icons.check_circle_rounded,
+                                          color: theme.colorScheme.primary,
+                                          size: 18,
+                                        ),
                                         const SizedBox(width: 8),
                                         Text(
                                           '오늘의 기록 완료',
                                           style: theme.textTheme.labelMedium
                                               ?.copyWith(
-                                            color: theme.colorScheme.primary,
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                                color:
+                                                    theme.colorScheme.primary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                         ),
                                       ],
                                     ),
@@ -180,7 +189,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                 if (state.recentEmotions.isNotEmpty) ...[
                                   const SizedBox(height: 12),
                                   _MiniSparkline(
-                                      recentEmotions: state.recentEmotions),
+                                    recentEmotions: state.recentEmotions,
+                                  ),
                                 ],
                               ],
                             ),
@@ -195,7 +205,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
                               color: theme.colorScheme.tertiaryContainer
                                   .withValues(alpha: 0.3),
@@ -204,8 +216,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                             child: Text(
                               '자리를 비웠어도 괜찮아요. 다시 돌아오신 것만으로 충분해요.',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.6),
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                ),
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -289,9 +302,11 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                     onChanged: isReadMode
                                         ? null
                                         : (v) => ref
-                                            .read(
-                                                todayControllerProvider.notifier)
-                                            .setAnswer(index, v),
+                                              .read(
+                                                todayControllerProvider
+                                                    .notifier,
+                                              )
+                                              .setAnswer(index, v),
                                   ),
                                   // Suggestion chips (edit mode)
                                   if (!isReadMode) ...[
@@ -300,28 +315,32 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                       promptIndex: index,
                                       onTap: (suggestion) {
                                         final prev = answer;
-                                        final next = prev.isEmpty
+                                        final next = prev.trim().isEmpty
                                             ? suggestion
                                             : '$prev $suggestion';
                                         ref
-                                            .read(todayControllerProvider
-                                                .notifier)
+                                            .read(
+                                              todayControllerProvider.notifier,
+                                            )
                                             .setAnswer(index, next);
-                                        if (prev.isNotEmpty) {
+                                        if (prev.trim().isNotEmpty) {
                                           ScaffoldMessenger.of(context)
                                             ..hideCurrentSnackBar()
                                             ..showSnackBar(
                                               SnackBar(
-                                                content:
-                                                    const Text('제안을 추가했어요'),
+                                                content: const Text(
+                                                  '제안을 추가했어요',
+                                                ),
                                                 duration: const Duration(
-                                                    seconds: 3),
+                                                  seconds: 3,
+                                                ),
                                                 action: SnackBarAction(
                                                   label: '되돌리기',
                                                   onPressed: () => ref
                                                       .read(
-                                                          todayControllerProvider
-                                                              .notifier)
+                                                        todayControllerProvider
+                                                            .notifier,
+                                                      )
                                                       .setAnswer(index, prev),
                                                 ),
                                               ),
@@ -343,15 +362,18 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                 // Bottom button
                 Container(
                   padding: EdgeInsets.fromLTRB(
-                    20, 12, 20,
+                    20,
+                    12,
+                    20,
                     16 + MediaQuery.of(context).padding.bottom,
                   ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
                     border: Border(
                       top: BorderSide(
-                        color: theme.colorScheme.outlineVariant
-                            .withValues(alpha: 0.3),
+                        color: theme.colorScheme.outlineVariant.withValues(
+                          alpha: 0.3,
+                        ),
                       ),
                     ),
                   ),
@@ -373,17 +395,12 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                           emotionSelected: state.emotion != null,
                           // 링은 3줄(답변) 작성 진척만 정직하게 표시한다.
                           // 감정 선택 여부는 emotionSelected로 버튼 라벨/활성화에서 분리해 표현.
-                          filledCount: [
-                            state.answer1,
-                            state.answer2,
-                            state.answer3,
-                          ].where((a) => a.isNotEmpty).length,
+                          filledCount: filledCount,
                           canSave: state.canSave,
                           isSaving: state.isSaving,
                           onPressed: () async {
                             final isFirstSave = !state.isCompleted;
-                            final messenger =
-                                ScaffoldMessenger.of(context);
+                            final messenger = ScaffoldMessenger.of(context);
                             final success = await ref
                                 .read(todayControllerProvider.notifier)
                                 .save();
@@ -393,13 +410,12 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                               FocusScope.of(context).unfocus();
                             }
                             if (success && isFirstSave) {
-                              setState(
-                                  () => _showCompletionAnimation = true);
+                              setState(() => _showCompletionAnimation = true);
                             } else if (!success) {
                               messenger.showSnackBar(
                                 const SnackBar(
-                                    content: Text(
-                                        '저장에 실패했어요. 다시 시도해주세요.')),
+                                  content: Text('저장에 실패했어요. 다시 시도해주세요.'),
+                                ),
                               );
                             }
                           },
@@ -430,8 +446,7 @@ class _MiniSparkline extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest
-            .withValues(alpha: 0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
@@ -454,16 +469,18 @@ class _MiniSparkline extends StatelessWidget {
               final dateStr =
                   '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
               final emotionEntry = recentEmotions
-                  .where((e) =>
-                      '${e.date.year}-${e.date.month.toString().padLeft(2, '0')}-${e.date.day.toString().padLeft(2, '0')}' ==
-                      dateStr)
+                  .where(
+                    (e) =>
+                        '${e.date.year}-${e.date.month.toString().padLeft(2, '0')}-${e.date.day.toString().padLeft(2, '0')}' ==
+                        dateStr,
+                  )
                   .firstOrNull;
               final emotion = emotionEntry?.emotion;
               final color = emotion != null
                   ? AppColors.emotionColors[emotion]!
-                  : theme.colorScheme.outlineVariant
-                      .withValues(alpha: 0.4);
-              final isToday = day.year == now.year &&
+                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.4);
+              final isToday =
+                  day.year == now.year &&
                   day.month == now.month &&
                   day.day == now.day;
 
@@ -476,7 +493,8 @@ class _MiniSparkline extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: color.withValues(
-                          alpha: emotion != null ? 0.85 : 0.25),
+                        alpha: emotion != null ? 0.85 : 0.25,
+                      ),
                       border: isToday
                           ? Border.all(
                               color: theme.colorScheme.primary,
@@ -505,9 +523,7 @@ class _MiniSparkline extends StatelessWidget {
                       color: theme.colorScheme.onSurface.withValues(
                         alpha: isToday ? 0.7 : 0.35,
                       ),
-                      fontWeight: isToday
-                          ? FontWeight.w600
-                          : FontWeight.normal,
+                      fontWeight: isToday ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
                 ],

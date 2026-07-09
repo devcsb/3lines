@@ -41,7 +41,9 @@ class TodayState {
 
   bool get canSave =>
       emotion != null &&
-      (answer1.isNotEmpty || answer2.isNotEmpty || answer3.isNotEmpty);
+      (answer1.trim().isNotEmpty ||
+          answer2.trim().isNotEmpty ||
+          answer3.trim().isNotEmpty);
 
   TodayState copyWith({
     int? Function()? emotion,

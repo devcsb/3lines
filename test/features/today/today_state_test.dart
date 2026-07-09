@@ -26,6 +26,11 @@ void main() {
         expect(state.canSave, isFalse);
       });
 
+      test('returns false when answers only contain whitespace', () {
+        const state = TodayState(emotion: 3, answer1: '   ', answer2: '\n');
+        expect(state.canSave, isFalse);
+      });
+
       test('returns true when emotion set and at least one answer', () {
         const state = TodayState(emotion: 4, answer1: 'hello');
         expect(state.canSave, isTrue);

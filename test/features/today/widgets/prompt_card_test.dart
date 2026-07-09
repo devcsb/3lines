@@ -75,9 +75,12 @@ void main() {
     expect(textField.maxLength, 200);
   });
 
-  testWidgets('enforces 2 max lines', (tester) async {
+  testWidgets('keeps two visible lines and expands to four lines', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildApp());
     final textField = tester.widget<TextField>(find.byType(TextField));
-    expect(textField.maxLines, 2);
+    expect(textField.minLines, 2);
+    expect(textField.maxLines, 4);
   });
 }

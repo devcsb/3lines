@@ -53,82 +53,110 @@ class _EmotionPickerState extends State<EmotionPicker> {
             final icon = _icons[value]!;
 
             return Expanded(
-              child: GestureDetector(
-                onTap: widget.enabled
-                    ? () {
-                        HapticService.selection();
-                        setState(() => _animatingIndex = value);
-                        widget.onSelected(value);
-                        Future.delayed(const Duration(milliseconds: 250), () {
-                          if (mounted) {
-                            setState(() => _animatingIndex = null);
-                          }
-                        });
-                      }
-                    : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: Semantics(
+                  button: true,
+                  enabled: widget.enabled,
                   label:
                       '감정 선택: 5단계 중 $value (${AppColors.emotionLabels[value]})',
                   selected: isSelected,
-                  child: AnimatedScale(
-                    scale: isAnimating ? 1.15 : 1.0,
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOut,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeInOut,
-                          width: isSelected ? 48 : 38,
-                          height: isSelected ? 48 : 38,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isSelected
-                                ? color
-                                : color.withValues(alpha: 0.12),
-                            border: Border.all(
-                              color: isSelected
-                                  ? color
-                                  : color.withValues(alpha: 0.3),
-                              width: isSelected ? 2.0 : 1.5,
-                            ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: color.withValues(alpha: 0.35),
-                                      blurRadius: 10,
-                                      spreadRadius: 1,
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: widget.enabled
+                          ? () {
+                              HapticService.selection();
+                              setState(() => _animatingIndex = value);
+                              widget.onSelected(value);
+                              Future.delayed(
+                                const Duration(milliseconds: 250),
+                                () {
+                                  if (mounted) {
+                                    setState(() => _animatingIndex = null);
+                                  }
+                                },
+                              );
+                            }
+                          : null,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 76),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: AnimatedOpacity(
+                            opacity: widget.enabled ? 1.0 : 0.55,
+                            duration: const Duration(milliseconds: 180),
+                            child: AnimatedScale(
+                              scale: isAnimating ? 1.12 : 1.0,
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeOut,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 250),
+                                    curve: Curves.easeInOut,
+                                    width: isSelected ? 48 : 40,
+                                    height: isSelected ? 48 : 40,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isSelected
+                                          ? color
+                                          : color.withValues(alpha: 0.12),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? color
+                                            : color.withValues(alpha: 0.3),
+                                        width: isSelected ? 2.0 : 1.5,
+                                      ),
+                                      boxShadow: isSelected
+                                          ? [
+                                              BoxShadow(
+                                                color: color.withValues(
+                                                  alpha: 0.35,
+                                                ),
+                                                blurRadius: 10,
+                                                spreadRadius: 1,
+                                              ),
+                                            ]
+                                          : null,
                                     ),
-                                  ]
-                                : null,
-                          ),
-                          child: Center(
-                            child: Icon(
-                              icon,
-                              size: isSelected ? 26 : 20,
-                              color: isSelected
-                                  ? Colors.white
-                                  : color.withValues(alpha: 0.7),
+                                    child: Center(
+                                      child: Icon(
+                                        icon,
+                                        size: isSelected ? 26 : 21,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : color.withValues(alpha: 0.7),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  AnimatedDefaultTextStyle(
+                                    duration: const Duration(milliseconds: 200),
+                                    style: theme.textTheme.labelSmall!.copyWith(
+                                      color: isSelected
+                                          ? color
+                                          : theme.colorScheme.onSurface
+                                                .withValues(alpha: 0.4),
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.normal,
+                                      fontSize: isSelected ? 11 : 10,
+                                    ),
+                                    child: Text(
+                                      AppColors.emotionLabels[value]!,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: theme.textTheme.labelSmall!.copyWith(
-                            color: isSelected
-                                ? color
-                                : theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.4),
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.normal,
-                            fontSize: isSelected ? 11 : 10,
-                          ),
-                          child: Text(AppColors.emotionLabels[value]!),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),

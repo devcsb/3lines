@@ -42,7 +42,9 @@ class AnimatedSaveButton extends StatelessWidget {
           Expanded(
             child: Semantics(
               button: true,
-              label: canSave ? '오늘의 기록 저장하기' : (emotionSelected ? '$filledCount/3 작성 중' : '감정 선택 필요'),
+              label: canSave
+                  ? '오늘의 기록 저장하기, 저장 가능, 답변 $filledCount줄 작성됨'
+                  : (emotionSelected ? '답변 $filledCount/3줄 작성 중' : '감정 선택 필요'),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
@@ -59,9 +61,11 @@ class AnimatedSaveButton extends StatelessWidget {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(canSave
-                        ? '기록 완료'
-                        : (emotionSelected ? '답변을 작성해주세요' : '감정을 선택해주세요')),
+                      : Text(
+                          canSave
+                              ? '기록 완료'
+                              : (emotionSelected ? '답변을 작성해주세요' : '감정을 선택해주세요'),
+                        ),
                 ),
               ),
             ),
@@ -103,8 +107,9 @@ class _ProgressRing extends StatelessWidget {
               painter: _RingPainter(
                 progress: value,
                 activeColor: color,
-                trackColor:
-                    theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                trackColor: theme.colorScheme.outlineVariant.withValues(
+                  alpha: 0.3,
+                ),
               ),
             ),
           ),
@@ -174,6 +179,5 @@ class _RingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_RingPainter old) =>
-      progress != old.progress ||
-      activeColor != old.activeColor;
+      progress != old.progress || activeColor != old.activeColor;
 }

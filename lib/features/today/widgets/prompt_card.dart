@@ -130,7 +130,9 @@ class _PromptCardState extends State<PromptCard> {
                     widget.question,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w500,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.85,
+                      ),
                       height: 1.4,
                     ),
                   ),
@@ -142,13 +144,16 @@ class _PromptCardState extends State<PromptCard> {
                     transitionBuilder: (child, animation) => FadeTransition(
                       opacity: animation,
                       child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, 0.06),
-                          end: Offset.zero,
-                        ).animate(CurvedAnimation(
-                          parent: animation,
-                          curve: Curves.easeOutCubic,
-                        )),
+                        position:
+                            Tween<Offset>(
+                              begin: const Offset(0, 0.06),
+                              end: Offset.zero,
+                            ).animate(
+                              CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOutCubic,
+                              ),
+                            ),
                         child: child,
                       ),
                     ),
@@ -171,15 +176,19 @@ class _PromptCardState extends State<PromptCard> {
                             child: TextField(
                               controller: _controller,
                               focusNode: _focusNode,
-                              maxLines: 2,
+                              minLines: 2,
+                              maxLines: 4,
                               maxLength: 200,
+                              textCapitalization: TextCapitalization.sentences,
+                              scrollPadding: const EdgeInsets.only(bottom: 120),
                               // 마지막 프롬프트는 done, 나머지는 next로 다음 필드 이동
                               textInputAction: widget.index < 2
                                   ? TextInputAction.next
                                   : TextInputAction.done,
                               style: theme.textTheme.bodyLarge?.copyWith(
-                                color: theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.8),
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.8,
+                                ),
                               ),
                               decoration: InputDecoration(
                                 hintText: '여기에 적어주세요...',
@@ -187,15 +196,16 @@ class _PromptCardState extends State<PromptCard> {
                                 border: InputBorder.none,
                                 enabledBorder: InputBorder.none,
                                 focusedBorder: InputBorder.none,
-                                contentPadding:
-                                    const EdgeInsets.symmetric(vertical: 4),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                ),
                                 // 포커스 시에만 글자 수 카운터 표시
                                 counterText: _isFocused ? null : '',
-                                counterStyle:
-                                    theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withValues(alpha: 0.3),
-                                ),
+                                counterStyle: theme.textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.3),
+                                    ),
                               ),
                               onChanged: widget.onChanged,
                               onSubmitted: (_) {

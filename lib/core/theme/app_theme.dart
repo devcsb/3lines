@@ -148,23 +148,23 @@ class AppTheme {
     final textTheme = baseTextTheme.copyWith(
       headlineLarge: baseTextTheme.headlineLarge?.copyWith(
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.5,
+        letterSpacing: 0,
       ),
       headlineMedium: baseTextTheme.headlineMedium?.copyWith(
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.5,
+        letterSpacing: 0,
       ),
       headlineSmall: baseTextTheme.headlineSmall?.copyWith(
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.3,
+        letterSpacing: 0,
       ),
       titleLarge: baseTextTheme.titleLarge?.copyWith(
         fontWeight: FontWeight.w600,
-        letterSpacing: -0.2,
+        letterSpacing: 0,
       ),
       titleMedium: baseTextTheme.titleMedium?.copyWith(
         fontWeight: FontWeight.w600,
-        letterSpacing: -0.1,
+        letterSpacing: 0,
       ),
       titleSmall: baseTextTheme.titleSmall?.copyWith(
         fontWeight: FontWeight.w600,
@@ -215,7 +215,9 @@ class AppTheme {
         color: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+          side: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+          ),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -225,9 +227,7 @@ class AppTheme {
         backgroundColor: colorScheme.surfaceContainerLow,
         side: BorderSide.none,
         labelStyle: textTheme.labelSmall,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
 
       // Buttons
@@ -289,7 +289,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         hintStyle: textTheme.bodyLarge?.copyWith(
           color: colorScheme.onSurface.withValues(alpha: 0.35),
         ),
@@ -298,11 +301,15 @@ class AppTheme {
       // Search bar
       searchBarTheme: SearchBarThemeData(
         elevation: const WidgetStatePropertyAll(0),
-        backgroundColor: WidgetStatePropertyAll(colorScheme.surfaceContainerLow),
+        backgroundColor: WidgetStatePropertyAll(
+          colorScheme.surfaceContainerLow,
+        ),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
-            side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+            side: BorderSide(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
           ),
         ),
         padding: const WidgetStatePropertyAll(
@@ -364,9 +371,7 @@ class AppTheme {
             BorderSide(color: colorScheme.outlineVariant),
           ),
           shape: WidgetStatePropertyAll(
-            RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           textStyle: WidgetStatePropertyAll(textTheme.labelMedium),
           visualDensity: VisualDensity.compact,
@@ -384,9 +389,7 @@ class AppTheme {
 
       // Dialog
       dialogTheme: DialogThemeData(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: colorScheme.surface,
       ),
 
@@ -425,9 +428,7 @@ class AppTheme {
         contentTextStyle: textTheme.bodyMedium?.copyWith(
           color: colorScheme.onInverseSurface,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         behavior: SnackBarBehavior.floating,
       ),
     );
