@@ -53,6 +53,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     final theme = Theme.of(context);
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: asyncState.when(
         skipLoadingOnRefresh: true,
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -358,68 +359,66 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                     ),
                   ),
                 ),
-
-                // Bottom button
                 Container(
-                  padding: EdgeInsets.fromLTRB(
-                    20,
-                    12,
-                    20,
-                    16 + MediaQuery.of(context).padding.bottom,
-                  ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
                     border: Border(
                       top: BorderSide(
                         color: theme.colorScheme.outlineVariant.withValues(
-                          alpha: 0.3,
+                          alpha: 0.5,
                         ),
                       ),
                     ),
                   ),
-                  child: isReadMode
-                      ? Semantics(
-                          button: true,
-                          label: '오늘의 기록 수정하기',
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton(
-                              onPressed: () => ref
-                                  .read(todayControllerProvider.notifier)
-                                  .toggleEdit(),
-                              child: const Text('수정하기'),
-                            ),
-                          ),
-                        )
-                      : AnimatedSaveButton(
-                          emotionSelected: state.emotion != null,
-                          // 링은 3줄(답변) 작성 진척만 정직하게 표시한다.
-                          // 감정 선택 여부는 emotionSelected로 버튼 라벨/활성화에서 분리해 표현.
-                          filledCount: filledCount,
-                          canSave: state.canSave,
-                          isSaving: state.isSaving,
-                          onPressed: () async {
-                            final isFirstSave = !state.isCompleted;
-                            final messenger = ScaffoldMessenger.of(context);
-                            final success = await ref
-                                .read(todayControllerProvider.notifier)
-                                .save();
-                            if (!context.mounted) return;
-                            if (success) {
-                              // 저장 완료 시 키보드를 닫아 완료 애니메이션이 가려지지 않게 함
-                              FocusScope.of(context).unfocus();
-                            }
-                            if (success && isFirstSave) {
-                              setState(() => _showCompletionAnimation = true);
-                            } else if (!success) {
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text('저장에 실패했어요. 다시 시도해주세요.'),
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                      child: isReadMode
+                          ? Semantics(
+                              button: true,
+                              label: '오늘의 기록 수정하기',
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => ref
+                                      .read(todayControllerProvider.notifier)
+                                      .toggleEdit(),
+                                  icon: const Icon(Icons.edit_outlined),
+                                  label: const Text('수정하기'),
                                 ),
-                              );
-                            }
-                          },
-                        ),
+                              ),
+                            )
+                          : AnimatedSaveButton(
+                              emotionSelected: state.emotion != null,
+                              filledCount: filledCount,
+                              canSave: state.canSave,
+                              isSaving: state.isSaving,
+                              onPressed: () async {
+                                final isFirstSave = !state.isCompleted;
+                                final messenger = ScaffoldMessenger.of(context);
+                                final success = await ref
+                                    .read(todayControllerProvider.notifier)
+                                    .save();
+                                if (!context.mounted) return;
+                                if (success) {
+                                  FocusScope.of(context).unfocus();
+                                }
+                                if (success && isFirstSave) {
+                                  setState(
+                                    () => _showCompletionAnimation = true,
+                                  );
+                                } else if (!success) {
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('저장에 실패했어요. 다시 시도해주세요.'),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -431,9 +430,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
 }
 
 class _MiniSparkline extends StatelessWidget {
-  final List<({DateTime date, int emotion})> recentEmotions;
-
   const _MiniSparkline({required this.recentEmotions});
+
+  final List<({DateTime date, int emotion})> recentEmotions;
 
   static const _dayLabels = ['월', '화', '수', '목', '금', '토', '일'];
 
