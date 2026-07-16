@@ -84,13 +84,25 @@ class TodayController extends AsyncNotifier<TodayState> {
 
   void setEmotion(int value) {
     final current = state.value;
-    if (current == null || value < 1 || value > 5) return;
+    if (current == null ||
+        current.isSaving ||
+        current.isCancelling ||
+        (current.isCompleted && !current.isEditing) ||
+        value < 1 ||
+        value > 5) {
+      return;
+    }
     state = AsyncData(current.copyWith(emotion: () => value));
   }
 
   void setAnswer(int index, String value) {
     final current = state.value;
-    if (current == null) return;
+    if (current == null ||
+        current.isSaving ||
+        current.isCancelling ||
+        (current.isCompleted && !current.isEditing)) {
+      return;
+    }
     switch (index) {
       case 0:
         state = AsyncData(current.copyWith(answer1: value));
@@ -108,16 +120,20 @@ class TodayController extends AsyncNotifier<TodayState> {
     if (current == null ||
         emotion == null ||
         !current.canSave ||
-        current.isSaving) {
+        current.isSaving ||
+        current.isCancelling ||
+        (current.isCompleted && !current.isEditing)) {
       return false;
     }
 
     state = AsyncData(current.copyWith(isSaving: true));
 
+    late final EntryRepository entryRepo;
+    late final DailyEntry entry;
     try {
-      final entryRepo = ref.read(entryRepositoryProvider);
+      entryRepo = ref.read(entryRepositoryProvider);
 
-      final entry = DailyEntry(
+      entry = DailyEntry(
         id: current.existingEntry?.id,
         date: ref.read(appClockProvider).todayString(),
         emotion: emotion,
@@ -131,21 +147,38 @@ class TodayController extends AsyncNotifier<TodayState> {
       );
 
       await entryRepo.saveEntry(entry);
+    } catch (e, stack) {
+      developer.log('Failed to save entry', error: e, stackTrace: stack);
+      state = AsyncData(current.copyWith(isSaving: false));
+      return false;
+    }
 
-      // DB 저장이 성공한 후에 이전 사진 파일을 삭제한다.
-      // 저장 전에 삭제하면 saveEntry() 실패 시 파일을 복구할 수 없다.
-      final oldPhotoPath = current.existingEntry?.photoPath;
-      if (oldPhotoPath != null && oldPhotoPath != current.photoPath) {
+    // DB 저장이 성공한 후의 작업은 실패해도 이미 커밋된 기록을 되돌리지 않는다.
+    final oldPhotoPath = current.existingEntry?.photoPath;
+    if (oldPhotoPath != null && oldPhotoPath != current.photoPath) {
+      try {
         final photoService = ref.read(photoServiceProvider);
         await photoService.deletePhoto(oldPhotoPath);
+      } catch (e, stack) {
+        developer.log(
+          'Failed to delete replaced photo',
+          error: e,
+          stackTrace: stack,
+        );
       }
+    }
 
+    var streakCount = current.currentStreak;
+    var usedGraceDay = current.usedGraceDay;
+    DailyEntry? saved = entry;
+    int? milestone;
+    try {
       final streakResult = await entryRepo.getCurrentStreakWithGrace();
-      final saved = await entryRepo.getTodayEntry();
+      saved = await entryRepo.getTodayEntry() ?? entry;
       final totalCount = await entryRepo.getTotalCount();
 
-      // Check if this save hits a milestone
-      int? milestone;
+      streakCount = streakResult.count;
+      usedGraceDay = streakResult.usedGraceDay;
       for (final m in _milestones) {
         if (totalCount == m) {
           milestone = m;
@@ -153,27 +186,33 @@ class TodayController extends AsyncNotifier<TodayState> {
         }
       }
 
-      // Unlock milestone accent theme when a milestone is reached
       if (milestone != null) {
         final settingsRepo = ref.read(settingsRepositoryProvider);
         await settingsRepo.unlockMilestone(milestone);
-        // Refresh the accent theme provider so AppearanceSection updates
         ref.invalidate(accentThemeProvider);
       }
-
-      state = AsyncData(
-        current.copyWith(
-          isCompleted: true,
-          isEditing: false,
-          isSaving: false,
-          currentStreak: streakResult.count,
-          usedGraceDay: streakResult.usedGraceDay,
-          existingEntry: () => saved,
-          milestone: () => milestone,
-        ),
+    } catch (e, stack) {
+      developer.log(
+        'Failed to refresh post-save metadata',
+        error: e,
+        stackTrace: stack,
       );
+    }
 
-      // Reschedule reminder: cancel today's and ensure tomorrow's fires
+    state = AsyncData(
+      current.copyWith(
+        isCompleted: true,
+        isEditing: false,
+        isSaving: false,
+        currentStreak: streakCount,
+        usedGraceDay: usedGraceDay,
+        existingEntry: () => saved,
+        milestone: () => milestone,
+      ),
+    );
+
+    // Reschedule reminder: cancel today's and ensure tomorrow's fires.
+    try {
       final settings = ref.read(settingsControllerProvider).value;
       if (settings != null && settings.reminderEnabled) {
         final notifService = ref.read(notificationServiceProvider);
@@ -190,53 +229,124 @@ class TodayController extends AsyncNotifier<TodayState> {
         // Streak is safe now — cancel today's at-risk notification
         await notifService.cancelStreakAtRiskReminder();
       }
-
-      ref.read(journalChangesProvider.notifier).markChanged();
-      return true;
     } catch (e, stack) {
-      developer.log('Failed to save entry', error: e, stackTrace: stack);
-      state = AsyncData(current.copyWith(isSaving: false));
-      return false;
+      developer.log(
+        'Failed to update reminders after save',
+        error: e,
+        stackTrace: stack,
+      );
     }
+
+    ref.read(journalChangesProvider.notifier).markChanged();
+    return true;
   }
 
   void toggleEdit() {
     final current = state.value;
-    if (current == null) return;
+    if (current == null || current.isSaving || current.isCancelling) return;
     state = AsyncData(current.copyWith(isEditing: !current.isEditing));
   }
 
-  void attachPhoto(String path) {
+  Future<void> cancelEdit() async {
+    final current = state.value;
+    final saved = current?.existingEntry;
+    if (current == null ||
+        saved == null ||
+        !current.isEditing ||
+        current.isSaving ||
+        current.isCancelling) {
+      return;
+    }
+
+    state = AsyncData(current.copyWith(isCancelling: true));
+
+    final currentPhotoPath = current.photoPath;
+    if (currentPhotoPath != null && currentPhotoPath != saved.photoPath) {
+      final photoService = ref.read(photoServiceProvider);
+      try {
+        await photoService.deletePhoto(currentPhotoPath);
+      } catch (e, stack) {
+        developer.log(
+          'Failed to discard unsaved photo',
+          error: e,
+          stackTrace: stack,
+        );
+      }
+    }
+
+    state = AsyncData(
+      current.copyWith(
+        emotion: () => saved.emotion,
+        answer1: saved.answer1,
+        answer2: saved.answer2,
+        answer3: saved.answer3,
+        photoPath: () => saved.photoPath,
+        isEditing: false,
+        isCancelling: false,
+      ),
+    );
+  }
+
+  Future<void> attachPhoto(String path) async {
     final current = state.value;
     if (current == null) return;
+    if (current.isSaving ||
+        current.isCancelling ||
+        (current.isCompleted && !current.isEditing)) {
+      await _discardUnattachedPhoto(path);
+      return;
+    }
 
     // 기존에 선택한 미저장 사진이 있으면 디스크에서 정리한다.
     // (DB에 저장된 사진과 동일한 경우는 삭제하지 않는다.)
     final previousPath = current.photoPath;
     final savedPath = current.existingEntry?.photoPath;
-    if (previousPath != null && previousPath != savedPath) {
-      final photoService = ref.read(photoServiceProvider);
-      photoService.deletePhoto(previousPath);
-    }
-
     state = AsyncData(current.copyWith(photoPath: () => path));
+
+    if (previousPath != null && previousPath != savedPath) {
+      await _discardUnattachedPhoto(previousPath);
+    }
   }
 
   Future<void> removePhoto() async {
     final current = state.value;
-    if (current == null || current.photoPath == null) return;
-
-    // DB에 저장된 사진은 여기서 삭제하지 않는다.
-    // save() 호출 시 DB 트랜잭션 성공 후에 정리된다.
-    // 미저장 사진(새로 첨부했지만 아직 save() 전인 사진)만 즉시 삭제하여
-    // storage leak를 방지한다.
-    final savedPath = current.existingEntry?.photoPath;
-    if (current.photoPath != savedPath) {
-      final photoService = ref.read(photoServiceProvider);
-      await photoService.deletePhoto(current.photoPath!);
+    if (current == null ||
+        current.isSaving ||
+        current.isCancelling ||
+        (current.isCompleted && !current.isEditing) ||
+        current.photoPath == null) {
+      return;
     }
 
     state = AsyncData(current.copyWith(photoPath: () => null));
+
+    // DB에 저장된 사진은 여기서 삭제하지 않는다. save()가 DB 트랜잭션
+    // 성공 후 정리한다. 미저장 사진만 파일 정리를 시도한다.
+    final savedPath = current.existingEntry?.photoPath;
+    if (current.photoPath != savedPath) {
+      try {
+        final photoService = ref.read(photoServiceProvider);
+        await photoService.deletePhoto(current.photoPath!);
+      } catch (e, stack) {
+        developer.log(
+          'Failed to delete removed photo',
+          error: e,
+          stackTrace: stack,
+        );
+      }
+    }
+  }
+
+  Future<void> _discardUnattachedPhoto(String path) async {
+    try {
+      await ref.read(photoServiceProvider).deletePhoto(path);
+    } catch (e, stack) {
+      developer.log(
+        'Failed to discard unattached photo',
+        error: e,
+        stackTrace: stack,
+      );
+    }
   }
 
   Future<void> refresh() async {

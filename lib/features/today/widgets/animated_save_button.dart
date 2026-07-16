@@ -9,7 +9,9 @@ class AnimatedSaveButton extends StatelessWidget {
   final int filledCount; // 0–3: how many prompts have answers
   final bool canSave;
   final bool isSaving;
+  final bool isCancelling;
   final bool emotionSelected;
+  final String guidanceMessage;
   final VoidCallback? onPressed;
 
   const AnimatedSaveButton({
@@ -17,6 +19,8 @@ class AnimatedSaveButton extends StatelessWidget {
     required this.filledCount,
     required this.canSave,
     required this.isSaving,
+    this.isCancelling = false,
+    required this.guidanceMessage,
     this.emotionSelected = false,
     this.onPressed,
   });
@@ -25,50 +29,75 @@ class AnimatedSaveButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final progress = filledCount / 3.0;
+    final isWorking = isSaving || isCancelling;
 
     return SizedBox(
       width: double.infinity,
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Mini progress ring
-          _ProgressRing(
-            progress: progress,
-            color: theme.colorScheme.primary,
-            filledCount: filledCount,
+          Text(
+            guidanceMessage,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: canSave
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              // Mini progress ring
+              _ProgressRing(
+                progress: progress,
+                color: theme.colorScheme.primary,
+                filledCount: filledCount,
+              ),
+              const SizedBox(width: 14),
 
-          // Main button
-          Expanded(
-            child: Semantics(
-              button: true,
-              label: canSave
-                  ? '오늘의 기록 저장하기, 저장 가능, 답변 $filledCount줄 작성됨'
-                  : (emotionSelected ? '답변 $filledCount/3줄 작성 중' : '감정 선택 필요'),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                child: ElevatedButton(
-                  onPressed: canSave && !isSaving
-                      ? () {
-                          HapticService.medium();
-                          onPressed?.call();
-                        }
-                      : null,
-                  child: isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          canSave
-                              ? '기록 완료'
-                              : (emotionSelected ? '답변을 작성해주세요' : '감정을 선택해주세요'),
-                        ),
+              // Main button
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  enabled: canSave && !isWorking,
+                  liveRegion: isWorking,
+                  label: isSaving
+                      ? '오늘의 기록 저장 중'
+                      : (isCancelling
+                            ? '수정 취소 중'
+                            : (canSave
+                                  ? '오늘의 기록 저장하기, 저장 가능, 답변 $filledCount/3줄 작성됨'
+                                  : (emotionSelected
+                                        ? '답변 $filledCount/3줄 작성 중'
+                                        : '감정 선택 필요'))),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: ElevatedButton(
+                      onPressed: canSave && !isWorking
+                          ? () {
+                              HapticService.medium();
+                              onPressed?.call();
+                            }
+                          : null,
+                      child: isWorking
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              canSave
+                                  ? '기록 완료'
+                                  : (emotionSelected
+                                        ? '답변을 작성해주세요'
+                                        : '감정을 선택해주세요'),
+                            ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -118,9 +147,9 @@ class _ProgressRing extends StatelessWidget {
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             child: Text(
-              '$filledCount',
+              '$filledCount/3',
               key: ValueKey(filledCount),
-              style: theme.textTheme.labelLarge?.copyWith(
+              style: theme.textTheme.labelMedium?.copyWith(
                 color: filledCount > 0
                     ? color
                     : theme.colorScheme.onSurface.withValues(alpha: 0.3),

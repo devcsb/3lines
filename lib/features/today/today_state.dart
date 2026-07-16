@@ -12,6 +12,7 @@ class TodayState {
   final bool usedGraceDay;
   final DailyEntry? existingEntry;
   final bool isSaving;
+  final bool isCancelling;
   final DailyEntry? oneYearAgoEntry;
   final DailyEntry? sixMonthsAgoEntry;
   final DailyEntry? oneMonthAgoEntry;
@@ -31,6 +32,7 @@ class TodayState {
     this.usedGraceDay = false,
     this.existingEntry,
     this.isSaving = false,
+    this.isCancelling = false,
     this.oneYearAgoEntry,
     this.sixMonthsAgoEntry,
     this.oneMonthAgoEntry,
@@ -39,11 +41,19 @@ class TodayState {
     this.recentEmotions = const [],
   });
 
-  bool get canSave =>
-      emotion != null &&
-      (answer1.trim().isNotEmpty ||
-          answer2.trim().isNotEmpty ||
-          answer3.trim().isNotEmpty);
+  bool get canSave => emotion != null && filledAnswerCount > 0;
+
+  int get filledAnswerCount => [
+    answer1,
+    answer2,
+    answer3,
+  ].where((answer) => answer.trim().isNotEmpty).length;
+
+  String get saveGuidanceMessage {
+    if (emotion == null) return '오늘의 감정을 먼저 골라주세요';
+    if (filledAnswerCount == 0) return '한 줄만 적어도 저장할 수 있어요';
+    return '저장할 준비가 됐어요';
+  }
 
   TodayState copyWith({
     int? Function()? emotion,
@@ -57,6 +67,7 @@ class TodayState {
     bool? usedGraceDay,
     DailyEntry? Function()? existingEntry,
     bool? isSaving,
+    bool? isCancelling,
     DailyEntry? Function()? oneYearAgoEntry,
     DailyEntry? Function()? sixMonthsAgoEntry,
     DailyEntry? Function()? oneMonthAgoEntry,
@@ -78,6 +89,7 @@ class TodayState {
           ? existingEntry()
           : this.existingEntry,
       isSaving: isSaving ?? this.isSaving,
+      isCancelling: isCancelling ?? this.isCancelling,
       oneYearAgoEntry: oneYearAgoEntry != null
           ? oneYearAgoEntry()
           : this.oneYearAgoEntry,

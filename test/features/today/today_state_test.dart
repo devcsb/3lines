@@ -57,6 +57,36 @@ void main() {
       });
     });
 
+    group('writing progress', () {
+      test('counts only non-empty trimmed answers', () {
+        const state = TodayState(
+          answer1: '한 줄',
+          answer2: '  ',
+          answer3: '세 줄',
+        );
+
+        expect(state.filledAnswerCount, 2);
+      });
+
+      test('asks for emotion before an answer', () {
+        const state = TodayState(answer1: '한 줄');
+
+        expect(state.saveGuidanceMessage, '오늘의 감정을 먼저 골라주세요');
+      });
+
+      test('asks for one line after emotion is selected', () {
+        const state = TodayState(emotion: 3);
+
+        expect(state.saveGuidanceMessage, '한 줄만 적어도 저장할 수 있어요');
+      });
+
+      test('reports ready when save condition is met', () {
+        const state = TodayState(emotion: 3, answer2: '한 줄');
+
+        expect(state.saveGuidanceMessage, '저장할 준비가 됐어요');
+      });
+    });
+
     group('copyWith', () {
       test('preserves fields when not specified', () {
         const original = TodayState(

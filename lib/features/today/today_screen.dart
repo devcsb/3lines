@@ -82,11 +82,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           }
 
           final isReadMode = state.isCompleted && !state.isEditing;
-          final filledCount = [
-            state.answer1,
-            state.answer2,
-            state.answer3,
-          ].where((a) => a.trim().isNotEmpty).length;
+          final isInteractionLocked =
+              isReadMode || state.isSaving || state.isCancelling;
 
           return SafeArea(
             bottom: false,
@@ -246,7 +243,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                           onSelected: (v) => ref
                               .read(todayControllerProvider.notifier)
                               .setEmotion(v),
-                          enabled: !isReadMode,
+                          enabled: !isInteractionLocked,
                         ),
 
                         const SizedBox(height: 20),
@@ -254,13 +251,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                         // Photo attachment
                         PhotoAttachment(
                           photoPath: state.photoPath,
-                          readOnly: isReadMode,
+                          readOnly: isInteractionLocked,
                           onPickCamera: () async {
                             final path = await ref
                                 .read(photoServiceProvider)
                                 .pickFromCamera();
                             if (path != null) {
-                              ref
+                              await ref
                                   .read(todayControllerProvider.notifier)
                                   .attachPhoto(path);
                             }
@@ -270,7 +267,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                 .read(photoServiceProvider)
                                 .pickFromGallery();
                             if (path != null) {
-                              ref
+                              await ref
                                   .read(todayControllerProvider.notifier)
                                   .attachPhoto(path);
                             }
@@ -299,8 +296,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                     index: index,
                                     question: state.prompts[index],
                                     answer: answer,
-                                    readOnly: isReadMode,
-                                    onChanged: isReadMode
+                                    readOnly: isInteractionLocked,
+                                    onChanged: isInteractionLocked
                                         ? null
                                         : (v) => ref
                                               .read(
@@ -310,7 +307,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                               .setAnswer(index, v),
                                   ),
                                   // Suggestion chips (edit mode)
-                                  if (!isReadMode) ...[
+                                  if (!isInteractionLocked) ...[
                                     const SizedBox(height: 8),
                                     PromptSuggestions(
                                       promptIndex: index,
@@ -389,33 +386,64 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                 ),
                               ),
                             )
-                          : AnimatedSaveButton(
-                              emotionSelected: state.emotion != null,
-                              filledCount: filledCount,
-                              canSave: state.canSave,
-                              isSaving: state.isSaving,
-                              onPressed: () async {
-                                final isFirstSave = !state.isCompleted;
-                                final messenger = ScaffoldMessenger.of(context);
-                                final success = await ref
-                                    .read(todayControllerProvider.notifier)
-                                    .save();
-                                if (!context.mounted) return;
-                                if (success) {
-                                  FocusScope.of(context).unfocus();
-                                }
-                                if (success && isFirstSave) {
-                                  setState(
-                                    () => _showCompletionAnimation = true,
-                                  );
-                                } else if (!success) {
-                                  messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text('저장에 실패했어요. 다시 시도해주세요.'),
-                                    ),
-                                  );
-                                }
-                              },
+                          : Column(
+                              children: [
+                                AnimatedSaveButton(
+                                  emotionSelected: state.emotion != null,
+                                  filledCount: state.filledAnswerCount,
+                                  canSave: state.canSave && !state.isCancelling,
+                                  isSaving: state.isSaving,
+                                  isCancelling: state.isCancelling,
+                                  guidanceMessage: state.isCancelling
+                                      ? '변경을 취소하고 있어요'
+                                      : state.saveGuidanceMessage,
+                                  onPressed: () async {
+                                    final isFirstSave = !state.isCompleted;
+                                    final messenger = ScaffoldMessenger.of(
+                                      context,
+                                    );
+                                    final success = await ref
+                                        .read(todayControllerProvider.notifier)
+                                        .save();
+                                    if (!context.mounted) return;
+                                    if (success) {
+                                      FocusScope.of(context).unfocus();
+                                    }
+                                    if (success && isFirstSave) {
+                                      setState(
+                                        () => _showCompletionAnimation = true,
+                                      );
+                                    } else if (!success) {
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            '저장에 실패했어요. 다시 시도해주세요.',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                                if (state.isCompleted && state.isEditing) ...[
+                                  const SizedBox(height: 4),
+                                  TextButton.icon(
+                                    onPressed:
+                                        state.isSaving || state.isCancelling
+                                        ? null
+                                        : () async {
+                                            FocusScope.of(context).unfocus();
+                                            await ref
+                                                .read(
+                                                  todayControllerProvider
+                                                      .notifier,
+                                                )
+                                                .cancelEdit();
+                                          },
+                                    icon: const Icon(Icons.close),
+                                    label: const Text('수정 취소'),
+                                  ),
+                                ],
+                              ],
                             ),
                     ),
                   ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,12 +30,14 @@ void main() {
     fakePhoto = FakePhotoService();
     fakeNotif = FakeNotificationService();
 
-    container = ProviderContainer(overrides: [
-      entryRepositoryProvider.overrideWithValue(entryRepo),
-      settingsRepositoryProvider.overrideWithValue(settingsRepo),
-      photoServiceProvider.overrideWithValue(fakePhoto),
-      notificationServiceProvider.overrideWithValue(fakeNotif),
-    ]);
+    container = ProviderContainer(
+      overrides: [
+        entryRepositoryProvider.overrideWithValue(entryRepo),
+        settingsRepositoryProvider.overrideWithValue(settingsRepo),
+        photoServiceProvider.overrideWithValue(fakePhoto),
+        notificationServiceProvider.overrideWithValue(fakeNotif),
+      ],
+    );
   });
 
   tearDown(() async {
@@ -50,16 +54,18 @@ void main() {
     });
 
     test('loads existing entry when today already has data', () async {
-      await entryRepo.saveEntry(DailyEntry(
-        date: du.getTodayString(),
-        emotion: 4,
-        prompt1: '감사',
-        answer1: '좋은 날씨',
-        prompt2: '',
-        answer2: '',
-        prompt3: '',
-        answer3: '',
-      ));
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: du.getTodayString(),
+          emotion: 4,
+          prompt1: '감사',
+          answer1: '좋은 날씨',
+          prompt2: '',
+          answer2: '',
+          prompt3: '',
+          answer3: '',
+        ),
+      );
 
       final state = await container.read(todayControllerProvider.future);
       expect(state.isCompleted, isTrue);
@@ -165,11 +171,9 @@ void main() {
       await container.read(todayControllerProvider.future);
       final notifier = container.read(todayControllerProvider.notifier);
 
-      // Attach a new photo (different path from DB)
-      notifier.attachPhoto('/new/photo.jpg');
-
-      // Enable editing, update emotion, then save
+      // Enable editing, attach a new photo, then save.
       notifier.toggleEdit();
+      await notifier.attachPhoto('/new/photo.jpg');
       notifier.setEmotion(5);
       notifier.setAnswer(0, '새 답변');
       await notifier.save();
@@ -209,7 +213,7 @@ void main() {
     test('sets photoPath in state', () async {
       await container.read(todayControllerProvider.future);
       final notifier = container.read(todayControllerProvider.notifier);
-      notifier.attachPhoto('/photos/new.jpg');
+      await notifier.attachPhoto('/photos/new.jpg');
       final state = container.read(todayControllerProvider).value;
       expect(state?.photoPath, '/photos/new.jpg');
     });
@@ -219,48 +223,75 @@ void main() {
       final notifier = container.read(todayControllerProvider.notifier);
 
       // Attach first photo (not saved to DB)
-      notifier.attachPhoto('/photos/first.jpg');
+      await notifier.attachPhoto('/photos/first.jpg');
       // Attach second photo — first should be deleted
-      notifier.attachPhoto('/photos/second.jpg');
+      await notifier.attachPhoto('/photos/second.jpg');
 
       expect(fakePhoto.deletedPaths, contains('/photos/first.jpg'));
       final state = container.read(todayControllerProvider).value;
       expect(state?.photoPath, '/photos/second.jpg');
     });
 
-    test('does not delete DB-saved photo when replacing with new one', () async {
-      // Entry already saved with a photo
-      final existing = DailyEntry(
-        date: du.getTodayString(),
-        emotion: 3,
-        prompt1: '',
-        answer1: '기존 답변',
-        prompt2: '',
-        answer2: '',
-        prompt3: '',
-        answer3: '',
-        photoPath: '/db/photo.jpg',
-      );
-      await entryRepo.saveEntry(existing);
+    test(
+      'does not delete DB-saved photo when replacing with new one',
+      () async {
+        // Entry already saved with a photo
+        final existing = DailyEntry(
+          date: du.getTodayString(),
+          emotion: 3,
+          prompt1: '',
+          answer1: '기존 답변',
+          prompt2: '',
+          answer2: '',
+          prompt3: '',
+          answer3: '',
+          photoPath: '/db/photo.jpg',
+        );
+        await entryRepo.saveEntry(existing);
 
-      container.invalidate(todayControllerProvider);
-      await container.read(todayControllerProvider.future);
-      final notifier = container.read(todayControllerProvider.notifier);
+        container.invalidate(todayControllerProvider);
+        await container.read(todayControllerProvider.future);
+        final notifier = container.read(todayControllerProvider.notifier);
 
-      // Attach a new photo — the DB photo should NOT be deleted yet
-      notifier.attachPhoto('/photos/new.jpg');
+        // Attach a new photo — the DB photo should NOT be deleted yet
+        notifier.toggleEdit();
+        await notifier.attachPhoto('/photos/new.jpg');
 
-      expect(fakePhoto.deletedPaths, isNot(contains('/db/photo.jpg')));
-    });
+        expect(fakePhoto.deletedPaths, isNot(contains('/db/photo.jpg')));
+      },
+    );
+
+    test(
+      'discards a photo returned after edit mode has been cancelled',
+      () async {
+        await entryRepo.saveEntry(
+          DailyEntry(
+            date: du.getTodayString(),
+            emotion: 3,
+            answer1: '기존 답변',
+            photoPath: '/db/photo.jpg',
+          ),
+        );
+        await container.read(todayControllerProvider.future);
+        final notifier = container.read(todayControllerProvider.notifier);
+
+        notifier.toggleEdit();
+        await notifier.cancelEdit();
+        await notifier.attachPhoto('/photos/late.jpg');
+
+        final state = container.read(todayControllerProvider).value;
+        expect(state?.isEditing, isFalse);
+        expect(state?.photoPath, '/db/photo.jpg');
+        expect(fakePhoto.deletedPaths, contains('/photos/late.jpg'));
+      },
+    );
   });
 
   group('toggleEdit', () {
     test('toggles isEditing between true and false', () async {
-      await entryRepo.saveEntry(DailyEntry(
-        date: du.getTodayString(),
-        emotion: 3,
-        answer1: '기존 답변',
-      ));
+      await entryRepo.saveEntry(
+        DailyEntry(date: du.getTodayString(), emotion: 3, answer1: '기존 답변'),
+      );
       await container.read(todayControllerProvider.future);
       final notifier = container.read(todayControllerProvider.notifier);
 
@@ -269,6 +300,200 @@ void main() {
       expect(container.read(todayControllerProvider).value?.isEditing, isTrue);
       notifier.toggleEdit();
       expect(container.read(todayControllerProvider).value?.isEditing, isFalse);
+    });
+  });
+
+  group('cancelEdit', () {
+    test('restores persisted fields and exits edit mode', () async {
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: du.getTodayString(),
+          emotion: 3,
+          prompt1: '감사',
+          answer1: '기존 답변',
+          prompt2: '수용',
+          answer2: '기존 수용',
+          prompt3: '의도',
+          answer3: '기존 의도',
+          photoPath: '/db/photo.jpg',
+        ),
+      );
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+
+      notifier.toggleEdit();
+      notifier.setEmotion(5);
+      notifier.setAnswer(0, '수정한 답변');
+      notifier.setAnswer(1, '수정한 수용');
+      notifier.setAnswer(2, '수정한 의도');
+      await notifier.attachPhoto('/new/photo.jpg');
+
+      await notifier.cancelEdit();
+
+      final state = container.read(todayControllerProvider).value;
+      expect(state?.emotion, 3);
+      expect(state?.answer1, '기존 답변');
+      expect(state?.answer2, '기존 수용');
+      expect(state?.answer3, '기존 의도');
+      expect(state?.photoPath, '/db/photo.jpg');
+      expect(state?.isEditing, isFalse);
+    });
+
+    test(
+      'deletes newly attached photo but preserves persisted photo',
+      () async {
+        await entryRepo.saveEntry(
+          DailyEntry(
+            date: du.getTodayString(),
+            emotion: 3,
+            answer1: '기존 답변',
+            photoPath: '/db/photo.jpg',
+          ),
+        );
+        await container.read(todayControllerProvider.future);
+        final notifier = container.read(todayControllerProvider.notifier);
+
+        notifier.toggleEdit();
+        await notifier.attachPhoto('/new/photo.jpg');
+
+        await notifier.cancelEdit();
+
+        expect(fakePhoto.deletedPaths, contains('/new/photo.jpg'));
+        expect(fakePhoto.deletedPaths, isNot(contains('/db/photo.jpg')));
+      },
+    );
+
+    test('restores the entry even when unsaved photo cleanup throws', () async {
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: du.getTodayString(),
+          emotion: 3,
+          answer1: '기존 답변',
+          photoPath: '/db/photo.jpg',
+        ),
+      );
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+
+      notifier.toggleEdit();
+      notifier.setAnswer(0, '수정한 답변');
+      await notifier.attachPhoto('/new/photo.jpg');
+      fakePhoto.deleteError = StateError('사진 삭제 실패');
+
+      await notifier.cancelEdit();
+
+      final state = container.read(todayControllerProvider).value;
+      expect(state?.answer1, '기존 답변');
+      expect(state?.photoPath, '/db/photo.jpg');
+      expect(state?.isEditing, isFalse);
+      expect(state?.isCancelling, isFalse);
+    });
+
+    test('does nothing when not editing a saved entry', () async {
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+
+      await notifier.cancelEdit();
+
+      final state = container.read(todayControllerProvider).value;
+      expect(state?.isEditing, isFalse);
+      expect(state?.photoPath, isNull);
+    });
+
+    test('does not interrupt an in-progress save', () async {
+      await entryRepo.saveEntry(
+        DailyEntry(date: du.getTodayString(), emotion: 3, answer1: '기존 답변'),
+      );
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+
+      notifier.toggleEdit();
+      notifier.setAnswer(0, '저장할 수정');
+      final saveFuture = notifier.save();
+
+      await notifier.cancelEdit();
+
+      final savingState = container.read(todayControllerProvider).value;
+      expect(savingState?.isEditing, isTrue);
+      expect(savingState?.answer1, '저장할 수정');
+      await saveFuture;
+    });
+
+    test('blocks edits and saves while discarding an unsaved photo', () async {
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: du.getTodayString(),
+          emotion: 3,
+          answer1: '기존 답변',
+          photoPath: '/db/photo.jpg',
+        ),
+      );
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+      fakePhoto.deleteStarted = Completer<void>();
+      fakePhoto.deleteGate = Completer<void>();
+
+      notifier.toggleEdit();
+      notifier.setAnswer(0, '수정한 답변');
+      await notifier.attachPhoto('/new/photo.jpg');
+      final cancelFuture = notifier.cancelEdit();
+      await fakePhoto.deleteStarted!.future;
+
+      expect(
+        container.read(todayControllerProvider).value?.isCancelling,
+        isTrue,
+      );
+      notifier.setAnswer(0, '취소 중 변경');
+      expect(container.read(todayControllerProvider).value?.answer1, '수정한 답변');
+      expect(await notifier.save(), isFalse);
+
+      fakePhoto.deleteGate!.complete();
+      await cancelFuture;
+
+      final state = container.read(todayControllerProvider).value;
+      expect(state?.answer1, '기존 답변');
+      expect(state?.photoPath, '/db/photo.jpg');
+      expect(state?.isCancelling, isFalse);
+      expect((await entryRepo.getTodayEntry())?.answer1, '기존 답변');
+    });
+
+    test('blocks edits and photo changes while saving', () async {
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: du.getTodayString(),
+          emotion: 3,
+          answer1: '기존 답변',
+          photoPath: '/db/photo.jpg',
+        ),
+      );
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+      fakePhoto.deleteStarted = Completer<void>();
+      fakePhoto.deleteGate = Completer<void>();
+
+      notifier.toggleEdit();
+      notifier.setAnswer(0, '저장할 답변');
+      await notifier.attachPhoto('/new/photo.jpg');
+      final saveFuture = notifier.save();
+      await fakePhoto.deleteStarted!.future;
+
+      notifier.setAnswer(0, '저장 중 변경');
+      final lateAttach = notifier.attachPhoto('/late/photo.jpg');
+      await notifier.removePhoto();
+
+      final savingState = container.read(todayControllerProvider).value;
+      expect(savingState?.answer1, '저장할 답변');
+      expect(savingState?.photoPath, '/new/photo.jpg');
+      expect(fakePhoto.deletedPaths, isNot(contains('/new/photo.jpg')));
+
+      fakePhoto.deleteGate!.complete();
+      await lateAttach;
+      expect(await saveFuture, isTrue);
+
+      final saved = await entryRepo.getTodayEntry();
+      expect(saved?.answer1, '저장할 답변');
+      expect(saved?.photoPath, '/new/photo.jpg');
+      expect(fakePhoto.deletedPaths, contains('/late/photo.jpg'));
     });
   });
 
@@ -295,11 +520,13 @@ void main() {
       // Pre-populate 6 past entries so today's save becomes entry #7
       for (int i = 1; i <= 6; i++) {
         final date = DateTime.now().subtract(Duration(days: i));
-        await entryRepo.saveEntry(DailyEntry(
-          date: du.dateToString(date),
-          emotion: 3,
-          answer1: '사전 데이터',
-        ));
+        await entryRepo.saveEntry(
+          DailyEntry(
+            date: du.dateToString(date),
+            emotion: 3,
+            answer1: '사전 데이터',
+          ),
+        );
       }
 
       await container.read(todayControllerProvider.future);
@@ -344,6 +571,35 @@ void main() {
       // Re-open for tearDown
       db = AppDatabase.forTesting(NativeDatabase.memory());
     });
+
+    test('keeps the committed entry when old photo cleanup fails', () async {
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: du.getTodayString(),
+          emotion: 3,
+          answer1: '기존 답변',
+          photoPath: '/old/photo.jpg',
+        ),
+      );
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+
+      notifier.toggleEdit();
+      notifier.setAnswer(0, '저장된 답변');
+      await notifier.attachPhoto('/new/photo.jpg');
+      fakePhoto.deleteError = StateError('사진 삭제 실패');
+
+      expect(await notifier.save(), isTrue);
+
+      final state = container.read(todayControllerProvider).value;
+      final saved = await entryRepo.getTodayEntry();
+      expect(state?.isCompleted, isTrue);
+      expect(state?.isSaving, isFalse);
+      expect(state?.answer1, '저장된 답변');
+      expect(state?.photoPath, '/new/photo.jpg');
+      expect(saved?.answer1, '저장된 답변');
+      expect(saved?.photoPath, '/new/photo.jpg');
+    });
   });
 
   group('setAnswer — boundary', () {
@@ -360,11 +616,38 @@ void main() {
     });
   });
 
+  group('completed entry guards', () {
+    test('rejects direct mutations outside edit mode', () async {
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: du.getTodayString(),
+          emotion: 3,
+          answer1: '기존 답변',
+          photoPath: '/db/photo.jpg',
+        ),
+      );
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+
+      notifier.setEmotion(5);
+      notifier.setAnswer(0, '변경된 답변');
+      await notifier.attachPhoto('/photos/late.jpg');
+      await notifier.removePhoto();
+
+      expect(await notifier.save(), isFalse);
+      final state = container.read(todayControllerProvider).value;
+      expect(state?.emotion, 3);
+      expect(state?.answer1, '기존 답변');
+      expect(state?.photoPath, '/db/photo.jpg');
+      expect(fakePhoto.deletedPaths, contains('/photos/late.jpg'));
+    });
+  });
+
   group('removePhoto', () {
     test('clears photoPath in state', () async {
       await container.read(todayControllerProvider.future);
       final notifier = container.read(todayControllerProvider.notifier);
-      notifier.attachPhoto('/photos/some.jpg');
+      await notifier.attachPhoto('/photos/some.jpg');
       await notifier.removePhoto();
       final state = container.read(todayControllerProvider).value;
       expect(state?.photoPath, isNull);
@@ -373,36 +656,70 @@ void main() {
     test('deletes unsaved photo file immediately', () async {
       await container.read(todayControllerProvider.future);
       final notifier = container.read(todayControllerProvider.notifier);
-      notifier.attachPhoto('/photos/unsaved.jpg');
+      await notifier.attachPhoto('/photos/unsaved.jpg');
       await notifier.removePhoto();
       expect(fakePhoto.deletedPaths, contains('/photos/unsaved.jpg'));
     });
 
-    test('does not delete DB-saved photo on remove (deferred to save)', () async {
-      final existing = DailyEntry(
-        date: du.getTodayString(),
-        emotion: 3,
-        prompt1: '',
-        answer1: '기존 답변',
-        prompt2: '',
-        answer2: '',
-        prompt3: '',
-        answer3: '',
-        photoPath: '/db/photo.jpg',
-      );
-      await entryRepo.saveEntry(existing);
+    test(
+      'does not delete DB-saved photo on remove (deferred to save)',
+      () async {
+        final existing = DailyEntry(
+          date: du.getTodayString(),
+          emotion: 3,
+          prompt1: '',
+          answer1: '기존 답변',
+          prompt2: '',
+          answer2: '',
+          prompt3: '',
+          answer3: '',
+          photoPath: '/db/photo.jpg',
+        );
+        await entryRepo.saveEntry(existing);
 
-      container.invalidate(todayControllerProvider);
-      await container.read(todayControllerProvider.future);
-      final notifier = container.read(todayControllerProvider.notifier);
+        container.invalidate(todayControllerProvider);
+        await container.read(todayControllerProvider.future);
+        final notifier = container.read(todayControllerProvider.notifier);
 
-      // Remove the photo (which is the DB-saved path)
-      await notifier.removePhoto();
+        // Remove the photo (which is the DB-saved path)
+        notifier.toggleEdit();
+        await notifier.removePhoto();
 
-      // DB photo must NOT be deleted here — it's cleaned up only on save()
-      expect(fakePhoto.deletedPaths, isNot(contains('/db/photo.jpg')));
-      final state = container.read(todayControllerProvider).value;
-      expect(state?.photoPath, isNull);
-    });
+        // DB photo must NOT be deleted here — it's cleaned up only on save()
+        expect(fakePhoto.deletedPaths, isNot(contains('/db/photo.jpg')));
+        final state = container.read(todayControllerProvider).value;
+        expect(state?.photoPath, isNull);
+      },
+    );
+
+    test(
+      'persists a removed photo while its file deletion is pending',
+      () async {
+        await container.read(todayControllerProvider.future);
+        final notifier = container.read(todayControllerProvider.notifier);
+        notifier.setEmotion(3);
+        notifier.setAnswer(0, '사진 제거 후 저장');
+        await notifier.attachPhoto('/photos/unsaved.jpg');
+        fakePhoto.deleteStarted = Completer<void>();
+        fakePhoto.deleteGate = Completer<void>();
+
+        final removeFuture = notifier.removePhoto();
+        await fakePhoto.deleteStarted!.future;
+        expect(
+          container.read(todayControllerProvider).value?.photoPath,
+          isNull,
+        );
+
+        expect(await notifier.save(), isTrue);
+        fakePhoto.deleteGate!.complete();
+        await removeFuture;
+
+        final state = container.read(todayControllerProvider).value;
+        final saved = await entryRepo.getTodayEntry();
+        expect(state?.isCompleted, isTrue);
+        expect(state?.photoPath, isNull);
+        expect(saved?.photoPath, isNull);
+      },
+    );
   });
 }
