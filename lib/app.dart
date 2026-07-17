@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app_lifecycle_lock.dart';
 import 'app/router.dart';
+import 'app/widget_bootstrap.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_notifier.dart';
 
@@ -42,7 +43,11 @@ class ThreeLinesApp extends ConsumerWidget {
           data: mq.copyWith(
             textScaler: mq.textScaler.clamp(maxScaleFactor: 1.3),
           ),
-          child: AppLifecycleLock(child: child ?? const SizedBox.shrink()),
+          child: WidgetBootstrap(
+            child: AppLifecycleLock(
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
         );
       },
     );

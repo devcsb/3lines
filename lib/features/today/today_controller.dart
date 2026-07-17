@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/events/journal_changes.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/photo_service.dart';
+import '../../core/services/widget_sync_service.dart';
 import '../../core/theme/theme_notifier.dart';
 import '../../core/time/app_clock.dart';
 import '../../core/utils/date_utils.dart' as du;
@@ -238,6 +239,7 @@ class TodayController extends AsyncNotifier<TodayState> {
     }
 
     ref.read(journalChangesProvider.notifier).markChanged();
+    unawaited(ref.read(widgetSyncServiceProvider).sync());
     return true;
   }
 

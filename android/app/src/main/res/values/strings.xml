@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">3Lines</string>
+    <string name="three_lines_widget_description">오늘 질문, 스트릭, 빠른 감정 선택</string>
+    <string name="three_lines_widget_label">3Lines</string>
+</resources>

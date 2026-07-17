@@ -9,6 +9,7 @@ import 'widgets/info_section.dart';
 import 'widgets/notifications_section.dart';
 import 'widgets/questions_section.dart';
 import 'widgets/security_section.dart';
+import 'widgets/widget_section.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -46,6 +47,7 @@ class SettingsScreen extends ConsumerWidget {
               biometricLockEnabled: state.biometricLockEnabled,
             ),
             AppearanceSection(themeMode: state.themeMode),
+            const WidgetSection(),
             const DataSection(),
             InfoSection(appVersion: state.appVersion),
           ];
