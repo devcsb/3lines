@@ -286,7 +286,9 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '${state.searchResults.length}개의 결과',
+          state.searchResults.length >= 100
+              ? '100개 이상의 결과'
+              : '${state.searchResults.length}개의 결과',
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
           ),

@@ -19,11 +19,11 @@ class PdfReportService {
 
   Future<pw.ThemeData?> _loadKoreanTheme() async {
     try {
+      // Bold 에셋(약 2.9MB)은 번들하지 않는다. PDF 는 드물게 쓰는 기능인데
+      // 전 사용자가 무게를 지므로, 헤더는 Regular 두께로 렌더한다.
       final base = pw.Font.ttf(
           await rootBundle.load('assets/fonts/NanumMyeongjo-Regular.ttf'));
-      final bold = pw.Font.ttf(
-          await rootBundle.load('assets/fonts/NanumMyeongjo-Bold.ttf'));
-      return pw.ThemeData.withFont(base: base, bold: bold);
+      return pw.ThemeData.withFont(base: base, bold: base);
     } catch (_) {
       // 폰트 에셋 로드 실패 시 기본 폰트로 폴백(한글이 깨질 수 있으나 크래시는 없음).
       return null;

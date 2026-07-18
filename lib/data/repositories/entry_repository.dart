@@ -145,7 +145,7 @@ class EntryRepository {
       "answer1 LIKE ? ESCAPE '\\' OR "
       "answer2 LIKE ? ESCAPE '\\' OR "
       "answer3 LIKE ? ESCAPE '\\' "
-      "ORDER BY date DESC",
+      "ORDER BY date DESC LIMIT 100",
       variables: [patternVar, patternVar, patternVar],
       readsFrom: {_db.entries},
     );
@@ -182,8 +182,20 @@ class EntryRepository {
   }
 
   Future<Map<String, int>> getEmotionMap(DateTime start, DateTime end) async {
-    final results = await _queryByDateRange(start, end);
-    return {for (final r in results) r.date: r.emotion};
+    // date/emotion 만 필요하므로 selectOnly 로 텍스트 컬럼 역직렬화를 피한다.
+    final startStr = du.dateToString(start);
+    final endStr = du.dateToString(end);
+    final dateCol = _db.entries.date;
+    final emotionCol = _db.entries.emotion;
+    final rows =
+        await (_db.selectOnly(_db.entries)
+              ..addColumns([dateCol, emotionCol])
+              ..where(
+                _db.entries.date.isBiggerOrEqualValue(startStr) &
+                    _db.entries.date.isSmallerOrEqualValue(endStr),
+              ))
+            .get();
+    return {for (final r in rows) r.read(dateCol)!: r.read(emotionCol)!};
   }
 
   Future<List<({DateTime date, int emotion})>> getEmotionTrend(
@@ -192,16 +204,22 @@ class EntryRepository {
   ) async {
     final startStr = du.dateToString(start);
     final endStr = du.dateToString(end);
-    final query = _db.select(_db.entries)
-      ..where(
-        (t) =>
-            t.date.isBiggerOrEqualValue(startStr) &
-            t.date.isSmallerOrEqualValue(endStr),
-      )
-      ..orderBy([(t) => OrderingTerm.asc(t.date)]);
-    final results = await query.get();
-    return results
-        .map((r) => (date: DateTime.parse(r.date), emotion: r.emotion))
+    final dateCol = _db.entries.date;
+    final emotionCol = _db.entries.emotion;
+    final rows =
+        await (_db.selectOnly(_db.entries)
+              ..addColumns([dateCol, emotionCol])
+              ..where(
+                _db.entries.date.isBiggerOrEqualValue(startStr) &
+                    _db.entries.date.isSmallerOrEqualValue(endStr),
+              )
+              ..orderBy([OrderingTerm.asc(dateCol)]))
+            .get();
+    return rows
+        .map(
+          (r) =>
+              (date: DateTime.parse(r.read(dateCol)!), emotion: r.read(emotionCol)!),
+        )
         .toList();
   }
 
@@ -229,15 +247,18 @@ class EntryRepository {
     final cutoff = now.subtract(const Duration(days: 400));
     final cutoffStr = du.dateToString(cutoff);
 
-    final recentEntries =
-        await (_db.select(_db.entries)
-              ..where((t) => t.date.isBiggerOrEqualValue(cutoffStr))
-              ..orderBy([(t) => OrderingTerm.desc(t.date)]))
+    // 스트릭 계산은 날짜 집합만 필요하다 → date 컬럼만 읽는다.
+    final dateCol = _db.entries.date;
+    final recentRows =
+        await (_db.selectOnly(_db.entries)
+              ..addColumns([dateCol])
+              ..where(_db.entries.date.isBiggerOrEqualValue(cutoffStr))
+              ..orderBy([OrderingTerm.desc(dateCol)]))
             .get();
 
-    if (recentEntries.isEmpty) return (count: 0, usedGraceDay: false);
+    if (recentRows.isEmpty) return (count: 0, usedGraceDay: false);
 
-    final dateSet = {for (final e in recentEntries) e.date};
+    final dateSet = {for (final r in recentRows) r.read(dateCol)!};
     int streak = 0;
     bool usedGraceDay = false;
     var checkDate = now;
@@ -283,21 +304,26 @@ class EntryRepository {
     // Bound to last 3 years for performance
     final cutoff = _clock.daysAgo(1095);
     final cutoffStr = du.dateToString(cutoff);
-    final allEntries =
-        await (_db.select(_db.entries)
-              ..where((t) => t.date.isBiggerOrEqualValue(cutoffStr))
-              ..orderBy([(t) => OrderingTerm.asc(t.date)]))
+    // 최장 스트릭도 날짜 시퀀스만 필요하다 → date 컬럼만 읽는다.
+    final dateCol = _db.entries.date;
+    final rows =
+        await (_db.selectOnly(_db.entries)
+              ..addColumns([dateCol])
+              ..where(_db.entries.date.isBiggerOrEqualValue(cutoffStr))
+              ..orderBy([OrderingTerm.asc(dateCol)]))
             .get();
 
-    if (allEntries.isEmpty) return 0;
+    if (rows.isEmpty) return 0;
+
+    final dates = [for (final r in rows) r.read(dateCol)!];
 
     int longest = 1;
     int current = 1;
     bool graceUsed = false;
 
-    for (int i = 1; i < allEntries.length; i++) {
-      final prev = DateTime.parse(allEntries[i - 1].date);
-      final curr = DateTime.parse(allEntries[i].date);
+    for (int i = 1; i < dates.length; i++) {
+      final prev = DateTime.parse(dates[i - 1]);
+      final curr = DateTime.parse(dates[i]);
       final diff = curr.difference(prev).inDays;
 
       if (diff == 1) {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/services/haptic_service.dart';
 import '../../core/services/pdf_report_service.dart';
@@ -528,16 +528,24 @@ class _PdfReportButtonState extends ConsumerState<_PdfReportButton> {
 
       if (!mounted) return;
 
-      await Printing.sharePdf(
-        bytes: pdfBytes,
-        filename:
-            'three_lines_${now.year}_${now.month.toString().padLeft(2, '0')}.pdf',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [
+            XFile.fromData(
+              pdfBytes,
+              name:
+                  'three_lines_${now.year}_${now.month.toString().padLeft(2, '0')}.pdf',
+              mimeType: 'application/pdf',
+            ),
+          ],
+        ),
       );
-    } catch (e) {
+    } catch (_) {
+      // 원본 예외 문자열을 사용자에게 노출하지 않는다(다른 화면과 톤 일관).
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('PDF 생성 중 오류가 발생했어요: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PDF를 만들지 못했어요. 잠시 후 다시 시도해주세요')),
+        );
       }
     } finally {
       if (mounted) setState(() => _generating = false);

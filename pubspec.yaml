@@ -27,7 +27,6 @@ dependencies:
   google_fonts: ^8.1.0
   image_picker: ^1.2.2
   pdf: ^3.12.0
-  printing: ^5.14.0
   home_widget: ^0.9.3
 
 dev_dependencies:
@@ -45,6 +44,5 @@ flutter:
   assets:
     # 나눔명조(OFL): PDF 월간 리포트 한글 렌더링용 번들 폰트.
     - assets/fonts/NanumMyeongjo-Regular.ttf
-    - assets/fonts/NanumMyeongjo-Bold.ttf
     # OFL 라이선스 본문: 앱 내 오픈소스 라이선스 페이지에 노출.
     - assets/fonts/OFL.txt

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 class StaggeredFadeIn extends StatefulWidget {
@@ -21,6 +23,7 @@ class _StaggeredFadeInState extends State<StaggeredFadeIn>
   late AnimationController _controller;
   late Animation<double> _opacity;
   late Animation<Offset> _offset;
+  Timer? _delayTimer;
 
   @override
   void initState() {
@@ -40,13 +43,28 @@ class _StaggeredFadeInState extends State<StaggeredFadeIn>
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
 
-    Future.delayed(widget.interval * widget.index, () {
+    // 지연은 index 에 비례하되, 검색 결과처럼 항목이 많을 때 뒤쪽이 수 초간
+    // 안 보이는 것을 막으려 상한을 둔다(최대 ~1.2s). Timer 는 dispose 시 취소해
+    // 이탈 후 콜백이 State 를 붙잡지 않게 한다.
+    final cappedIndex = widget.index > 12 ? 12 : widget.index;
+    _delayTimer = Timer(widget.interval * cappedIndex, () {
       if (mounted) _controller.forward();
     });
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // reduce-motion(동작 줄이기): 지연/페이드 없이 최종 상태로 즉시 표시.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _delayTimer?.cancel();
+      _controller.value = 1.0;
+    }
+  }
+
+  @override
   void dispose() {
+    _delayTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }

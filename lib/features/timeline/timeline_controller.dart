@@ -37,7 +37,8 @@ class TimelineController extends AsyncNotifier<TimelineState> {
   }
 
   Future<void> setPeriod(TimelinePeriod period) async {
-    state = const AsyncLoading();
+    // AsyncLoading 전환을 생략해 이전 히트맵을 유지한 채 로드 완료 시점에만
+    // 새 데이터로 교체한다(insights 와 일관 — 전체화면 스피너 깜빡임 방지).
     state = await AsyncValue.guard(() => _loadData(period));
   }
 
@@ -82,7 +83,7 @@ class TimelineController extends AsyncNotifier<TimelineState> {
     }
 
     final period = state.value?.period ?? TimelinePeriod.weeks12;
-    state = const AsyncLoading();
+    // 삭제 후에도 이전 히트맵을 유지한 채 재로드 완료 시 교체(깜빡임 방지).
     state = await AsyncValue.guard(() => _loadData(period));
 
     ref.read(journalChangesProvider.notifier).markChanged();
