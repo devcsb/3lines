@@ -13,18 +13,10 @@ class ScaffoldWithNavBar extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeIn,
-        transitionBuilder: (child, animation) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        child: KeyedSubtree(
-          key: ValueKey(navigationShell.currentIndex),
-          child: navigationShell,
-        ),
-      ),
+      // StatefulNavigationShell 은 내부 IndexedStack 으로 브랜치 상태를 보존한다.
+      // AnimatedSwitcher 로 감싸면 탭 전환 200ms 동안 shell 의 GlobalKey 가
+      // 트리에 두 번 존재해 "Duplicate GlobalKey" 예외가 발생하므로 직접 배치한다.
+      body: navigationShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(

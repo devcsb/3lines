@@ -34,7 +34,7 @@ class AppearanceSection extends ConsumerWidget {
                 '테마 선택: ${themeMode == 'system' ? '시스템 기본' : themeMode == 'light' ? '라이트' : '다크'}',
             child: SegmentedButton<String>(
               segments: const [
-                ButtonSegment(value: 'system', label: Text('시스템 기본')),
+                ButtonSegment(value: 'system', label: Text('시스템')),
                 ButtonSegment(value: 'light', label: Text('라이트')),
                 ButtonSegment(value: 'dark', label: Text('다크')),
               ],
