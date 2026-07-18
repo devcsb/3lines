@@ -119,58 +119,64 @@ class _AccentChip extends StatelessWidget {
     final theme = Theme.of(context);
     final opacity = isUnlocked ? 1.0 : 0.35;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? seed.withValues(alpha: 0.15)
-              : theme.colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
+    return Semantics(
+      button: true,
+      enabled: isUnlocked,
+      selected: isSelected,
+      label: '$label 테마${isUnlocked ? '' : ' (잠김)'}',
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
             color: isSelected
-                ? seed
-                : theme.colorScheme.outlineVariant
-                    .withValues(alpha: isUnlocked ? 0.6 : 0.3),
-            width: isSelected ? 1.5 : 1.0,
+                ? seed.withValues(alpha: 0.15)
+                : theme.colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected
+                  ? seed
+                  : theme.colorScheme.outlineVariant
+                      .withValues(alpha: isUnlocked ? 0.6 : 0.3),
+              width: isSelected ? 1.5 : 1.0,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 14,
-              height: 14,
-              decoration: BoxDecoration(
-                color: seed.withValues(alpha: opacity),
-                shape: BoxShape.circle,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: seed.withValues(alpha: opacity),
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: isUnlocked
-                    ? theme.colorScheme.onSurface.withValues(
-                        alpha: isSelected ? 0.9 : 0.65,
-                      )
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                fontWeight:
-                    isSelected ? FontWeight.w600 : FontWeight.normal,
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: isUnlocked
+                      ? theme.colorScheme.onSurface.withValues(
+                          alpha: isSelected ? 0.9 : 0.65,
+                        )
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  fontWeight:
+                      isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
               ),
-            ),
-            if (!isUnlocked) ...[
-              const SizedBox(width: 4),
-              Icon(
-                Icons.lock_outline_rounded,
-                size: 12,
-                color:
-                    theme.colorScheme.onSurface.withValues(alpha: 0.3),
-              ),
+              if (!isUnlocked) ...[
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 12,
+                  color:
+                      theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

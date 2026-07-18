@@ -511,49 +511,59 @@ class _MiniSparkline extends StatelessWidget {
                   day.month == now.month &&
                   day.day == now.day;
 
-              return Column(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    width: emotion != null ? 28 : 22,
-                    height: emotion != null ? 28 : 22,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: color.withValues(
-                        alpha: emotion != null ? 0.85 : 0.25,
+              final semanticLabel = emotion != null
+                  ? '${day.month}월 ${day.day}일, ${AppColors.emotionLabels[emotion]} $emotion점'
+                  : '${day.month}월 ${day.day}일, 기록 없음';
+
+              return Semantics(
+                container: true,
+                excludeSemantics: true,
+                label: semanticLabel,
+                child: Column(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: emotion != null ? 28 : 22,
+                      height: emotion != null ? 28 : 22,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: color.withValues(
+                          alpha: emotion != null ? 0.85 : 0.25,
+                        ),
+                        border: isToday
+                            ? Border.all(
+                                color: theme.colorScheme.primary,
+                                width: 1.5,
+                              )
+                            : null,
                       ),
-                      border: isToday
-                          ? Border.all(
-                              color: theme.colorScheme.primary,
-                              width: 1.5,
+                      child: emotion != null
+                          ? Center(
+                              child: Text(
+                                '$emotion',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             )
                           : null,
                     ),
-                    child: emotion != null
-                        ? Center(
-                            child: Text(
-                              '$emotion',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _dayLabels[day.weekday - 1],
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      fontSize: 9,
-                      color: theme.colorScheme.onSurface.withValues(
-                        alpha: isToday ? 0.7 : 0.35,
+                    const SizedBox(height: 4),
+                    Text(
+                      _dayLabels[day.weekday - 1],
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontSize: 9,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: isToday ? 0.7 : 0.35,
+                        ),
+                        fontWeight:
+                            isToday ? FontWeight.w600 : FontWeight.normal,
                       ),
-                      fontWeight: isToday ? FontWeight.w600 : FontWeight.normal,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               );
             }).toList(),
           ),

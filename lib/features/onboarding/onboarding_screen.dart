@@ -68,17 +68,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             Align(
               alignment: Alignment.topRight,
               child: !isLastPage
-                  ? Semantics(
-                      button: true,
-                      label: '온보딩 건너뛰기',
-                      child: TextButton(
-                        onPressed: _completeOnboarding,
-                        child: Text(
-                          '건너뛰기',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.4,
-                            ),
+                  ? TextButton(
+                      onPressed: _completeOnboarding,
+                      child: Text(
+                        '건너뛰기',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.4,
                           ),
                         ),
                       ),
@@ -152,16 +148,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
                       child: isLastPage
-                          ? Semantics(
+                          ? SizedBox(
                               key: const ValueKey('start'),
-                              button: true,
-                              label: '3Lines 시작하기',
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: _completeOnboarding,
-                                  child: const Text('시작하기'),
-                                ),
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _completeOnboarding,
+                                child: const Text('시작하기'),
                               ),
                             )
                           : SizedBox(
@@ -217,6 +209,7 @@ class _OnboardingPage extends StatelessWidget {
 
     return Semantics(
       label: '$title. $subtitle',
+      excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
         child: Column(

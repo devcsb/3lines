@@ -197,6 +197,7 @@ class _DeleteInputDialog extends StatefulWidget {
 
 class _DeleteInputDialogState extends State<_DeleteInputDialog> {
   bool _canDelete = false;
+  bool _deleting = false;
 
   @override
   void initState() {
@@ -217,6 +218,12 @@ class _DeleteInputDialogState extends State<_DeleteInputDialog> {
     super.dispose();
   }
 
+  void _handleDelete() {
+    if (_deleting) return;
+    setState(() => _deleting = true);
+    widget.onDelete();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -235,11 +242,11 @@ class _DeleteInputDialogState extends State<_DeleteInputDialog> {
           child: const Text('취소'),
         ),
         TextButton(
-          onPressed: _canDelete ? widget.onDelete : null,
+          onPressed: _canDelete && !_deleting ? _handleDelete : null,
           child: Text(
             '삭제',
             style: TextStyle(
-              color: _canDelete
+              color: _canDelete && !_deleting
                   ? Theme.of(context).colorScheme.error
                   : Theme.of(context)
                       .colorScheme
