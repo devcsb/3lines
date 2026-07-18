@@ -21,18 +21,27 @@ final biometricLockEnabledProvider = FutureProvider<bool>((ref) async {
   return repo.isBiometricLockEnabled();
 });
 
+// bootstrap 이 콜드스타트 전에 읽어 seed 하는 초기값. 위 FutureProvider 들이
+// AsyncLoading 인 첫 프레임(들) 동안 fallback 으로 써서 복귀 사용자가 매 실행마다
+// 온보딩/락 화면을 순간 보게 되던 flash 를 없앤다. FutureProvider 는 그대로 둬
+// 온보딩 완료/락 토글 시 invalidate 재조회가 정상 유지된다.
+final initialOnboardingDoneProvider = Provider<bool>((ref) => false);
+final initialBiometricEnabledProvider = Provider<bool>((ref) => false);
+
 final _routerStateProvider = Provider<({bool onboardingDone, bool locked})>((
   ref,
 ) {
-  final onboardingDone = ref.watch(onboardingDoneProvider).value ?? false;
-  final lockEnabled = ref.watch(biometricLockEnabledProvider);
+  final bool onboardingDone =
+      ref.watch(onboardingDoneProvider).value ??
+      ref.watch(initialOnboardingDoneProvider);
+  // 로딩 중이면 bootstrap 이 미리 읽은 정확한 값을 쓴다. 락 사용자는 초기값이
+  // true 라 여전히 잠기고(locked = true && lockState), 락 미사용자는 불필요한
+  // 락/생체인증 flash 를 겪지 않는다.
+  final bool enabled =
+      ref.watch(biometricLockEnabledProvider).value ??
+      ref.watch(initialBiometricEnabledProvider);
   final lockState = ref.watch(biometricLockStateProvider);
 
-  if (lockEnabled is AsyncLoading) {
-    return (onboardingDone: onboardingDone, locked: true);
-  }
-
-  final enabled = lockEnabled.value ?? false;
   return (onboardingDone: onboardingDone, locked: enabled && lockState);
 });
 

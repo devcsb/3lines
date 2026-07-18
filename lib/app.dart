@@ -9,7 +9,12 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_notifier.dart';
 
 export 'app/router.dart'
-    show biometricLockEnabledProvider, onboardingDoneProvider, routerProvider;
+    show
+        biometricLockEnabledProvider,
+        initialBiometricEnabledProvider,
+        initialOnboardingDoneProvider,
+        onboardingDoneProvider,
+        routerProvider;
 
 class ThreeLinesApp extends ConsumerWidget {
   const ThreeLinesApp({super.key});

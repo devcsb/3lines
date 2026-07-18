@@ -31,7 +31,12 @@ Future<void> bootstrapAndRun() async {
 
   final db = AppDatabase();
   final settingsRepo = SettingsRepository(db);
-  final biometricEnabled = await settingsRepo.isBiometricLockEnabled();
+  // 라우터 첫 프레임 flash 방지를 위해 락 사용 여부와 온보딩 완료 여부를 미리
+  // 읽어 seed 한다(둘 다 단일 settings SELECT 라 저렴).
+  final (biometricEnabled, onboardingDone) = await (
+    settingsRepo.isBiometricLockEnabled(),
+    settingsRepo.isOnboardingDone(),
+  ).wait;
 
   unawaited(_cleanupOrphanedPhotos(db));
 
@@ -42,6 +47,8 @@ Future<void> bootstrapAndRun() async {
         notificationServiceProvider.overrideWithValue(notificationService),
         appDatabaseProvider.overrideWithValue(db),
         biometricLockStateProvider.overrideWith((ref) => biometricEnabled),
+        initialBiometricEnabledProvider.overrideWithValue(biometricEnabled),
+        initialOnboardingDoneProvider.overrideWithValue(onboardingDone),
       ],
       child: const ThreeLinesApp(),
     ),
