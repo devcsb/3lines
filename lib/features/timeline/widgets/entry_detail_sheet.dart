@@ -11,7 +11,9 @@ import '../../../data/repositories/entry_repository.dart';
 
 class EntryDetailSheet extends ConsumerStatefulWidget {
   final DailyEntry entry;
-  final VoidCallback? onDelete;
+  // 스와이프로 다른 날로 이동할 수 있으므로 삭제 콜백은 삭제 시점에 화면에
+  // 표시 중인 entry 를 인자로 받는다(원본 entry 를 캡처하면 엉뚱한 날이 삭제됨).
+  final ValueChanged<DailyEntry>? onDelete;
 
   const EntryDetailSheet({super.key, required this.entry, this.onDelete});
 
@@ -97,7 +99,7 @@ class _EntryDetailSheetState extends ConsumerState<EntryDetailSheet> {
 
 class _EntryDetailContent extends StatelessWidget {
   final DailyEntry entry;
-  final VoidCallback? onDelete;
+  final ValueChanged<DailyEntry>? onDelete;
   final bool hasPrev;
   final bool hasNext;
 
@@ -281,7 +283,7 @@ class _EntryDetailContent extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
-              onDelete!();
+              onDelete!(entry);
             },
             child: Text(
               '삭제',

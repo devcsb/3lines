@@ -79,6 +79,63 @@ void main() {
     expect(find.text('침착하게'), findsOneWidget);
   });
 
+  testWidgets('스와이프로 이전 날로 이동 후 삭제하면 현재 표시된 기록이 삭제된다 (회귀)',
+      (tester) async {
+    DailyEntry? deleted;
+    // id 없이 저장(autoincrement) — fixture testEntry(id:1)와 충돌 방지.
+    final mar14 = DailyEntry(
+      date: '2026-03-14',
+      emotion: 4,
+      prompt1: '오늘 감사한 것은?',
+      answer1: '당일 기록',
+      prompt2: 'Q2',
+      answer2: '',
+      prompt3: 'Q3',
+      answer3: '',
+    );
+    await tester.runAsync(() async {
+      await repo.saveEntry(
+        DailyEntry(
+          date: '2026-03-13',
+          emotion: 2,
+          prompt1: 'Q1',
+          answer1: '전날 기록',
+          prompt2: 'Q2',
+          answer2: '',
+          prompt3: 'Q3',
+          answer3: '',
+        ),
+      );
+      await repo.saveEntry(mar14);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [entryRepositoryProvider.overrideWithValue(repo)],
+          child: MaterialApp(
+            home: Scaffold(
+              body: EntryDetailSheet(
+                entry: mar14,
+                onDelete: (e) => deleted = e,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100)); // _loadAdjacent
+      // 오른쪽으로 드래그 → 이전 페이지(2026-03-13)
+      await tester.drag(find.byType(PageView), const Offset(500, 0));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      // 삭제 아이콘 → 확인 다이얼로그 → 삭제
+      await tester.tap(find.byTooltip('삭제'));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextButton, '삭제'));
+      await tester.pump();
+    });
+    // 원본(3-14)이 아니라 스와이프해서 보고 있던 3-13 이 삭제돼야 한다.
+    expect(deleted?.date, '2026-03-13');
+  });
+
   testWidgets('shows em dash for empty answers', (tester) async {
     final emptyEntry = DailyEntry(
       date: '2026-03-14',

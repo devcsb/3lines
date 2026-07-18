@@ -381,11 +381,11 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
       context: context,
       builder: (ctx) => EntryDetailSheet(
         entry: entry,
-        onDelete: () async {
+        onDelete: (deleted) async {
           Navigator.of(ctx).pop();
           await ref
               .read(timelineControllerProvider.notifier)
-              .deleteEntry(entry.date);
+              .deleteEntry(deleted.date);
         },
       ),
       isScrollControlled: true,
