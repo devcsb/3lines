@@ -27,11 +27,23 @@ class _StreakPulseBadgeState extends State<StreakPulseBadge>
     _controller = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
-    )..repeat(reverse: true);
+    );
 
     _glowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // reduce-motion(동작 줄이기) 설정이면 무한 펄스를 멈추고 정적으로 둔다.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.stop();
+      _controller.value = 0.0;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    }
   }
 
   @override
@@ -48,7 +60,10 @@ class _StreakPulseBadgeState extends State<StreakPulseBadge>
     // Glow intensity scales with streak length
     final glowIntensity = (widget.streak / 30).clamp(0.15, 0.5);
 
-    return AnimatedBuilder(
+    // RepaintBoundary: 배지의 매 프레임 glow repaint 가 Today 스크롤 콘텐츠
+    // 전체로 번지지 않도록 페인트를 배지 레이어에 격리한다.
+    return RepaintBoundary(
+      child: AnimatedBuilder(
       animation: _glowAnimation,
       builder: (context, child) {
         final glowAlpha = glowIntensity * _glowAnimation.value;
@@ -92,6 +107,7 @@ class _StreakPulseBadgeState extends State<StreakPulseBadge>
           ],
         ],
       ),
+    ),
     );
   }
 }

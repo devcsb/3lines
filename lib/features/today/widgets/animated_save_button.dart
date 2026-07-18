@@ -70,30 +70,26 @@ class AnimatedSaveButton extends StatelessWidget {
                                   : (emotionSelected
                                         ? '답변 $filledCount/3줄 작성 중'
                                         : '감정 선택 필요'))),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    child: ElevatedButton(
-                      onPressed: canSave && !isWorking
-                          ? () {
-                              HapticService.medium();
-                              onPressed?.call();
-                            }
-                          : null,
-                      child: isWorking
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(
-                              canSave
-                                  ? '기록 완료'
-                                  : (emotionSelected
-                                        ? '답변을 작성해주세요'
-                                        : '감정을 선택해주세요'),
-                            ),
-                    ),
+                  child: ElevatedButton(
+                    onPressed: canSave && !isWorking
+                        ? () {
+                            HapticService.medium();
+                            onPressed?.call();
+                          }
+                        : null,
+                    child: isWorking
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            canSave
+                                ? '기록 완료'
+                                : (emotionSelected
+                                      ? '답변을 작성해주세요'
+                                      : '감정을 선택해주세요'),
+                          ),
                   ),
                 ),
               ),

@@ -172,16 +172,15 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
             ? 1.0
             : 1.0;
 
-    return AnimatedBuilder(
-      animation: _drawAnimation,
-      builder: (context, _) {
-      final progress = _drawAnimation.value;
-      return Opacity(
-      opacity: progress.clamp(0.0, 1.0),
+    // FadeTransition 은 자식(LineChart)을 재빌드하지 않고 레이어 알파만 갱신한다.
+    // 기존 AnimatedBuilder+Opacity 는 페이드 1초 동안 매 프레임 차트 전체를
+    // 재구성(fl_chart painter 재계산)해 낭비였다.
+    return FadeTransition(
+      opacity: _drawAnimation,
       child: SizedBox(
-      height: 200,
-      child: LineChart(
-        LineChartData(
+        height: 200,
+        child: LineChart(
+          LineChartData(
           minX: 0,
           maxX: totalDays.toDouble(),
           minY: 0.5,
@@ -266,11 +265,9 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
               },
             ),
           ),
+          ),
         ),
       ),
-    ),
-    );
-      },
     );
   }
 }

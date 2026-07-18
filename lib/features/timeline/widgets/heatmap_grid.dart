@@ -63,11 +63,43 @@ class _HeatmapGridState extends State<HeatmapGrid>
     final endMonday = now.subtract(Duration(days: now.weekday - 1));
     final weeks = (endMonday.difference(startMonday).inDays ~/ 7) + 1;
 
-    final screenWidth = MediaQuery.of(context).size.width;
+    final screenWidth = MediaQuery.sizeOf(context).width;
     final availableWidth = screenWidth - 32 - 30;
     final cellSize = (availableWidth / weeks).clamp(8.0, 20.0);
     const gap = 2.0;
     final tapSize = cellSize + gap;
+
+    // 셀 그리드는 웨이브 애니메이션 프레임마다 불변이므로 AnimatedBuilder 밖에서
+    // 한 번만 만든다. 프레임마다 바뀌는 건 주(week)별 Opacity/Transform.scale 뿐이라,
+    // 미리 만든 컬럼을 자식으로 넘기면 셀(_HeatmapCell) 재빌드가 매 프레임 안 돈다.
+    final weekColumns = List.generate(weeks, (weekIndex) {
+      final weekStart = _getWeekStart(now, weeks - 1 - weekIndex);
+      return Column(
+        children: List.generate(7, (dayIndex) {
+          final date = weekStart.add(Duration(days: dayIndex));
+          if (date.isAfter(now) || date.isBefore(widget.startDate)) {
+            return SizedBox(width: tapSize, height: tapSize);
+          }
+          final dateStr = du.dateToString(date);
+          final emotion = widget.emotionMap[dateStr];
+          final tooltipMsg = emotion != null
+              ? '${date.month}/${date.day} ${AppColors.emotionLabels[emotion]} $emotion점'
+              : '${date.month}/${date.day} 기록 없음';
+
+          return _HeatmapCell(
+            tapSize: tapSize,
+            cellSize: cellSize,
+            color: AppColors.getHeatmapColor(emotion, brightness),
+            tooltipMsg: tooltipMsg,
+            semanticLabel:
+                '${du.formatKoreanDate(date)}, ${emotion != null ? "감정 $emotion점" : "기록 없음"}',
+            onTap: emotion != null
+                ? () => widget.onCellTap?.call(dateStr)
+                : null,
+          );
+        }),
+      );
+    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,15 +130,17 @@ class _HeatmapGridState extends State<HeatmapGrid>
                   }),
                 ),
               ),
-              // Grid with staggered wave animation
+              // Grid with staggered wave animation.
+              // SingleChildScrollView 는 AnimatedBuilder 밖에 둬서 매 프레임
+              // 재생성되지 않게 하고, 빌더는 주별 Opacity/Transform 만 갱신한다.
               Expanded(
-                child: AnimatedBuilder(
-                  animation: _waveController,
-                  builder: (context, _) {
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      reverse: true,
-                      child: Row(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  reverse: true,
+                  child: AnimatedBuilder(
+                    animation: _waveController,
+                    builder: (context, _) {
+                      return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: List.generate(weeks, (weekIndex) {
                           // Stagger: most recent weeks animate first
@@ -121,50 +155,18 @@ class _HeatmapGridState extends State<HeatmapGrid>
                           final progress =
                               interval.transform(_waveController.value);
 
-                          final weekStart =
-                              _getWeekStart(now, weeks - 1 - weekIndex);
                           return Opacity(
                             opacity: progress.clamp(0.0, 1.0),
                             child: Transform.scale(
                               scale: 0.6 + 0.4 * progress,
                               alignment: Alignment.center,
-                              child: Column(
-                                children: List.generate(7, (dayIndex) {
-                                  final date = weekStart
-                                      .add(Duration(days: dayIndex));
-                                  if (date.isAfter(now) ||
-                                      date.isBefore(widget.startDate)) {
-                                    return SizedBox(
-                                        width: tapSize, height: tapSize);
-                                  }
-                                  final dateStr = du.dateToString(date);
-                                  final emotion =
-                                      widget.emotionMap[dateStr];
-                                  final tooltipMsg = emotion != null
-                                      ? '${date.month}/${date.day} ${AppColors.emotionLabels[emotion]} $emotion점'
-                                      : '${date.month}/${date.day} 기록 없음';
-
-                                  return _HeatmapCell(
-                                    tapSize: tapSize,
-                                    cellSize: cellSize,
-                                    color: AppColors.getHeatmapColor(
-                                        emotion, brightness),
-                                    tooltipMsg: tooltipMsg,
-                                    semanticLabel:
-                                        '${du.formatKoreanDate(date)}, ${emotion != null ? "감정 $emotion점" : "기록 없음"}',
-                                    onTap: emotion != null
-                                        ? () =>
-                                            widget.onCellTap?.call(dateStr)
-                                        : null,
-                                  );
-                                }),
-                              ),
+                              child: weekColumns[weekIndex],
                             ),
                           );
                         }),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
             ],

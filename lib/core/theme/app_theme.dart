@@ -31,8 +31,18 @@ class AppTheme {
     'forest_deep': 100,
   };
 
+  // accent 별 ThemeData 는 불변이라 캐시한다. 루트(ThreeLinesApp)는 provider
+  // 해소와 테마 토글마다 rebuild 되는데, 그때마다 _buildTheme(대형 ThemeData +
+  // GoogleFonts TextTheme) 와 fromSeed 를 재실행하던 낭비를 없앤다.
+  // (개발 중 _buildTheme 수정은 hot restart 로 반영 — hot reload 는 stale 가능)
+  static final Map<String, ThemeData> _lightThemeCache = {};
+  static final Map<String, ThemeData> _darkThemeCache = {};
+
   /// Returns light theme for the given accent name.
-  static ThemeData lightForAccent(String accent) {
+  static ThemeData lightForAccent(String accent) =>
+      _lightThemeCache.putIfAbsent(accent, () => _buildLightForAccent(accent));
+
+  static ThemeData _buildLightForAccent(String accent) {
     if (accent == 'sage' || !accentSeeds.containsKey(accent)) return light();
     final seed = accentSeeds[accent]!;
     final scheme = ColorScheme.fromSeed(
@@ -43,7 +53,10 @@ class AppTheme {
   }
 
   /// Returns dark theme for the given accent name.
-  static ThemeData darkForAccent(String accent) {
+  static ThemeData darkForAccent(String accent) =>
+      _darkThemeCache.putIfAbsent(accent, () => _buildDarkForAccent(accent));
+
+  static ThemeData _buildDarkForAccent(String accent) {
     if (accent == 'sage' || !accentSeeds.containsKey(accent)) return dark();
     final seed = accentSeeds[accent]!;
     final scheme = ColorScheme.fromSeed(
