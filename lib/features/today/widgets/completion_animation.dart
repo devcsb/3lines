@@ -67,6 +67,8 @@ class _CompletionAnimationState extends State<CompletionAnimation>
   };
 
   late String _message;
+  bool _started = false;
+  bool _reduceMotion = false;
 
   @override
   void initState() {
@@ -117,12 +119,34 @@ class _CompletionAnimationState extends State<CompletionAnimation>
       curve: Curves.easeOut,
     ));
 
-    _startSequence();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = MediaQuery.disableAnimationsOf(context);
+    if (!_started) {
+      _started = true;
+      _startSequence();
+    }
   }
 
   Future<void> _startSequence() async {
     // Fire haptic + particles + checkmark simultaneously
     HapticService.medium();
+
+    if (_reduceMotion) {
+      // 동작 줄이기: 파티클 버스트/탄성 애니메이션 없이 최종 상태로 즉시 표시하되,
+      // 자동 종료(onComplete) 타이머는 그대로 유지한다.
+      _checkController.value = 1.0;
+      _particleController.value = 1.0;
+      _textController.value = 1.0;
+      HapticService.light();
+      await Future.delayed(const Duration(milliseconds: 2500));
+      if (mounted) widget.onComplete?.call();
+      return;
+    }
+
     unawaited(_checkController.forward());
     unawaited(_particleController.forward());
 

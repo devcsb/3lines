@@ -34,14 +34,27 @@ class _HeatmapGridState extends State<HeatmapGrid>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // reduce-motion(동작 줄이기): 진입 웨이브를 생략하고 즉시 완전 표시.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _waveController.value = 1.0;
+    }
+  }
+
+  @override
   void didUpdateWidget(HeatmapGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Re-trigger animation when data changes (period switch)
     if (oldWidget.emotionMap != widget.emotionMap ||
         oldWidget.startDate != widget.startDate) {
-      _waveController
-        ..reset()
-        ..forward();
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _waveController.value = 1.0;
+      } else {
+        _waveController
+          ..reset()
+          ..forward();
+      }
     }
   }
 
