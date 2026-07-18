@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // ── Brand palette ──────────────────────────────────────────────
@@ -33,7 +32,7 @@ class AppTheme {
 
   // accent 별 ThemeData 는 불변이라 캐시한다. 루트(ThreeLinesApp)는 provider
   // 해소와 테마 토글마다 rebuild 되는데, 그때마다 _buildTheme(대형 ThemeData +
-  // GoogleFonts TextTheme) 와 fromSeed 를 재실행하던 낭비를 없앤다.
+  // TextTheme) 와 fromSeed 를 재실행하던 낭비를 없앤다.
   // (개발 중 _buildTheme 수정은 hot restart 로 반영 — hot reload 는 stale 가능)
   static final Map<String, ThemeData> _lightThemeCache = {};
   static final Map<String, ThemeData> _darkThemeCache = {};
@@ -153,9 +152,11 @@ class AppTheme {
   // ── Shared builder ─────────────────────────────────────────────
   static ThemeData _buildTheme(ColorScheme colorScheme) {
     final isLight = colorScheme.brightness == Brightness.light;
-    final baseTextTheme = GoogleFonts.notoSansTextTheme(
-      isLight ? ThemeData.light().textTheme : ThemeData.dark().textTheme,
-    );
+    // 번들된 Noto Sans(가변폰트)를 UI 폰트로 적용한다. 런타임 fetch 없이
+    // 오프라인 결정적 로딩. weight 는 아래 copyWith 와 fontWeight 로 가변축 선택.
+    final baseTextTheme =
+        (isLight ? ThemeData.light().textTheme : ThemeData.dark().textTheme)
+            .apply(fontFamily: 'NotoSans');
 
     // Refine text hierarchy
     final textTheme = baseTextTheme.copyWith(

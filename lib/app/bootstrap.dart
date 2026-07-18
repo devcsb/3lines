@@ -87,8 +87,10 @@ void _installErrorLogging() {
 
 void _registerBundledLicenses() {
   LicenseRegistry.addLicense(() async* {
-    final ofl = await rootBundle.loadString('assets/fonts/OFL.txt');
-    yield LicenseEntryWithLineBreaks(const ['NanumMyeongjo (나눔명조)'], ofl);
+    final nanum = await rootBundle.loadString('assets/fonts/OFL.txt');
+    yield LicenseEntryWithLineBreaks(const ['NanumMyeongjo (나눔명조)'], nanum);
+    final noto = await rootBundle.loadString('assets/fonts/NotoSans-OFL.txt');
+    yield LicenseEntryWithLineBreaks(const ['Noto Sans'], noto);
   });
 }
 

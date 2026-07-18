@@ -24,7 +24,6 @@ dependencies:
   timezone: ^0.11.1
   file_picker: ^11.0.0
   local_auth: ^3.0.0
-  google_fonts: ^8.1.0
   image_picker: ^1.2.2
   pdf: ^3.12.0
   home_widget: ^0.9.3
@@ -46,3 +45,10 @@ flutter:
     - assets/fonts/NanumMyeongjo-Regular.ttf
     # OFL 라이선스 본문: 앱 내 오픈소스 라이선스 페이지에 노출.
     - assets/fonts/OFL.txt
+    - assets/fonts/NotoSans-OFL.txt
+  fonts:
+    # Noto Sans(OFL) 가변폰트: UI 라틴/숫자 타이포. google_fonts 런타임 fetch 대신
+    # 번들해 오프라인 결정적 로딩(첫 실행 FOUT/네트워크 의존 제거). 한글은 플랫폼 폰트.
+    - family: NotoSans
+      fonts:
+        - asset: assets/fonts/NotoSans-Variable.ttf

@@ -2,7 +2,6 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:three_lines/app.dart';
 import 'package:three_lines/core/services/biometric_service.dart';
@@ -27,9 +26,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('온보딩 완료 상태에서 앱이 TodayScreen으로 부팅된다', (tester) async {
-    // 테스트 환경(샌드박스)에서 google_fonts의 런타임 네트워크 fetch를 막는다.
-    GoogleFonts.config.allowRuntimeFetching = false;
-
+    // UI 폰트(Noto Sans)는 번들이라 런타임 fetch 가드가 필요 없다.
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     await SettingsRepository(db).setSetting('onboarding_done', 'true');
     addTearDown(() async => db.close());
