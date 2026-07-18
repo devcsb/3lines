@@ -723,6 +723,22 @@ void main() {
       final result = await repo.searchEntries('100%');
       expect(result.length, 1);
     });
+
+    test('caps results at 100 most recent when many match', () async {
+      final base = DateTime(2026, 6, 1);
+      for (var i = 0; i < 105; i++) {
+        final d = du.dateToString(base.subtract(Duration(days: i)));
+        await repo.saveEntry(makeEntry(d, answer1: '운동 $i'));
+      }
+      final result = await repo.searchEntries('운동');
+      // LIMIT 100: 최신 100건만, date DESC 정렬
+      expect(result.length, 100);
+      expect(result.first.date, du.dateToString(base));
+      expect(
+        result.last.date,
+        du.dateToString(base.subtract(const Duration(days: 99))),
+      );
+    });
   });
 
   group('deleteEntry', () {

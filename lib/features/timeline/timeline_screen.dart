@@ -287,7 +287,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
       children: [
         Text(
           state.searchResults.length >= 100
-              ? '100개 이상의 결과'
+              ? '최근 100개 표시'
               : '${state.searchResults.length}개의 결과',
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.5),

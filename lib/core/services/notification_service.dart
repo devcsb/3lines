@@ -15,10 +15,18 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
+  Future<void>? _initFuture;
 
-  Future<void> initialize() async {
-    if (kIsWeb || _initialized) return;
+  Future<void> initialize() {
+    if (kIsWeb || _initialized) return Future.value();
+    // 동시 호출이 tz/plugin 초기화를 중복 실행하지 않도록 in-flight Future 를
+    // 공유한다. 실패 시엔 캐시를 비워 다음 호출이 재시도하게 둔다.
+    return _initFuture ??= _doInitialize().whenComplete(() {
+      if (!_initialized) _initFuture = null;
+    });
+  }
 
+  Future<void> _doInitialize() async {
     tz.initializeTimeZones();
 
     const androidSettings =
