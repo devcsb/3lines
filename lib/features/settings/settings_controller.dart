@@ -131,9 +131,6 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     if (current == null) return false;
 
     try {
-      await repo.setSetting(SettingKeys.reminderHour, hour.toString());
-      await repo.setSetting(SettingKeys.reminderMinute, minute.toString());
-
       if (current.reminderEnabled) {
         final entryRepo = ref.read(entryRepositoryProvider);
         final scheduled = await notifService.scheduleSmartDailyReminder(
@@ -141,6 +138,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
           minute: minute,
           entryExistsToday: () async => await entryRepo.getTodayEntry() != null,
         );
+        // 재예약 실패 시 DB/state 를 건드리지 않아 저장값·화면·알림이 일치 유지.
         if (!scheduled) return false;
 
         // Reschedule streak-at-risk with new time
@@ -155,6 +153,9 @@ class SettingsController extends AsyncNotifier<SettingsState> {
         }
       }
 
+      // 재예약 성공(또는 알림 비활성) 후에 DB 와 state 를 함께 커밋한다.
+      await repo.setSetting(SettingKeys.reminderHour, hour.toString());
+      await repo.setSetting(SettingKeys.reminderMinute, minute.toString());
       state = AsyncData(
         current.copyWith(reminderHour: hour, reminderMinute: minute),
       );

@@ -74,7 +74,10 @@ class _EmotionPickerState extends State<EmotionPicker> {
                               Future.delayed(
                                 const Duration(milliseconds: 250),
                                 () {
-                                  if (mounted) {
+                                  // 250ms 안에 다른 감정을 다시 탭하면 그 탭이
+                                  // _animatingIndex 를 바꾸므로, 이 콜백은 자기
+                                  // value 가 아직 애니메이션 중일 때만 리셋한다.
+                                  if (mounted && _animatingIndex == value) {
                                     setState(() => _animatingIndex = null);
                                   }
                                 },

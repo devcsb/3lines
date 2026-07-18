@@ -90,9 +90,13 @@ class QuestionsSection extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () {
-              ref
-                  .read(settingsControllerProvider.notifier)
-                  .updatePrompt(index, controller.text);
+              // 빈/공백 질문은 저장하지 않는다(빈 질문이 카드에 노출되는 것 방지).
+              final text = controller.text.trim();
+              if (text.isNotEmpty) {
+                ref
+                    .read(settingsControllerProvider.notifier)
+                    .updatePrompt(index, text);
+              }
               Navigator.pop(ctx);
             },
             child: const Text('저장'),

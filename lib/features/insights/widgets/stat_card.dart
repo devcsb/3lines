@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// 값 문자열의 선행 숫자 추출용 정규식. 카운트업 애니메이션이 매 프레임 값을
+/// 파싱하므로 재컴파일을 피하려 상수로 둔다.
+final _leadingNumber = RegExp(r'^(\d+\.?\d*)');
+
 /// Stat card with animated count-up effect for numeric values.
 class StatCard extends StatefulWidget {
   final String title;
@@ -122,7 +126,7 @@ class _StatCardState extends State<StatCard>
 
   /// Extract leading numeric portion from value string (e.g. "42일" → 42.0)
   static double? _extractNumber(String value) {
-    final match = RegExp(r'^(\d+\.?\d*)').firstMatch(value);
+    final match = _leadingNumber.firstMatch(value);
     if (match == null) return null;
     return double.tryParse(match.group(1)!);
   }
@@ -145,7 +149,7 @@ class _AnimatedValue extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = numericPart * progress;
-    final numStr = RegExp(r'^(\d+\.?\d*)').firstMatch(value)!.group(0)!;
+    final numStr = _leadingNumber.firstMatch(value)!.group(0)!;
     final suffix = value.substring(numStr.length);
 
     // Preserve decimal format from original
