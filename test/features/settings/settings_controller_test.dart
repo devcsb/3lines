@@ -67,6 +67,68 @@ void main() {
     });
   });
 
+  group('setReminderTime', () {
+    test('알림 비활성 시 스케줄 없이 DB/state 커밋하고 true', () async {
+      await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+
+      final ok = await notifier.setReminderTime(8, 30);
+
+      expect(ok, isTrue);
+      expect(
+        await settingsRepo.getSetting('reminder_hour', defaultValue: ''),
+        '8',
+      );
+      expect(
+        await settingsRepo.getSetting('reminder_minute', defaultValue: ''),
+        '30',
+      );
+      final state = container.read(settingsControllerProvider).value;
+      expect(state?.reminderHour, 8);
+      expect(state?.reminderMinute, 30);
+    });
+
+    test('재예약 성공 시 DB와 state 모두 갱신', () async {
+      await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+      fakeNotif.scheduleResult = true;
+      await notifier.setReminderEnabled(true);
+
+      final ok = await notifier.setReminderTime(9, 15);
+
+      expect(ok, isTrue);
+      expect(
+        await settingsRepo.getSetting('reminder_hour', defaultValue: ''),
+        '9',
+      );
+      expect(container.read(settingsControllerProvider).value?.reminderHour, 9);
+    });
+
+    test('재예약 실패 시 DB/state 를 건드리지 않고 false', () async {
+      await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+      fakeNotif.scheduleResult = true;
+      await notifier.setReminderEnabled(true);
+      final before = container.read(settingsControllerProvider).value!;
+
+      // 이제 재예약이 실패하도록
+      fakeNotif.scheduleResult = false;
+      final ok = await notifier.setReminderTime(9, 15);
+
+      expect(ok, isFalse);
+      // DB 미커밋: 시간이 이전 기본값(21시)에서 바뀌지 않음
+      expect(
+        await settingsRepo.getSetting('reminder_hour', defaultValue: '21'),
+        '21',
+      );
+      // state 불변
+      expect(
+        container.read(settingsControllerProvider).value?.reminderHour,
+        before.reminderHour,
+      );
+    });
+  });
+
   group('importData', () {
     const validJson = '''
 {

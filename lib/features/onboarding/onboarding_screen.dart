@@ -70,8 +70,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: !isLastPage
                   ? TextButton(
                       onPressed: _completeOnboarding,
+                      // semanticsLabel 로 서술 라벨을 주면 버튼 노드 하나가
+                      // '온보딩 건너뛰기'로 읽힌다(바깥 Semantics 없이 중복 낭독 방지).
                       child: Text(
                         '건너뛰기',
+                        semanticsLabel: '온보딩 건너뛰기',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(
                             alpha: 0.4,
@@ -153,7 +156,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: _completeOnboarding,
-                                child: const Text('시작하기'),
+                                child: const Text(
+                                  '시작하기',
+                                  semanticsLabel: '3Lines 시작하기',
+                                ),
                               ),
                             )
                           : SizedBox(
