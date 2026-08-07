@@ -219,6 +219,7 @@ git commit -m "refactor: isolate notification platform boundaries"
 **Interfaces:**
 - Consumes: `NotificationPlatform`, `DeviceTimeZoneResolver`, `timezone` location database.
 - Produces: `ReminderContext`, `ReminderScheduler.requestPermission`, `replaceDailyAndStreak`, `scheduleWeeklyRetrospective`, `cancelAll`, `migrateLegacyReminders`.
+- Compatibility boundary: until Task 5 rewires all existing call sites, retain `NotificationService` as a non-final class with a no-argument constructor and keep `notificationServiceProvider` statically typed as `Provider<NotificationService>`. Deprecated wrappers for the existing Controller/Fake methods may delegate to the new scheduler. Task 5 must remove the wrappers, delete the old Fake, and change the provider to `Provider<ReminderScheduler>`.
 
 - [ ] **Step 1: Recording Fake와 날짜·ID 회귀 테스트를 작성한다**
 
@@ -586,7 +587,7 @@ await _platform.schedule(ScheduledLocalNotification(
 ));
 ```
 
-`scheduleWeeklyRetrospective`는 ID 300만 취소·예약한다. `migrateLegacyReminders`는 0, 1, 2만 취소한다. `cancelAll`은 100~129, 200, 300, 0, 1, 2를 모두 취소하고 한 번이라도 플랫폼 취소가 실패하면 호출자에게 예외를 전달한다. provider의 정적 타입은 `Provider<ReminderScheduler>`이며 Task 1의 두 provider를 주입한다.
+`scheduleWeeklyRetrospective`는 ID 300만 취소·예약한다. `migrateLegacyReminders`는 0, 1, 2만 취소한다. `cancelAll`은 100~129, 200, 300, 0, 1, 2를 모두 취소하고 한 번이라도 플랫폼 취소가 실패하면 호출자에게 예외를 전달한다. Task 2 동안 provider의 정적 타입은 기존 호출부를 위한 `Provider<NotificationService>`로 유지하며, Task 5에서 `Provider<ReminderScheduler>`로 전환한다. 두 타입 모두 같은 `NotificationService` 인스턴스를 사용한다.
 
 `nextSundayAt20`은 아래처럼 현지 달력으로 계산한다.
 
@@ -891,7 +892,7 @@ Future<ReminderContext> _context({int? hour, int? minute}) async {
 }
 ```
 
-`reminderCoordinatorProvider`는 `Provider<ReminderCoordinator>`이고 실제 repositories와 `notificationServiceProvider`를 주입한다.
+`reminderCoordinatorProvider`는 `Provider<ReminderCoordinator>`이고 실제 repositories와 `notificationServiceProvider`를 `ReminderScheduler`로 주입한다. Task 2의 호환 provider가 concrete subtype이므로 Coordinator는 새 scheduler 메서드만 사용하며, Task 5에서 provider의 정적 타입을 interface로 바꾼다.
 
 - [ ] **Step 4: 모든 변경을 하나의 직렬 queue에서 실행한다**
 
