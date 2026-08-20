@@ -47,15 +47,36 @@ class WidgetSnapshot {
     required this.streakLabel,
   });
 
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WidgetSnapshot &&
+          date == other.date &&
+          streak == other.streak &&
+          isCompleted == other.isCompleted &&
+          prompt == other.prompt &&
+          emotion == other.emotion &&
+          statusMessage == other.statusMessage &&
+          streakLabel == other.streakLabel;
+
+  @override
+  int get hashCode => Object.hash(
+    date,
+    streak,
+    isCompleted,
+    prompt,
+    emotion,
+    statusMessage,
+    streakLabel,
+  );
+
   static String buildStatusMessage({
     required bool isCompleted,
     required int streak,
     int? emotion,
   }) {
     if (isCompleted) {
-      final label = emotion != null
-          ? AppColors.emotionLabels[emotion]
-          : null;
+      final label = emotion != null ? AppColors.emotionLabels[emotion] : null;
       if (label != null) {
         return '오늘 기록 완료 · $label';
       }
@@ -76,7 +97,8 @@ class WidgetSnapshot {
   static int? parseEmotionFromUri(Uri? uri) {
     if (uri == null) return null;
     if (uri.scheme != WidgetSyncConfig.scheme) return null;
-    final isToday = uri.host == 'today' ||
+    final isToday =
+        uri.host == 'today' ||
         uri.path == 'today' ||
         uri.path == '/today' ||
         uri.pathSegments.contains('today');
@@ -122,8 +144,7 @@ class LiveHomeWidgetBridge implements HomeWidgetBridge {
   Future<void> updateWidget({
     required String iOSName,
     required String androidName,
-  }) =>
-      HomeWidget.updateWidget(iOSName: iOSName, androidName: androidName);
+  }) => HomeWidget.updateWidget(iOSName: iOSName, androidName: androidName);
 
   @override
   Future<Uri?> initiallyLaunchedFromHomeWidget() =>
@@ -133,16 +154,22 @@ class LiveHomeWidgetBridge implements HomeWidgetBridge {
   Stream<Uri?> get widgetClicked => HomeWidget.widgetClicked;
 }
 
-class WidgetSyncService {
+abstract interface class WidgetSync {
+  Future<void> sync();
+  Future<Uri?> initiallyLaunchedUri();
+  StreamSubscription<Uri?>? listenWidgetClicks(void Function(Uri uri) onUri);
+}
+
+class WidgetSyncService implements WidgetSync {
   WidgetSyncService({
     required EntryRepository entryRepository,
     required SettingsRepository settingsRepository,
     required AppClock clock,
     HomeWidgetBridge? bridge,
-  })  : _entryRepository = entryRepository,
-        _settingsRepository = settingsRepository,
-        _clock = clock,
-        _bridge = bridge ?? LiveHomeWidgetBridge();
+  }) : _entryRepository = entryRepository,
+       _settingsRepository = settingsRepository,
+       _clock = clock,
+       _bridge = bridge ?? LiveHomeWidgetBridge();
 
   final EntryRepository _entryRepository;
   final SettingsRepository _settingsRepository;
@@ -150,6 +177,9 @@ class WidgetSyncService {
   final HomeWidgetBridge _bridge;
 
   bool _configured = false;
+  Future<void>? _syncFuture;
+  bool _syncRequested = false;
+  WidgetSnapshot? _lastSuccessfulSnapshot;
 
   Future<void> ensureConfigured() async {
     if (_configured || kIsWeb) return;
@@ -195,16 +225,19 @@ class WidgetSyncService {
     );
   }
 
-  Future<void> sync() async {
-    if (kIsWeb) return;
+  @override
+  Future<void> sync() {
+    if (kIsWeb) return Future<void>.value();
+    _syncRequested = true;
+    return _syncFuture ??= _drainSyncRequests();
+  }
+
+  Future<void> _drainSyncRequests() async {
     try {
-      await ensureConfigured();
-      final snapshot = await buildSnapshot();
-      await _persist(snapshot);
-      await _bridge.updateWidget(
-        iOSName: WidgetSyncConfig.iOSWidgetName,
-        androidName: WidgetSyncConfig.androidWidgetName,
-      );
+      while (_syncRequested) {
+        _syncRequested = false;
+        await _syncOnce();
+      }
     } catch (e, stack) {
       developer.log(
         'Failed to sync home widget',
@@ -212,7 +245,24 @@ class WidgetSyncService {
         error: e,
         stackTrace: stack,
       );
+    } finally {
+      _syncFuture = null;
+      if (_syncRequested) {
+        scheduleMicrotask(sync);
+      }
     }
+  }
+
+  Future<void> _syncOnce() async {
+    await ensureConfigured();
+    final snapshot = await buildSnapshot();
+    if (snapshot == _lastSuccessfulSnapshot) return;
+    await _persist(snapshot);
+    await _bridge.updateWidget(
+      iOSName: WidgetSyncConfig.iOSWidgetName,
+      androidName: WidgetSyncConfig.androidWidgetName,
+    );
+    _lastSuccessfulSnapshot = snapshot;
   }
 
   Future<void> _persist(WidgetSnapshot snapshot) async {
@@ -232,13 +282,11 @@ class WidgetSyncService {
         WidgetSyncConfig.keyStatusMessage,
         snapshot.statusMessage,
       ),
-      _bridge.saveString(
-        WidgetSyncConfig.keyStreakLabel,
-        snapshot.streakLabel,
-      ),
+      _bridge.saveString(WidgetSyncConfig.keyStreakLabel, snapshot.streakLabel),
     ]);
   }
 
+  @override
   Future<Uri?> initiallyLaunchedUri() async {
     if (kIsWeb) return null;
     try {
@@ -255,6 +303,7 @@ class WidgetSyncService {
     }
   }
 
+  @override
   StreamSubscription<Uri?>? listenWidgetClicks(void Function(Uri uri) onUri) {
     if (kIsWeb) return null;
     return _bridge.widgetClicked.listen((uri) {
@@ -290,7 +339,7 @@ final homeWidgetBridgeProvider = Provider<HomeWidgetBridge>((ref) {
   return LiveHomeWidgetBridge();
 });
 
-final widgetSyncServiceProvider = Provider<WidgetSyncService>((ref) {
+final widgetSyncServiceProvider = Provider<WidgetSync>((ref) {
   return WidgetSyncService(
     entryRepository: ref.watch(entryRepositoryProvider),
     settingsRepository: ref.watch(settingsRepositoryProvider),
