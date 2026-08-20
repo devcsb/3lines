@@ -230,5 +230,30 @@ void main() {
       expect(bridge.saveCount, 14);
       expect(bridge.updateCount, 2);
     });
+
+    test('실패 중 합류한 동기화 요청은 같은 재시도 완료까지 기다린다', () async {
+      bridge.updateGate = Completer<void>();
+      bridge.failNextUpdate = true;
+      final first = service.sync();
+      while (bridge.updateCount == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      var secondCompleted = false;
+      final second = service.sync();
+      unawaited(second.whenComplete(() => secondCompleted = true));
+
+      bridge.updateGate!.complete();
+      bridge.updateGate = Completer<void>();
+      while (bridge.updateCount < 2) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(secondCompleted, isFalse);
+      bridge.updateGate!.complete();
+      await Future.wait([first, second]);
+      expect(bridge.saveCount, 14);
+      expect(bridge.updateCount, 2);
+    });
   });
 }

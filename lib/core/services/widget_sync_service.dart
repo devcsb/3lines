@@ -236,15 +236,17 @@ class WidgetSyncService implements WidgetSync {
     try {
       while (_syncRequested) {
         _syncRequested = false;
-        await _syncOnce();
+        try {
+          await _syncOnce();
+        } catch (e, stack) {
+          developer.log(
+            'Failed to sync home widget',
+            name: 'widget_sync',
+            error: e,
+            stackTrace: stack,
+          );
+        }
       }
-    } catch (e, stack) {
-      developer.log(
-        'Failed to sync home widget',
-        name: 'widget_sync',
-        error: e,
-        stackTrace: stack,
-      );
     } finally {
       _syncFuture = null;
       if (_syncRequested) {
