@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:three_lines/core/events/journal_changes.dart';
 import 'package:three_lines/core/services/photo_service.dart';
 import 'package:three_lines/core/utils/date_utils.dart' as du;
 import 'package:three_lines/data/database/app_database.dart';
@@ -78,15 +79,18 @@ void main() {
   });
 
   group('deleteEntry', () {
-    test('removes entry from database', () async {
-      await entryRepo.saveEntry(makeEntry(du.getTodayString()));
+    test('기록 삭제 후 DB에서 제거하고 저널 이벤트를 정확히 한 번 발생시킨다', () async {
+      const date = '2026-08-06';
+      await entryRepo.saveEntry(makeEntry(date));
       await container.read(timelineControllerProvider.future);
 
       final notifier = container.read(timelineControllerProvider.notifier);
-      await notifier.deleteEntry(du.getTodayString());
+      final changesBefore = container.read(journalChangesProvider);
+      await notifier.deleteEntry(date);
 
-      final entry = await entryRepo.getTodayEntry();
+      final entry = await entryRepo.getEntryByDate(date);
       expect(entry, isNull);
+      expect(container.read(journalChangesProvider), changesBefore + 1);
     });
 
     test('deletes photo file when entry has a photo', () async {

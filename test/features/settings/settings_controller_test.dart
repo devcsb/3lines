@@ -4,9 +4,10 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:three_lines/app.dart';
+import 'package:three_lines/core/events/journal_changes.dart';
 import 'package:three_lines/core/services/biometric_service.dart';
-import 'package:three_lines/core/services/notification_service.dart';
 import 'package:three_lines/core/services/photo_service.dart';
+import 'package:three_lines/core/services/reminder_coordinator.dart';
 import 'package:three_lines/data/database/app_database.dart';
 import 'package:three_lines/data/models/daily_entry.dart';
 import 'package:three_lines/data/repositories/entry_repository.dart';
@@ -14,15 +15,39 @@ import 'package:three_lines/data/repositories/settings_repository.dart';
 import 'package:three_lines/features/settings/settings_controller.dart';
 
 import '../../helpers/fake_biometric_service.dart';
-import '../../helpers/fake_notification_service.dart';
 import '../../helpers/fake_photo_service.dart';
+
+final class FakeReminderCoordinator implements ReminderCoordinator {
+  bool enabledResult = true;
+  bool timeResult = true;
+  final enabledCalls = <bool>[];
+  final timeCalls = <(int, int)>[];
+
+  @override
+  Future<bool> setEnabled(bool enabled) async {
+    enabledCalls.add(enabled);
+    return enabledResult;
+  }
+
+  @override
+  Future<bool> setTime(int hour, int minute) async {
+    timeCalls.add((hour, minute));
+    return timeResult;
+  }
+
+  @override
+  Future<void> reconcileOnLaunch() async {}
+
+  @override
+  Future<void> reconcileAfterJournalChange() async {}
+}
 
 void main() {
   late AppDatabase db;
   late EntryRepository entryRepo;
   late SettingsRepository settingsRepo;
   late FakePhotoService fakePhoto;
-  late FakeNotificationService fakeNotif;
+  late FakeReminderCoordinator fakeReminders;
   late FakeBiometricService fakeBio;
   late ProviderContainer container;
 
@@ -31,7 +56,7 @@ void main() {
     entryRepo = EntryRepository(db);
     settingsRepo = SettingsRepository(db);
     fakePhoto = FakePhotoService();
-    fakeNotif = FakeNotificationService();
+    fakeReminders = FakeReminderCoordinator();
     fakeBio = FakeBiometricService();
 
     container = ProviderContainer(
@@ -39,7 +64,7 @@ void main() {
         entryRepositoryProvider.overrideWithValue(entryRepo),
         settingsRepositoryProvider.overrideWithValue(settingsRepo),
         photoServiceProvider.overrideWithValue(fakePhoto),
-        notificationServiceProvider.overrideWithValue(fakeNotif),
+        reminderCoordinatorProvider.overrideWithValue(fakeReminders),
         biometricServiceProvider.overrideWithValue(fakeBio),
         // Stub the FutureProvider so invalidate() doesn't hit real DB path
         biometricLockEnabledProvider.overrideWith((_) => Future.value(false)),
@@ -68,64 +93,32 @@ void main() {
   });
 
   group('setReminderTime', () {
-    test('알림 비활성 시 스케줄 없이 DB/state 커밋하고 true', () async {
+    test('Coordinator 성공 시 호출 인자와 state 시각을 갱신한다', () async {
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
 
       final ok = await notifier.setReminderTime(8, 30);
 
       expect(ok, isTrue);
-      expect(
-        await settingsRepo.getSetting('reminder_hour', defaultValue: ''),
-        '8',
-      );
-      expect(
-        await settingsRepo.getSetting('reminder_minute', defaultValue: ''),
-        '30',
-      );
+      expect(fakeReminders.timeCalls, [(8, 30)]);
       final state = container.read(settingsControllerProvider).value;
       expect(state?.reminderHour, 8);
       expect(state?.reminderMinute, 30);
     });
 
-    test('재예약 성공 시 DB와 state 모두 갱신', () async {
+    test('Coordinator 실패 시 state 시각을 유지한다', () async {
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
-      fakeNotif.scheduleResult = true;
-      await notifier.setReminderEnabled(true);
-
-      final ok = await notifier.setReminderTime(9, 15);
-
-      expect(ok, isTrue);
-      expect(
-        await settingsRepo.getSetting('reminder_hour', defaultValue: ''),
-        '9',
-      );
-      expect(container.read(settingsControllerProvider).value?.reminderHour, 9);
-    });
-
-    test('재예약 실패 시 DB/state 를 건드리지 않고 false', () async {
-      await container.read(settingsControllerProvider.future);
-      final notifier = container.read(settingsControllerProvider.notifier);
-      fakeNotif.scheduleResult = true;
-      await notifier.setReminderEnabled(true);
       final before = container.read(settingsControllerProvider).value!;
 
-      // 이제 재예약이 실패하도록
-      fakeNotif.scheduleResult = false;
+      fakeReminders.timeResult = false;
       final ok = await notifier.setReminderTime(9, 15);
 
       expect(ok, isFalse);
-      // DB 미커밋: 시간이 이전 기본값(21시)에서 바뀌지 않음
-      expect(
-        await settingsRepo.getSetting('reminder_hour', defaultValue: '21'),
-        '21',
-      );
-      // state 불변
-      expect(
-        container.read(settingsControllerProvider).value?.reminderHour,
-        before.reminderHour,
-      );
+      expect(fakeReminders.timeCalls, [(9, 15)]);
+      final current = container.read(settingsControllerProvider).value;
+      expect(current?.reminderHour, before.reminderHour);
+      expect(current?.reminderMinute, before.reminderMinute);
     });
   });
 
@@ -160,11 +153,14 @@ void main() {
     test('imports entries from wrapped JSON format', () async {
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
+      final changesBefore = container.read(journalChangesProvider);
 
       final result = await notifier.importData(validJson);
+
       expect(result.imported, 2);
       expect(result.skipped, 0);
       expect(await entryRepo.getTotalCount(), 2);
+      expect(container.read(journalChangesProvider), changesBefore + 1);
     });
 
     test('imports entries from bare list JSON format', () async {
@@ -350,10 +346,13 @@ void main() {
 
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
+      final changesBefore = container.read(journalChangesProvider);
 
       final success = await notifier.deleteAllData();
+
       expect(success, isTrue);
       expect(await entryRepo.getTotalCount(), 0);
+      expect(container.read(journalChangesProvider), changesBefore + 1);
     });
 
     test('deletes photo files for entries that had photos', () async {
@@ -448,37 +447,45 @@ void main() {
   });
 
   group('setReminderEnabled', () {
-    test('returns false when permission is denied', () async {
-      fakeNotif.permissionGranted = false;
+    test('Coordinator 실패 시 state와 저장값을 유지한다', () async {
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
+      final before = container.read(settingsControllerProvider).value!;
+
+      fakeReminders.enabledResult = false;
 
       final result = await notifier.setReminderEnabled(true);
+
       expect(result, isFalse);
+      expect(fakeReminders.enabledCalls, [true]);
+      expect(
+        container.read(settingsControllerProvider).value?.reminderEnabled,
+        before.reminderEnabled,
+      );
+      expect((await settingsRepo.getReminderSettings()).enabled, isFalse);
     });
 
-    test('schedules notification when enabled with permission', () async {
-      fakeNotif.permissionGranted = true;
-      fakeNotif.scheduleResult = true;
+    test('Coordinator 성공 시 호출 인자와 state 활성화를 갱신한다', () async {
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
 
       final result = await notifier.setReminderEnabled(true);
-      expect(result, isTrue);
-      expect(fakeNotif.scheduledCount, greaterThan(0));
 
+      expect(result, isTrue);
+      expect(fakeReminders.enabledCalls, [true]);
       final state = container.read(settingsControllerProvider).value;
       expect(state?.reminderEnabled, isTrue);
     });
 
-    test('cancels notification when disabled', () async {
+    test('Coordinator 성공 시 비활성화 결과를 state에 반영한다', () async {
       await settingsRepo.setSetting('reminder_enabled', 'true');
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
 
-      await notifier.setReminderEnabled(false);
+      final result = await notifier.setReminderEnabled(false);
 
-      expect(fakeNotif.cancelledCount, greaterThan(0));
+      expect(result, isTrue);
+      expect(fakeReminders.enabledCalls, [false]);
       final state = container.read(settingsControllerProvider).value;
       expect(state?.reminderEnabled, isFalse);
     });

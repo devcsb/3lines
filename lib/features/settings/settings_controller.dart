@@ -7,8 +7,8 @@ import '../../app/router.dart';
 import '../../core/constants/default_prompts.dart';
 import '../../core/events/journal_changes.dart';
 import '../../core/services/biometric_service.dart';
-import '../../core/services/notification_service.dart';
 import '../../core/services/photo_service.dart';
+import '../../core/services/reminder_coordinator.dart';
 import '../../core/settings/settings_keys.dart';
 import '../../core/theme/theme_notifier.dart';
 import '../../core/time/app_clock.dart';
@@ -83,86 +83,28 @@ class SettingsController extends AsyncNotifier<SettingsState> {
 
   /// Enables or disables the daily reminder. Returns false if scheduling fails.
   Future<bool> setReminderEnabled(bool enabled) async {
-    final repo = ref.read(settingsRepositoryProvider);
-    final notifService = ref.read(notificationServiceProvider);
-
-    if (enabled) {
-      final granted = await notifService.requestPermission();
-      if (!granted) return false;
-    }
-
     final current = state.value;
     if (current == null) return false;
-
-    if (enabled) {
-      final entryRepo = ref.read(entryRepositoryProvider);
-      final scheduled = await notifService.scheduleSmartDailyReminder(
-        hour: current.reminderHour,
-        minute: current.reminderMinute,
-        entryExistsToday: () async => await entryRepo.getTodayEntry() != null,
-      );
-      if (!scheduled) return false;
-
-      // Schedule streak-at-risk notification (1hr before) if user has a streak
-      final streak = await entryRepo.getCurrentStreak();
-      if (streak > 0) {
-        await notifService.scheduleStreakAtRiskReminder(
-          reminderHour: current.reminderHour,
-          reminderMinute: current.reminderMinute,
-        );
-      }
-
-      // Schedule Sunday weekly retrospective reminder
-      await notifService.scheduleWeeklyRetrospectiveReminder();
-    } else {
-      await notifService.cancelReminder();
-    }
-
-    await repo.setSetting(SettingKeys.reminderEnabled, enabled.toString());
+    final success = await ref
+        .read(reminderCoordinatorProvider)
+        .setEnabled(enabled);
+    if (!success) return false;
     state = AsyncData(current.copyWith(reminderEnabled: enabled));
     return true;
   }
 
   /// Updates the reminder time. Returns false if rescheduling fails.
   Future<bool> setReminderTime(int hour, int minute) async {
-    final repo = ref.read(settingsRepositoryProvider);
-    final notifService = ref.read(notificationServiceProvider);
     final current = state.value;
     if (current == null) return false;
-
-    try {
-      if (current.reminderEnabled) {
-        final entryRepo = ref.read(entryRepositoryProvider);
-        final scheduled = await notifService.scheduleSmartDailyReminder(
-          hour: hour,
-          minute: minute,
-          entryExistsToday: () async => await entryRepo.getTodayEntry() != null,
-        );
-        // 재예약 실패 시 DB/state 를 건드리지 않아 저장값·화면·알림이 일치 유지.
-        if (!scheduled) return false;
-
-        // Reschedule streak-at-risk with new time
-        final streak = await entryRepo.getCurrentStreak();
-        if (streak > 0) {
-          await notifService.scheduleStreakAtRiskReminder(
-            reminderHour: hour,
-            reminderMinute: minute,
-          );
-        } else {
-          await notifService.cancelStreakAtRiskReminder();
-        }
-      }
-
-      // 재예약 성공(또는 알림 비활성) 후에 DB 와 state 를 함께 커밋한다.
-      await repo.setSetting(SettingKeys.reminderHour, hour.toString());
-      await repo.setSetting(SettingKeys.reminderMinute, minute.toString());
-      state = AsyncData(
-        current.copyWith(reminderHour: hour, reminderMinute: minute),
-      );
-      return true;
-    } catch (e) {
-      return false;
-    }
+    final success = await ref
+        .read(reminderCoordinatorProvider)
+        .setTime(hour, minute);
+    if (!success) return false;
+    state = AsyncData(
+      current.copyWith(reminderHour: hour, reminderMinute: minute),
+    );
+    return true;
   }
 
   /// Enables or disables biometric lock. Returns false if device doesn't support it.

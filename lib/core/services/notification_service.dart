@@ -34,7 +34,7 @@ abstract interface class ReminderScheduler {
   Future<void> migrateLegacyReminders();
 }
 
-class NotificationService implements ReminderScheduler {
+final class NotificationService implements ReminderScheduler {
   NotificationService({
     NotificationPlatform? platform,
     DeviceTimeZoneResolver? timeZoneResolver,
@@ -252,96 +252,6 @@ class NotificationService implements ReminderScheduler {
     if (value.length <= maxCharacters) return value;
     return '${value.substring(0, maxCharacters)}…';
   }
-
-  // Compatibility API; removed when existing callers migrate to ReminderScheduler.
-  @Deprecated('Use replaceDailyAndStreak')
-  Future<bool> scheduleDailyReminder({
-    required int hour,
-    required int minute,
-    String? body,
-  }) async {
-    await initialize();
-    final current = _now(tz.local);
-    await _cancelIds([dailyIds.first]);
-    await _platform.schedule(
-      ScheduledLocalNotification(
-        id: dailyIds.first,
-        title: '3Lines',
-        body: body ?? '오늘의 3줄을 기록할 시간이에요',
-        scheduledDate: _dailyDate(
-          now: current,
-          dayOffset: 1,
-          hour: hour,
-          minute: minute,
-        ),
-        notificationDetails: _dailyDetails,
-      ),
-    );
-    return true;
-  }
-
-  @Deprecated('Use replaceDailyAndStreak')
-  Future<bool> scheduleSmartDailyReminder({
-    required int hour,
-    required int minute,
-    required Future<bool> Function() entryExistsToday,
-  }) async {
-    final exists = await entryExistsToday();
-    if (exists) {
-      await _cancelIds([dailyIds.first, streakId]);
-      return true;
-    }
-    return scheduleDailyReminder(hour: hour, minute: minute);
-  }
-
-  @Deprecated('Use replaceDailyAndStreak')
-  Future<bool> scheduleStreakAtRiskReminder({
-    required int reminderHour,
-    required int reminderMinute,
-  }) async {
-    await initialize();
-    final current = _now(tz.local);
-    await _cancelIds([streakId]);
-    var riskDate = _dailyDate(
-      now: current,
-      dayOffset: 0,
-      hour: reminderHour,
-      minute: reminderMinute,
-    ).subtract(const Duration(hours: 1));
-    if (!riskDate.isAfter(current)) {
-      riskDate = _dailyDate(
-        now: current,
-        dayOffset: 1,
-        hour: reminderHour,
-        minute: reminderMinute,
-      ).subtract(const Duration(hours: 1));
-    }
-    await _platform.schedule(
-      ScheduledLocalNotification(
-        id: streakId,
-        title: '3Lines',
-        body: '스트릭이 위험해요! 오늘의 기록을 잊지 마세요 🔥',
-        scheduledDate: riskDate,
-        notificationDetails: _streakDetails,
-      ),
-    );
-    return true;
-  }
-
-  @Deprecated('Use cancelAll')
-  Future<void> cancelStreakAtRiskReminder() => _cancelIds([streakId]);
-
-  @Deprecated('Use scheduleWeeklyRetrospective')
-  Future<bool> scheduleWeeklyRetrospectiveReminder() async {
-    await scheduleWeeklyRetrospective();
-    return true;
-  }
-
-  @Deprecated('Use cancelAll')
-  Future<void> cancelWeeklyRetrospectiveReminder() => _cancelIds([weeklyId]);
-
-  @Deprecated('Use cancelAll')
-  Future<void> cancelReminder() => cancelAll();
 }
 
 const _dailyDetails = NotificationDetails(
@@ -373,7 +283,7 @@ const _weeklyDetails = NotificationDetails(
   iOS: DarwinNotificationDetails(),
 );
 
-final notificationServiceProvider = Provider<NotificationService>((ref) {
+final notificationServiceProvider = Provider<ReminderScheduler>((ref) {
   final platform = ref.read(notificationPlatformProvider);
   final resolver = ref.read(deviceTimeZoneResolverProvider);
   return NotificationService(platform: platform, timeZoneResolver: resolver);

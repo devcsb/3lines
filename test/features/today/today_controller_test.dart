@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:three_lines/core/services/notification_service.dart';
+import 'package:three_lines/core/events/journal_changes.dart';
 import 'package:three_lines/core/services/photo_service.dart';
 import 'package:three_lines/core/utils/date_utils.dart' as du;
 import 'package:three_lines/data/database/app_database.dart';
@@ -12,7 +12,6 @@ import 'package:three_lines/data/repositories/entry_repository.dart';
 import 'package:three_lines/data/repositories/settings_repository.dart';
 import 'package:three_lines/features/today/today_controller.dart';
 
-import '../../helpers/fake_notification_service.dart';
 import '../../helpers/fake_photo_service.dart';
 
 void main() {
@@ -20,7 +19,6 @@ void main() {
   late EntryRepository entryRepo;
   late SettingsRepository settingsRepo;
   late FakePhotoService fakePhoto;
-  late FakeNotificationService fakeNotif;
   late ProviderContainer container;
 
   setUp(() {
@@ -28,14 +26,12 @@ void main() {
     entryRepo = EntryRepository(db);
     settingsRepo = SettingsRepository(db);
     fakePhoto = FakePhotoService();
-    fakeNotif = FakeNotificationService();
 
     container = ProviderContainer(
       overrides: [
         entryRepositoryProvider.overrideWithValue(entryRepo),
         settingsRepositoryProvider.overrideWithValue(settingsRepo),
         photoServiceProvider.overrideWithValue(fakePhoto),
-        notificationServiceProvider.overrideWithValue(fakeNotif),
       ],
     );
   });
@@ -114,9 +110,12 @@ void main() {
 
       notifier.setEmotion(4);
       notifier.setAnswer(0, '가족과 저녁');
+      final changesBefore = container.read(journalChangesProvider);
 
       final success = await notifier.save();
+
       expect(success, isTrue);
+      expect(container.read(journalChangesProvider), changesBefore + 1);
 
       final state = container.read(todayControllerProvider).value;
       expect(state?.isCompleted, isTrue);

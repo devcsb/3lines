@@ -5,14 +5,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:three_lines/app.dart';
 import 'package:three_lines/core/services/biometric_service.dart';
-import 'package:three_lines/core/services/notification_service.dart';
+import 'package:three_lines/core/services/journal_side_effects.dart';
 import 'package:three_lines/core/services/photo_service.dart';
+import 'package:three_lines/core/services/widget_sync_service.dart';
 import 'package:three_lines/data/database/app_database.dart';
 import 'package:three_lines/data/repositories/settings_repository.dart';
 
 import '../test/helpers/fake_biometric_service.dart';
-import '../test/helpers/fake_notification_service.dart';
 import '../test/helpers/fake_photo_service.dart';
+import '../test/helpers/fake_widget_sync.dart';
+
+final class NoOpJournalSideEffects implements JournalSideEffects {
+  @override
+  Future<void> onLaunch() async {}
+
+  @override
+  Future<void> onJournalChanged() async {}
+}
 
 /// 디바이스/에뮬레이터에서 실행하는 부팅 스모크.
 ///   flutter test integration_test/app_test.dart -d DEVICE_ID
@@ -35,8 +44,10 @@ void main() {
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
-          notificationServiceProvider
-              .overrideWithValue(FakeNotificationService()),
+          journalSideEffectsProvider.overrideWithValue(
+            NoOpJournalSideEffects(),
+          ),
+          widgetSyncServiceProvider.overrideWithValue(FakeWidgetSync()),
           photoServiceProvider.overrideWithValue(FakePhotoService()),
           biometricServiceProvider.overrideWithValue(FakeBiometricService()),
         ],

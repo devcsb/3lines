@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/events/journal_changes.dart';
+import '../core/services/journal_side_effects.dart';
 import '../core/services/widget_sync_service.dart';
 import '../features/lock/lock_screen.dart';
 import '../features/today/today_controller.dart';
@@ -35,19 +36,19 @@ class _WidgetBootstrapState extends ConsumerState<WidgetBootstrap>
 
   Future<void> _bootstrap() async {
     if (!mounted) return;
-    final service = ref.read(widgetSyncServiceProvider);
-    await service.sync();
+    await ref.read(journalSideEffectsProvider).onLaunch();
     if (!mounted) return;
 
-    final initial = await service.initiallyLaunchedUri();
+    final widgetSync = ref.read(widgetSyncServiceProvider);
+    final initial = await widgetSync.initiallyLaunchedUri();
     if (!mounted) return;
     if (initial != null) {
       _handleUri(initial);
     }
 
-    _clickSub = service.listenWidgetClicks(_handleUri);
+    _clickSub = widgetSync.listenWidgetClicks(_handleUri);
     _journalSub = ref.listenManual(journalChangesProvider, (_, _) {
-      unawaited(ref.read(widgetSyncServiceProvider).sync());
+      unawaited(ref.read(journalSideEffectsProvider).onJournalChanged());
     });
   }
 
