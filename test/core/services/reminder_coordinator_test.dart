@@ -12,6 +12,8 @@ import 'package:three_lines/data/repositories/settings_repository.dart';
 
 final class RecordingReminderScheduler implements ReminderScheduler {
   bool permissionGranted = true;
+  bool failCancelAll = false;
+  bool failWeekly = false;
   final failReplaceOnCalls = <int>{};
   final calls = <String>[];
   final contexts = <ReminderContext>[];
@@ -34,10 +36,16 @@ final class RecordingReminderScheduler implements ReminderScheduler {
   }
 
   @override
-  Future<void> scheduleWeeklyRetrospective() async => calls.add('weekly');
+  Future<void> scheduleWeeklyRetrospective() async {
+    calls.add('weekly');
+    if (failWeekly) throw StateError('weekly failed');
+  }
 
   @override
-  Future<void> cancelAll() async => calls.add('cancelAll');
+  Future<void> cancelAll() async {
+    calls.add('cancelAll');
+    if (failCancelAll) throw StateError('cancelAll failed');
+  }
 
   @override
   Future<void> migrateLegacyReminders() async => calls.add('migrate');
@@ -50,6 +58,18 @@ final class FixedAppClock extends AppClock {
 
   @override
   DateTime now() => value;
+}
+
+final class TrackingSettingsRepository extends SettingsRepository {
+  TrackingSettingsRepository(super.db);
+
+  int getReminderSettingsCalls = 0;
+
+  @override
+  Future<({bool enabled, int hour, int minute})> getReminderSettings() {
+    getReminderSettingsCalls++;
+    return super.getReminderSettings();
+  }
 }
 
 void main() {
@@ -105,10 +125,54 @@ void main() {
     expect((await settings.getReminderSettings()).enabled, isFalse);
   });
 
+  test('권한 거부 시 저장된 설정을 조회하지 않는다', () async {
+    final trackingSettings = TrackingSettingsRepository(db);
+    coordinator = DefaultReminderCoordinator(
+      settingsRepository: trackingSettings,
+      entryRepository: entries,
+      scheduler: scheduler,
+    );
+    scheduler.permissionGranted = false;
+
+    expect(await coordinator.setEnabled(true), isFalse);
+    expect(trackingSettings.getReminderSettingsCalls, 0);
+    expect(scheduler.calls, ['permission']);
+  });
+
   test('활성화는 권한 예약 주간 저장 순서로 완료된다', () async {
     expect(await coordinator.setEnabled(true), isTrue);
     expect(scheduler.calls, ['permission', 'replace:21:0', 'weekly']);
     expect((await settings.getReminderSettings()).enabled, isTrue);
+  });
+
+  test('비활성화는 예약 취소 성공 뒤 DB를 저장한다', () async {
+    await storeReminder(enabled: true);
+
+    expect(await coordinator.setEnabled(false), isTrue);
+    expect(scheduler.calls, ['cancelAll']);
+    expect((await settings.getReminderSettings()).enabled, isFalse);
+  });
+
+  test('예약 취소 실패 시 DB를 유지하고 이전 계획을 복원한다', () async {
+    await storeReminder(enabled: true, hour: 20, minute: 15);
+    scheduler.failCancelAll = true;
+
+    expect(await coordinator.setEnabled(false), isFalse);
+    expect(scheduler.calls, ['cancelAll', 'replace:20:15', 'weekly']);
+    expect((await settings.getReminderSettings()).enabled, isTrue);
+  });
+
+  test('활성화 중 주간 예약 실패 시 DB를 저장하지 않고 비활성 계획을 복원한다', () async {
+    scheduler.failWeekly = true;
+
+    expect(await coordinator.setEnabled(true), isFalse);
+    expect(scheduler.calls, [
+      'permission',
+      'replace:21:0',
+      'weekly',
+      'cancelAll',
+    ]);
+    expect((await settings.getReminderSettings()).enabled, isFalse);
   });
 
   test('비활성 상태 시간 변경은 플랫폼 호출 없이 DB만 저장한다', () async {
@@ -116,6 +180,13 @@ void main() {
     expect(scheduler.calls, isEmpty);
     final stored = await settings.getReminderSettings();
     expect((stored.hour, stored.minute), (8, 30));
+  });
+
+  test('범위를 벗어난 시간은 DB와 플랫폼을 변경하지 않는다', () async {
+    expect(await coordinator.setTime(24, 0), isFalse);
+    expect(scheduler.calls, isEmpty);
+    final stored = await settings.getReminderSettings();
+    expect((stored.hour, stored.minute), (21, 0));
   });
 
   test('활성 상태 시간 변경은 새 계획 성공 뒤 DB를 저장한다', () async {
@@ -187,5 +258,24 @@ void main() {
       (8, 10),
       (9, 20),
     ]);
+  });
+
+  test('선행 queue 작업 실패 후에도 다음 작업은 계속 실행된다', () async {
+    await storeReminder(enabled: true);
+    scheduler.failReplaceOnCalls.add(1);
+
+    final failed = coordinator.setTime(8, 10);
+    final succeeding = coordinator.setTime(9, 20);
+
+    expect(await failed, isFalse);
+    expect(await succeeding, isTrue);
+    expect(scheduler.calls, [
+      'replace:8:10',
+      'replace:21:0',
+      'weekly',
+      'replace:9:20',
+    ]);
+    final stored = await settings.getReminderSettings();
+    expect((stored.hour, stored.minute), (9, 20));
   });
 }

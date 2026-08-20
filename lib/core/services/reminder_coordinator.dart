@@ -50,13 +50,13 @@ final class DefaultReminderCoordinator implements ReminderCoordinator {
   }
 
   Future<bool> _setEnabled(bool enabled) async {
+    if (enabled && !await _scheduler.requestPermission()) return false;
+
     final stored = await _settingsRepository.getReminderSettings();
     final storedContext = await _context(
       hour: stored.hour,
       minute: stored.minute,
     );
-
-    if (enabled && !await _scheduler.requestPermission()) return false;
 
     return _applyWithCompensation(
       apply: () async {
