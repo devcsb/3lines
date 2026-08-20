@@ -80,6 +80,17 @@ class SettingsRepository {
     );
   }
 
+  Future<void> setReminderEnabled(bool enabled) {
+    return setSetting(SettingKeys.reminderEnabled, enabled.toString());
+  }
+
+  Future<void> setReminderTime(int hour, int minute) {
+    return _db.transaction(() async {
+      await setSetting(SettingKeys.reminderHour, hour.toString());
+      await setSetting(SettingKeys.reminderMinute, minute.toString());
+    });
+  }
+
   Future<String> getThemeMode() async {
     return getSetting(
       SettingKeys.themeMode,
