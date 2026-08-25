@@ -93,7 +93,7 @@ class _HeatmapGridState extends State<HeatmapGrid>
         children: List.generate(7, (dayIndex) {
           final date = weekStart.add(Duration(days: dayIndex));
           if (date.isAfter(now) || date.isBefore(widget.startDate)) {
-            return SizedBox(width: tapSize, height: tapSize);
+            return const SizedBox(width: tapSize, height: tapSize);
           }
           final dateStr = du.dateToString(date);
           final emotion = widget.emotionMap[dateStr];

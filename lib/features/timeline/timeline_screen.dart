@@ -112,9 +112,11 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
 
           return SafeArea(
             child: RefreshIndicator(
-              onRefresh: () async {
+              onRefresh: () {
                 HapticService.light();
-                await ref.refresh(timelineControllerProvider.future);
+                return ref
+                    .refresh(timelineControllerProvider.future)
+                    .then<void>((_) {});
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),

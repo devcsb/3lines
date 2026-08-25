@@ -44,9 +44,9 @@ void main() {
     final indicator = tester.widget<RefreshIndicator>(
       find.byType(RefreshIndicator),
     );
-    final refresh = indicator.onRefresh!();
+    final refresh = indicator.onRefresh();
     var completed = false;
-    refresh.whenComplete(() => completed = true);
+    unawaited(refresh.whenComplete(() => completed = true));
     await tester.pump();
 
     expect(controller.buildCount, 2);

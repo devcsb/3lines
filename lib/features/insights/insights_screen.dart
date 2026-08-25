@@ -56,9 +56,11 @@ class InsightsScreen extends ConsumerWidget {
 
           return SafeArea(
             child: RefreshIndicator(
-              onRefresh: () async {
+              onRefresh: () {
                 HapticService.light();
-                await ref.refresh(insightsControllerProvider.future);
+                return ref
+                    .refresh(insightsControllerProvider.future)
+                    .then<void>((_) {});
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
