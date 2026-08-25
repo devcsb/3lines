@@ -58,7 +58,7 @@ class InsightsScreen extends ConsumerWidget {
             child: RefreshIndicator(
               onRefresh: () async {
                 HapticService.light();
-                ref.invalidate(insightsControllerProvider);
+                await ref.refresh(insightsControllerProvider.future);
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),

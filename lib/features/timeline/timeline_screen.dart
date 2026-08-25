@@ -114,7 +114,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
             child: RefreshIndicator(
               onRefresh: () async {
                 HapticService.light();
-                ref.invalidate(timelineControllerProvider);
+                await ref.refresh(timelineControllerProvider.future);
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
