@@ -10,6 +10,9 @@ import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetPlugin
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Home screen widget: streak + status + optional prompt/emotion chips.
@@ -50,15 +53,21 @@ class ThreeLinesWidgetProvider : AppWidgetProvider() {
         data: SharedPreferences,
         medium: Boolean,
     ) {
-        val streakLabel = data.getString("streak_label", null) ?: "시작해볼까요"
-        val status = data.getString("status_message", null) ?: "앱을 열어 오늘을 기록해보세요"
-        val prompt = data.getString("prompt", null) ?: "오늘 감사한 작은 것 하나는?"
-        val isCompleted = data.getString("is_completed", "false") == "true"
-        val emotionRaw = data.getString("emotion", "") ?: ""
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val state = resolveThreeLinesWidgetState(
+            storedDate = data.getString("date", null),
+            today = today,
+            streakLabel = data.getString("streak_label", null) ?: "시작해볼까요",
+            statusMessage = data.getString("status_message", null)
+                ?: "앱을 열어 오늘을 기록해보세요",
+            prompt = data.getString("prompt", null) ?: "오늘 감사한 작은 것 하나는?",
+            isCompleted = data.getString("is_completed", "false") == "true",
+            emotionRaw = data.getString("emotion", "") ?: "",
+        )
 
         views.setTextViewText(R.id.widget_title, "3Lines")
-        views.setTextViewText(R.id.widget_streak, streakLabel)
-        views.setTextViewText(R.id.widget_status, status)
+        views.setTextViewText(R.id.widget_streak, state.streakLabel)
+        views.setTextViewText(R.id.widget_status, state.statusMessage)
 
         val openToday =
             HomeWidgetLaunchIntent.getActivity(
@@ -69,12 +78,12 @@ class ThreeLinesWidgetProvider : AppWidgetProvider() {
         views.setOnClickPendingIntent(R.id.widget_root, openToday)
 
         if (medium) {
-            views.setTextViewText(R.id.widget_prompt, prompt)
-            if (isCompleted) {
+            views.setTextViewText(R.id.widget_prompt, state.prompt)
+            if (state.isCompleted) {
                 views.setViewVisibility(R.id.widget_emotion_row, View.GONE)
                 views.setViewVisibility(R.id.widget_completed_hint, View.VISIBLE)
                 val hint =
-                    if (emotionRaw.isNotEmpty()) {
+                    if (state.emotionRaw.isNotEmpty()) {
                         "기록 완료 · 탭해서 보기"
                     } else {
                         "오늘 기록 완료"
