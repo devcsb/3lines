@@ -71,16 +71,18 @@ class _HeatmapGridState extends State<HeatmapGrid>
     final now = DateTime.now();
     const dayLabels = ['월', '', '수', '', '금', '', ''];
 
-    final startMonday = widget.startDate
-        .subtract(Duration(days: widget.startDate.weekday - 1));
+    final startMonday = widget.startDate.subtract(
+      Duration(days: widget.startDate.weekday - 1),
+    );
     final endMonday = now.subtract(Duration(days: now.weekday - 1));
     final weeks = (endMonday.difference(startMonday).inDays ~/ 7) + 1;
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final availableWidth = screenWidth - 32 - 30;
     final cellSize = (availableWidth / weeks).clamp(8.0, 20.0);
-    const gap = 2.0;
-    final tapSize = cellSize + gap;
+    // 색상 셀은 작게 유지하되, Semantics와 GestureDetector가 차지하는
+    // 상호작용 영역은 Android 권장 최소 48dp로 확보한다.
+    const tapSize = 48.0;
 
     // 셀 그리드는 웨이브 애니메이션 프레임마다 불변이므로 AnimatedBuilder 밖에서
     // 한 번만 만든다. 프레임마다 바뀌는 건 주(week)별 Opacity/Transform.scale 뿐이라,
@@ -134,8 +136,9 @@ class _HeatmapGridState extends State<HeatmapGrid>
                           dayLabels[i],
                           style: theme.textTheme.bodySmall?.copyWith(
                             fontSize: 10,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.5),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.5,
+                            ),
                           ),
                         ),
                       ),
@@ -158,23 +161,28 @@ class _HeatmapGridState extends State<HeatmapGrid>
                         children: List.generate(weeks, (weekIndex) {
                           // Stagger: most recent weeks animate first
                           final reversedIndex = weeks - 1 - weekIndex;
-                          final start =
-                              (reversedIndex / weeks * 0.65).clamp(0.0, 1.0);
+                          final start = (reversedIndex / weeks * 0.65).clamp(
+                            0.0,
+                            1.0,
+                          );
                           final end = (start + 0.35).clamp(0.0, 1.0);
                           // Use Interval.transform directly to avoid
                           // allocating a CurvedAnimation object per frame.
-                          final interval =
-                              Interval(start, end, curve: Curves.easeOutCubic);
-                          final progress =
-                              interval.transform(_waveController.value);
+                          final interval = Interval(
+                            start,
+                            end,
+                            curve: Curves.easeOutCubic,
+                          );
+                          final progress = interval.transform(
+                            _waveController.value,
+                          );
 
                           return Opacity(
                             opacity: progress.clamp(0.0, 1.0),
-                            child: Transform.scale(
-                              scale: 0.6 + 0.4 * progress,
-                              alignment: Alignment.center,
-                              child: weekColumns[weekIndex],
-                            ),
+                            // 셀 전체를 Transform.scale로 감싸면 시맨틱
+                            // 터치 영역까지 축소된다. 시각 셀과 48dp 영역의
+                            // 계약을 유지하기 위해 웨이브는 opacity만 적용한다.
+                            child: weekColumns[weekIndex],
                           );
                         }),
                       );
@@ -190,8 +198,10 @@ class _HeatmapGridState extends State<HeatmapGrid>
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text('적음 ',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
+            Text(
+              '적음 ',
+              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+            ),
             Container(
               width: 12,
               height: 12,
@@ -212,8 +222,10 @@ class _HeatmapGridState extends State<HeatmapGrid>
                 ),
               );
             }),
-            Text(' 많음',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
+            Text(
+              ' 많음',
+              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+            ),
           ],
         ),
       ],
@@ -277,6 +289,9 @@ class _HeatmapCellState extends State<_HeatmapCell> {
           if (mounted) setState(() => _highlighted = false);
         },
         child: Semantics(
+          container: true,
+          button: widget.onTap != null,
+          enabled: widget.onTap != null,
           label: widget.semanticLabel,
           child: SizedBox(
             width: widget.tapSize,

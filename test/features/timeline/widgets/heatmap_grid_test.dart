@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:three_lines/core/utils/date_utils.dart' as du;
 import 'package:three_lines/features/timeline/widgets/heatmap_grid.dart';
 
 void main() {
@@ -17,8 +18,8 @@ void main() {
       home: Scaffold(
         body: HeatmapGrid(
           emotionMap: emotionMap,
-          startDate: startDate ??
-              DateTime.now().subtract(const Duration(days: 83)),
+          startDate:
+              startDate ?? DateTime.now().subtract(const Duration(days: 83)),
           onCellTap: onCellTap,
         ),
       ),
@@ -55,5 +56,27 @@ void main() {
     await tester.pumpWidget(buildGrid());
     final scrollViews = find.byType(SingleChildScrollView);
     expect(scrollViews, findsWidgets);
+  });
+
+  testWidgets('recorded day has a 48dp semantic tap target', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final today = DateTime.now();
+    final dateStr = du.dateToString(today);
+
+    await tester.pumpWidget(
+      buildGrid(startDate: today, emotionMap: {dateStr: 4}, onCellTap: (_) {}),
+    );
+
+    final target = find.byWidgetPredicate(
+      (widget) =>
+          widget is Semantics &&
+          widget.properties.label?.endsWith('감정 4점') == true,
+    );
+    expect(target, findsOneWidget);
+    final rect = tester.getRect(target);
+    expect(rect.width, greaterThanOrEqualTo(48));
+    expect(rect.height, greaterThanOrEqualTo(48));
+
+    semantics.dispose();
   });
 }
