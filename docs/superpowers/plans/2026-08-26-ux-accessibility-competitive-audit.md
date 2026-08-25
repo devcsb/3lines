@@ -34,6 +34,10 @@
 - `test/features/timeline/timeline_screen_test.dart`: refresh Future 대기 계약.
 - `test/features/insights/insights_screen_test.dart`: refresh Future 대기 계약.
 
+> 실행 메모: 기존 integration flow harness를 확장하는 대신 `test/app/text_scaling_test.dart`가
+> 실제 `ThreeLinesApp`을 200% scaler로 펌프해 핵심 렌더링 계약을 검증한다. 앱 데이터 입력
+> 흐름은 기존 `test/integration/app_flow_test.dart`가 담당하므로 이번 루프에서 중복하지 않았다.
+
 ### Create
 
 - `test/app/accessibility_guideline_test.dart`: Android/iOS 탭 타깃·라벨 가이드와 큰 글자 스모크 검사.
@@ -44,51 +48,51 @@
 
 **Files:** `lib/app.dart`, `lib/features/timeline/widgets/heatmap_grid.dart`, `test/features/timeline/widgets/heatmap_grid_test.dart`, `test/app/accessibility_guideline_test.dart`
 
-- [ ] Write a test that pumps `HeatmapGrid` with a recorded date and asserts the tappable semantic node has at least 48 logical pixels in both dimensions and a non-empty label.
-- [ ] Run the focused test and confirm it fails because the current `tapSize` is at most 22.
-- [ ] Remove the `TextScaler.clamp(maxScaleFactor: 1.3)` override from `ThreeLinesApp.builder`.
-- [ ] Keep the visual cell size bounded at 8–20 logical pixels but make the `GestureDetector`/`Semantics` container 48×48; align the visual rectangle at the center.
-- [ ] Run the focused heatmap and accessibility tests; confirm they pass.
-- [ ] Commit `fix: preserve accessibility scaling and heatmap targets`.
+- [x] Write a test that pumps `HeatmapGrid` with a recorded date and asserts the tappable semantic node has at least 48 logical pixels in both dimensions and a non-empty label.
+- [x] Run the focused test and confirm it fails because the current `tapSize` is at most 22.
+- [x] Remove the `TextScaler.clamp(maxScaleFactor: 1.3)` override from `ThreeLinesApp.builder`.
+- [x] Keep the visual cell size bounded at 8–20 logical pixels but make the `GestureDetector`/`Semantics` container 48×48; align the visual rectangle at the center.
+- [x] Run the focused heatmap and accessibility tests; confirm they pass.
+- [x] Commit `fix: preserve accessibility scaling and heatmap targets`.
 
 ## Task 2: Refresh completion feedback
 
 **Files:** `lib/features/timeline/timeline_screen.dart`, `lib/features/insights/insights_screen.dart`, corresponding screen tests.
 
-- [ ] Add a test double provider whose Future completes only after a gate, trigger pull-to-refresh, and assert the refresh callback Future remains pending until the gate opens.
-- [ ] Run the focused tests and confirm the current invalidate-only callbacks complete too early.
-- [ ] Replace invalidate-only callbacks with `await ref.refresh(timelineControllerProvider.future)` and the equivalent Insights call; preserve haptic feedback.
-- [ ] Run focused screen tests and confirm the callback waits for data completion.
-- [ ] Commit `fix: await journal screen refresh completion`.
+- [x] Add a test double provider whose Future completes only after a gate, trigger pull-to-refresh, and assert the refresh callback Future remains pending until the gate opens.
+- [x] Run the focused tests and confirm the current invalidate-only callbacks complete too early.
+- [x] Replace invalidate-only callbacks with `await ref.refresh(timelineControllerProvider.future)` and the equivalent Insights call; preserve haptic feedback.
+- [x] Run focused screen tests and confirm the callback waits for data completion.
+- [x] Commit `fix: await journal screen refresh completion`.
 
 ## Task 3: Cross-platform widget date normalization
 
 **Files:** `ios/ThreeLinesWidget/ThreeLinesWidgetState.swift`, `ios/ThreeLinesWidget/ThreeLinesWidget.swift`, optional Swift tests.
 
-- [ ] Add a pure-state test for a stored date different from today: completion is false, emotion is nil, and the prompt/status reset to today defaults.
-- [ ] Run the Swift test or syntax/build check and confirm it fails before the pure resolver exists.
-- [ ] Implement the resolver and call it from `loadEntry`, using `Calendar.current` and `yyyy-MM-dd` local dates.
-- [ ] Run the available iOS target test/build; record if the host cannot build iOS targets.
-- [ ] Commit `fix: normalize stale iOS widget state`.
+- [x] Add a pure-state test for a stored date different from today: completion is false, emotion is nil, and the prompt/status reset to today defaults.
+- [x] Run the Swift test or syntax/build check and confirm it fails before the pure resolver exists.
+- [x] Implement the resolver and call it from `loadEntry`, using `Calendar.current` and `yyyy-MM-dd` local dates.
+- [x] Run the available iOS target test/build; record if the host cannot build iOS targets.
+- [x] Commit `fix: normalize stale iOS widget state`.
 
 ## Task 4: Export metadata correctness
 
 **Files:** `lib/features/settings/settings_controller.dart`, `test/features/settings/settings_controller_test.dart`.
 
-- [ ] Add a test that seeds the Settings state with the package version and asserts export metadata uses that version rather than the historical literal.
-- [ ] Run the focused test and confirm it fails with `1.0.0` when the current package version differs.
-- [ ] Read `PackageInfo.fromPlatform()` for export, fall back to loaded Settings state, then `unknown` if unavailable; do not change entries or import parsing.
-- [ ] Run the focused Settings tests and confirm round-trip behavior remains unchanged.
-- [ ] Commit `fix: report actual app version in exports`.
+- [x] Add a test that seeds the Settings state with the package version and asserts export metadata uses that version rather than the historical literal.
+- [x] Run the focused test and confirm it fails with `1.0.0` when the current package version differs.
+- [x] Read `PackageInfo.fromPlatform()` for export, fall back to loaded Settings state, then `unknown` if unavailable; do not change entries or import parsing.
+- [x] Run the focused Settings tests and confirm round-trip behavior remains unchanged.
+- [x] Commit `fix: report actual app version in exports`.
 
 ## Task 5: Full verification and release evidence
 
 **Files:** `docs/superpowers/sdd/2026-08-26-ux-accessibility-competitive-audit/progress.md`, `docs/superpowers/reviews/2026-08-26-ux-accessibility-competitive-audit.md`
 
-- [ ] Run `dart format` on changed Dart files and `flutter analyze`.
-- [ ] Run focused tests, then full `flutter test` and `flutter test --coverage`.
-- [ ] Run the accessibility guideline test with semantics enabled and record any platform-specific guideline caveats.
-- [ ] Run Android JDK 21 `app:testDebugUnitTest` and the arm64 release APK build; check release manifest permissions.
-- [ ] Run available iOS syntax/build/test checks; record host limitations without claiming device verification.
-- [ ] Write the competitive gap matrix, score changes, remaining risks, and exact command evidence to the review file and progress ledger.
-- [ ] Commit `docs: record ux accessibility audit evidence`.
+- [x] Run `dart format` on changed Dart files and `flutter analyze`.
+- [x] Run focused tests, then full `flutter test` and `flutter test --coverage`.
+- [x] Run the accessibility guideline test with semantics enabled and record any platform-specific guideline caveats.
+- [x] Run Android JDK 21 `app:testDebugUnitTest` and the arm64 release APK build; check release manifest permissions.
+- [x] Run available iOS syntax/build/test checks; record host limitations without claiming device verification.
+- [x] Write the competitive gap matrix, score changes, remaining risks, and exact command evidence to the review file and progress ledger.
+- [x] Commit `docs: record ux accessibility audit evidence`.
