@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -89,7 +90,8 @@ class SettingsController extends AsyncNotifier<SettingsState> {
         .read(reminderCoordinatorProvider)
         .setEnabled(enabled);
     if (!success) return false;
-    state = AsyncData(current.copyWith(reminderEnabled: enabled));
+    final latest = state.value ?? current;
+    state = AsyncData(latest.copyWith(reminderEnabled: enabled));
     return true;
   }
 
@@ -101,8 +103,9 @@ class SettingsController extends AsyncNotifier<SettingsState> {
         .read(reminderCoordinatorProvider)
         .setTime(hour, minute);
     if (!success) return false;
+    final latest = state.value ?? current;
     state = AsyncData(
-      current.copyWith(reminderHour: hour, reminderMinute: minute),
+      latest.copyWith(reminderHour: hour, reminderMinute: minute),
     );
     return true;
   }
@@ -181,8 +184,10 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     final result = await entryRepo.importEntries(entries);
 
     // Refresh dependent screens
-    ref.read(journalChangesProvider.notifier).markChanged();
-    ref.invalidate(todayControllerProvider);
+    if (result.imported > 0) {
+      ref.read(journalChangesProvider.notifier).markChanged();
+      ref.invalidate(todayControllerProvider);
+    }
 
     return (imported: result.imported, skipped: result.skipped + skippedByType);
   }
@@ -192,6 +197,8 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     try {
       final entryRepo = ref.read(entryRepositoryProvider);
       final photoService = ref.read(photoServiceProvider);
+      final totalCount = await entryRepo.getTotalCount();
+      if (totalCount == 0) return true;
 
       // 삭제 전에 모든 사진 파일 경로를 확보한다.
       final photoPaths = await entryRepo.getAllPhotoPaths();
@@ -200,7 +207,16 @@ class SettingsController extends AsyncNotifier<SettingsState> {
 
       // 고아 사진 파일을 디스크에서 정리한다.
       for (final path in photoPaths) {
-        await photoService.deletePhoto(path);
+        try {
+          await photoService.deletePhoto(path);
+        } catch (error, stackTrace) {
+          developer.log(
+            'Failed to delete entry photo after bulk delete',
+            name: 'settings',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       }
 
       ref.read(journalChangesProvider.notifier).markChanged();

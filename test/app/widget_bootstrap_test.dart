@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:three_lines/app/router.dart';
 import 'package:three_lines/app/widget_bootstrap.dart';
 import 'package:three_lines/core/events/journal_changes.dart';
 import 'package:three_lines/core/services/journal_side_effects.dart';
@@ -17,6 +18,7 @@ final class StubTodayController extends TodayController {
 
 final class RecordingWidgetSync implements WidgetSync {
   int syncCount = 0;
+  final clicks = StreamController<Uri?>.broadcast();
 
   @override
   Future<void> sync() async => syncCount++;
@@ -25,16 +27,25 @@ final class RecordingWidgetSync implements WidgetSync {
   Future<Uri?> initiallyLaunchedUri() async => null;
 
   @override
-  StreamSubscription<Uri?>? listenWidgetClicks(void Function(Uri uri) onUri) =>
-      null;
+  StreamSubscription<Uri?>? listenWidgetClicks(void Function(Uri uri) onUri) {
+    return clicks.stream.listen((uri) {
+      if (uri != null) onUri(uri);
+    });
+  }
 }
 
 final class RecordingJournalSideEffects implements JournalSideEffects {
   int launchCount = 0;
   int journalChangedCount = 0;
+  Completer<void>? launchStarted;
+  Completer<void>? launchGate;
 
   @override
-  Future<void> onLaunch() async => launchCount++;
+  Future<void> onLaunch() async {
+    launchCount++;
+    if (launchStarted?.isCompleted == false) launchStarted!.complete();
+    await launchGate?.future;
+  }
 
   @override
   Future<void> onJournalChanged() async => journalChangedCount++;
@@ -53,11 +64,15 @@ void main() {
         journalSideEffectsProvider.overrideWithValue(sideEffects),
         widgetSyncServiceProvider.overrideWithValue(widgetSync),
         todayControllerProvider.overrideWith(StubTodayController.new),
+        biometricLockEnabledProvider.overrideWith((ref) => Future.value(true)),
       ],
     );
   });
 
-  tearDown(() => container.dispose());
+  tearDown(() async {
+    container.dispose();
+    await widgetSync.clicks.close();
+  });
 
   Future<void> pumpBootstrap(WidgetTester tester) async {
     await tester.pumpWidget(
@@ -105,6 +120,40 @@ void main() {
 
     expect(widgetSync.syncCount, 1);
     expect(sideEffects.journalChangedCount, 0);
+
+    await disposeBootstrap(tester);
+  });
+
+  testWidgets('onLaunch 대기 중 저널 변경도 한 번 전달한다', (tester) async {
+    sideEffects.launchStarted = Completer<void>();
+    sideEffects.launchGate = Completer<void>();
+    await pumpBootstrap(tester);
+    await sideEffects.launchStarted!.future;
+
+    container.read(journalChangesProvider.notifier).markChanged();
+    await tester.pump();
+    sideEffects.launchGate!.complete();
+    await tester.pump();
+    await tester.pump();
+
+    expect(sideEffects.journalChangedCount, 1);
+
+    await disposeBootstrap(tester);
+  });
+
+  testWidgets('onLaunch 대기 중 위젯 클릭도 유실하지 않는다', (tester) async {
+    sideEffects.launchStarted = Completer<void>();
+    sideEffects.launchGate = Completer<void>();
+    await pumpBootstrap(tester);
+    await sideEffects.launchStarted!.future;
+
+    widgetSync.clicks.add(Uri.parse('threelines://today?emotion=4'));
+    await tester.pump();
+    sideEffects.launchGate!.complete();
+    await tester.pump();
+    await tester.pump();
+
+    expect(container.read(todayControllerProvider).value?.emotion, 4);
 
     await disposeBootstrap(tester);
   });

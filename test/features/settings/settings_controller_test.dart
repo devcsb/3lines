@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -22,16 +23,24 @@ final class FakeReminderCoordinator implements ReminderCoordinator {
   bool timeResult = true;
   final enabledCalls = <bool>[];
   final timeCalls = <(int, int)>[];
+  Completer<void>? enabledStarted;
+  Completer<void>? enabledGate;
+  Completer<void>? timeStarted;
+  Completer<void>? timeGate;
 
   @override
   Future<bool> setEnabled(bool enabled) async {
     enabledCalls.add(enabled);
+    if (enabledStarted?.isCompleted == false) enabledStarted!.complete();
+    await enabledGate?.future;
     return enabledResult;
   }
 
   @override
   Future<bool> setTime(int hour, int minute) async {
     timeCalls.add((hour, minute));
+    if (timeStarted?.isCompleted == false) timeStarted!.complete();
+    await timeGate?.future;
     return timeResult;
   }
 
@@ -119,6 +128,24 @@ void main() {
       final current = container.read(settingsControllerProvider).value;
       expect(current?.reminderHour, before.reminderHour);
       expect(current?.reminderMinute, before.reminderMinute);
+    });
+
+    test('Coordinator 대기 중 변경된 prompt를 성공 결과가 되돌리지 않는다', () async {
+      await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+      fakeReminders.timeStarted = Completer<void>();
+      fakeReminders.timeGate = Completer<void>();
+
+      final timeFuture = notifier.setReminderTime(8, 30);
+      await fakeReminders.timeStarted!.future;
+      await notifier.updatePrompt(0, '동시에 바뀐 질문');
+      fakeReminders.timeGate!.complete();
+
+      expect(await timeFuture, isTrue);
+      final current = container.read(settingsControllerProvider).value;
+      expect(current?.reminderHour, 8);
+      expect(current?.reminderMinute, 30);
+      expect(current?.prompts[0], '동시에 바뀐 질문');
     });
   });
 
@@ -229,11 +256,13 @@ void main() {
           '{"app": "3Lines", "version": "1.0.0", "entries": []}';
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
+      final changesBefore = container.read(journalChangesProvider);
 
       final result = await notifier.importData(emptyEntriesJson);
       expect(result.imported, 0);
       expect(result.skipped, 0);
       expect(await entryRepo.getTotalCount(), 0);
+      expect(container.read(journalChangesProvider), changesBefore);
     });
   });
 
@@ -392,9 +421,42 @@ void main() {
     test('returns true even when database is already empty', () async {
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
+      final changesBefore = container.read(journalChangesProvider);
 
       final success = await notifier.deleteAllData();
       expect(success, isTrue);
+      expect(container.read(journalChangesProvider), changesBefore);
+    });
+
+    test('사진 정리 실패 후에도 DB 삭제와 저널 이벤트를 완료한다', () async {
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-03-01',
+          emotion: 3,
+          photoPath: '/photos/pic1.jpg',
+        ),
+      );
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-03-02',
+          emotion: 4,
+          photoPath: '/photos/pic2.jpg',
+        ),
+      );
+      await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+      final changesBefore = container.read(journalChangesProvider);
+      fakePhoto.deleteError = StateError('사진 삭제 실패');
+
+      final success = await notifier.deleteAllData();
+
+      expect(success, isTrue);
+      expect(await entryRepo.getTotalCount(), 0);
+      expect(
+        fakePhoto.deletedPaths,
+        containsAll(['/photos/pic1.jpg', '/photos/pic2.jpg']),
+      );
+      expect(container.read(journalChangesProvider), changesBefore + 1);
     });
   });
 
@@ -475,6 +537,23 @@ void main() {
       expect(fakeReminders.enabledCalls, [true]);
       final state = container.read(settingsControllerProvider).value;
       expect(state?.reminderEnabled, isTrue);
+    });
+
+    test('Coordinator 대기 중 변경된 prompt를 성공 결과가 되돌리지 않는다', () async {
+      await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+      fakeReminders.enabledStarted = Completer<void>();
+      fakeReminders.enabledGate = Completer<void>();
+
+      final enabledFuture = notifier.setReminderEnabled(true);
+      await fakeReminders.enabledStarted!.future;
+      await notifier.updatePrompt(1, '기다리는 동안 바뀐 질문');
+      fakeReminders.enabledGate!.complete();
+
+      expect(await enabledFuture, isTrue);
+      final current = container.read(settingsControllerProvider).value;
+      expect(current?.reminderEnabled, isTrue);
+      expect(current?.prompts[1], '기다리는 동안 바뀐 질문');
     });
 
     test('Coordinator 성공 시 비활성화 결과를 state에 반영한다', () async {

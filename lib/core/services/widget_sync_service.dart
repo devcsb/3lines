@@ -293,7 +293,7 @@ class WidgetSyncService implements WidgetSync {
     if (kIsWeb) return null;
     try {
       await ensureConfigured();
-      return _bridge.initiallyLaunchedFromHomeWidget();
+      return await _bridge.initiallyLaunchedFromHomeWidget();
     } catch (e, stack) {
       developer.log(
         'Failed to read initial widget launch URI',

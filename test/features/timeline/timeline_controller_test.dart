@@ -106,6 +106,41 @@ void main() {
       expect(fakePhoto.deletedPaths, contains(photoPath));
     });
 
+    test('사진 정리 실패 후에도 DB 삭제·상태 갱신·저널 이벤트를 완료한다', () async {
+      final date = du.getTodayString();
+      const photoPath = '/photos/failed_cleanup.jpg';
+      await entryRepo.saveEntry(
+        makeEntry(date, emotion: 5, photoPath: photoPath),
+      );
+      final initial = await container.read(timelineControllerProvider.future);
+      expect(initial.emotionMap[date], 5);
+      final notifier = container.read(timelineControllerProvider.notifier);
+      final changesBefore = container.read(journalChangesProvider);
+      fakePhoto.deleteError = StateError('사진 삭제 실패');
+
+      await expectLater(notifier.deleteEntry(date), completes);
+
+      expect(await entryRepo.getEntryByDate(date), isNull);
+      final updated = await container.read(timelineControllerProvider.future);
+      expect(updated.emotionMap.containsKey(date), isFalse);
+      expect(fakePhoto.deletedPaths, [photoPath]);
+      expect(container.read(journalChangesProvider), changesBefore + 1);
+    });
+
+    test('존재하지 않는 날짜 삭제는 상태와 저널 이벤트를 변경하지 않는다', () async {
+      await entryRepo.saveEntry(makeEntry(du.getTodayString(), emotion: 4));
+      final initial = await container.read(timelineControllerProvider.future);
+      final changesBefore = container.read(journalChangesProvider);
+      final notifier = container.read(timelineControllerProvider.notifier);
+
+      await notifier.deleteEntry('2099-01-01');
+
+      final current = await container.read(timelineControllerProvider.future);
+      expect(current.emotionMap, initial.emotionMap);
+      expect(fakePhoto.deletedPaths, isEmpty);
+      expect(container.read(journalChangesProvider), changesBefore);
+    });
+
     test('does not call photo service when entry has no photo', () async {
       await entryRepo.saveEntry(makeEntry(du.getTodayString())); // no photo
       await container.read(timelineControllerProvider.future);

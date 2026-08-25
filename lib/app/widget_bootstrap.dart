@@ -36,20 +36,20 @@ class _WidgetBootstrapState extends ConsumerState<WidgetBootstrap>
 
   Future<void> _bootstrap() async {
     if (!mounted) return;
+    final widgetSync = ref.read(widgetSyncServiceProvider);
+    _journalSub = ref.listenManual(journalChangesProvider, (_, _) {
+      unawaited(ref.read(journalSideEffectsProvider).onJournalChanged());
+    });
+    _clickSub = widgetSync.listenWidgetClicks(_handleUri);
+
     await ref.read(journalSideEffectsProvider).onLaunch();
     if (!mounted) return;
 
-    final widgetSync = ref.read(widgetSyncServiceProvider);
     final initial = await widgetSync.initiallyLaunchedUri();
     if (!mounted) return;
     if (initial != null) {
       _handleUri(initial);
     }
-
-    _clickSub = widgetSync.listenWidgetClicks(_handleUri);
-    _journalSub = ref.listenManual(journalChangesProvider, (_, _) {
-      unawaited(ref.read(journalSideEffectsProvider).onJournalChanged());
-    });
   }
 
   void _handleUri(Uri uri) {
