@@ -30,7 +30,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
       settingsRepo.getThemeMode(),
       PackageInfo.fromPlatform()
           .then((info) => info.version)
-          .catchError((_) => '1.0.0'),
+          .catchError((_) => 'unknown'),
       settingsRepo.isBiometricLockEnabled(),
     ]);
     final prompts = results[0] as List<String>;
@@ -150,14 +150,34 @@ class SettingsController extends AsyncNotifier<SettingsState> {
   Future<String> exportData() async {
     final entryRepo = ref.read(entryRepositoryProvider);
     final entries = await entryRepo.exportAllEntries();
+    final version = await _readAppVersion();
     final data = {
       'app': '3Lines',
-      'version': '1.0.0',
+      'version': version,
       'exported_at': du.formatWithTimezone(ref.read(appClockProvider).now()),
       'total_entries': entries.length,
       'entries': entries,
     };
     return const JsonEncoder.withIndent('  ').convert(data);
+  }
+
+  Future<String> _readAppVersion() async {
+    try {
+      final version = (await PackageInfo.fromPlatform()).version.trim();
+      if (version.isNotEmpty) return version;
+    } catch (error, stackTrace) {
+      developer.log(
+        'Failed to read app version for export',
+        name: 'settings',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final loadedVersion = state.value?.appVersion.trim();
+    return loadedVersion == null || loadedVersion.isEmpty
+        ? 'unknown'
+        : loadedVersion;
   }
 
   /// Imports entries from a JSON string (exported format). Returns import

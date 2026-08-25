@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:three_lines/app.dart';
 import 'package:three_lines/core/events/journal_changes.dart';
 import 'package:three_lines/core/services/biometric_service.dart';
@@ -61,6 +62,13 @@ void main() {
   late ProviderContainer container;
 
   setUp(() {
+    PackageInfo.setMockInitialValues(
+      appName: '3Lines',
+      packageName: 'com.threelines.threeLines',
+      version: '9.9.9',
+      buildNumber: '99',
+      buildSignature: 'test',
+    );
     db = AppDatabase.forTesting(NativeDatabase.memory());
     entryRepo = EntryRepository(db);
     settingsRepo = SettingsRepository(db);
@@ -277,7 +285,7 @@ void main() {
         final decoded = json.decode(jsonStr) as Map<String, dynamic>;
 
         expect(decoded['app'], '3Lines');
-        expect(decoded['version'], isNotEmpty);
+        expect(decoded['version'], '9.9.9');
         expect(decoded['exported_at'], isNotEmpty);
         expect(decoded['total_entries'], 0);
         expect(decoded['entries'], isEmpty);
