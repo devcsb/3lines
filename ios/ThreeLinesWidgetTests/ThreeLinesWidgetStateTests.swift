@@ -3,6 +3,17 @@ import Foundation
 @main
 struct ThreeLinesWidgetStateTests {
   static func main() {
+    let timeZone = TimeZone(identifier: "Asia/Seoul")!
+    var gregorian = Calendar(identifier: .gregorian)
+    gregorian.timeZone = timeZone
+    let knownDate = gregorian.date(
+      from: DateComponents(year: 2026, month: 8, day: 26, hour: 12)
+    )!
+    precondition(
+      ThreeLinesWidgetState.localGregorianDateString(knownDate, timeZone: timeZone)
+        == "2026-08-26"
+    )
+
     let stale = ThreeLinesWidgetState.resolve(
       storedDate: "2026-08-25",
       today: "2026-08-26",

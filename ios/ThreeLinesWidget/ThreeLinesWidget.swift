@@ -45,7 +45,10 @@ struct ThreeLinesProvider: TimelineProvider {
 
   private func loadEntry(family: WidgetFamily) -> ThreeLinesEntry {
     let defaults = UserDefaults(suiteName: appGroupId)
-    let today = Self.dateString(Date(), calendar: .current)
+    let today = ThreeLinesWidgetState.localGregorianDateString(
+      Date(),
+      timeZone: TimeZone.current
+    )
     let storedDate = defaults?.string(forKey: "date")
     let streakLabel = defaults?.string(forKey: "streak_label") ?? "시작해볼까요"
     let status = defaults?.string(forKey: "status_message") ?? "앱을 열어 오늘을 기록해보세요"
@@ -72,14 +75,6 @@ struct ThreeLinesProvider: TimelineProvider {
       emotionLabel: emotionLabel,
       family: family
     )
-  }
-
-  private static func dateString(_ date: Date, calendar: Calendar) -> String {
-    let formatter = DateFormatter()
-    formatter.calendar = calendar
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    formatter.dateFormat = "yyyy-MM-dd"
-    return formatter.string(from: date)
   }
 
   private static func label(for emotion: String) -> String? {

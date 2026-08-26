@@ -157,11 +157,15 @@ void main() {
       daily.skip(1).every((item) => item.body == '오늘의 3줄을 기록할 시간이에요'),
       isTrue,
     );
-    final risk = platform.scheduled.singleWhere((item) => item.id == 200);
-    expect(risk.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 7, 20));
+    final risks = platform.scheduled
+        .where((item) => item.id >= 200 && item.id <= 229)
+        .toList();
+    expect(risks, hasLength(30));
+    expect(risks.first.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 7, 20));
+    expect(risks.last.scheduledDate, tz.TZDateTime(tz.local, 2026, 9, 5, 20));
   });
 
-  test('활성 스트릭은 한 시간 전 가장 가까운 단발 알림 하나를 만든다', () async {
+  test('활성 스트릭은 앱을 열지 않아도 30일치 위험 알림을 만든다', () async {
     await service.replaceDailyAndStreak(
       const ReminderContext(
         hour: 21,
@@ -170,9 +174,13 @@ void main() {
         currentStreak: 3,
       ),
     );
-    final risk = platform.scheduled.singleWhere((item) => item.id == 200);
-    expect(risk.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 6, 20));
-    expect(risk.matchDateTimeComponents, isNull);
+    final risks = platform.scheduled
+        .where((item) => item.id >= 200 && item.id <= 229)
+        .toList();
+    expect(risks, hasLength(30));
+    expect(risks.first.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 6, 20));
+    expect(risks.last.scheduledDate, tz.TZDateTime(tz.local, 2026, 9, 4, 20));
+    expect(risks.every((item) => item.matchDateTimeComponents == null), isTrue);
   });
 
   test('스트릭이 없으면 위험 ID만 취소한다', () async {
@@ -184,8 +192,11 @@ void main() {
         currentStreak: 0,
       ),
     );
-    expect(platform.cancelled, contains(200));
-    expect(platform.scheduled.where((item) => item.id == 200), isEmpty);
+    expect(platform.cancelled, containsAll(List<int>.generate(30, (i) => 200 + i)));
+    expect(
+      platform.scheduled.where((item) => item.id >= 200 && item.id <= 229),
+      isEmpty,
+    );
   });
 
   test('일일 교체는 주간 ID를 취소하지 않는다', () async {
@@ -213,7 +224,7 @@ void main() {
     await service.cancelAll();
     expect(platform.cancelled.toSet(), {
       ...NotificationService.dailyIds,
-      200,
+      ...List<int>.generate(30, (i) => 200 + i),
       300,
       0,
       1,

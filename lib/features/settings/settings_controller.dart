@@ -57,6 +57,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
 
     final repo = ref.read(settingsRepositoryProvider);
     await repo.setSetting(SettingKeys.promptKeys[index], value);
+    ref.read(journalChangesProvider.notifier).markChanged();
     final current = state.value;
     if (current == null) return;
     final newPrompts = List<String>.from(current.prompts);
@@ -74,6 +75,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
         defaultPromptQuestions[i],
       );
     }
+    ref.read(journalChangesProvider.notifier).markChanged();
     final current = state.value;
     if (current == null) return;
     state = AsyncData(

@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -5,10 +8,56 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
+}
+
+val releaseSigningKeys = listOf(
+    "keyAlias",
+    "keyPassword",
+    "storeFile",
+    "storePassword",
+)
+val hasReleaseSigning = releaseSigningKeys.all { key ->
+    !keystoreProperties.getProperty(key).isNullOrBlank()
+}
+if (keystorePropertiesFile.exists() && !hasReleaseSigning) {
+    throw GradleException(
+        "android/keystore.properties must define keyAlias, keyPassword, storeFile, and storePassword",
+    )
+}
+
+val allowUnsignedRelease = providers.gradleProperty("allowUnsignedRelease")
+    .map(String::toBoolean)
+    .orElse(false)
+    .get()
+val isReleaseTask = gradle.startParameter.taskNames.any {
+    it.contains("Release", ignoreCase = true)
+}
+if (isReleaseTask && !hasReleaseSigning && !allowUnsignedRelease) {
+    throw GradleException(
+        "Release signing is not configured. Add android/keystore.properties for a distributable build, " +
+            "or pass --android-project-arg=allowUnsignedRelease=true only for local non-distribution builds.",
+    )
+}
+
 android {
     namespace = "com.threelines.three_lines"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
@@ -33,9 +82,9 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }

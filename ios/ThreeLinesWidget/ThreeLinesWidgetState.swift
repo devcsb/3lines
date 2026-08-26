@@ -12,6 +12,17 @@ struct ThreeLinesWidgetState {
   let isCompleted: Bool
   let emotionRaw: String
 
+  static func localGregorianDateString(_ date: Date, timeZone: TimeZone) -> String {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    let formatter = DateFormatter()
+    formatter.calendar = calendar
+    formatter.timeZone = timeZone
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "yyyy-MM-dd"
+    return formatter.string(from: date)
+  }
+
   static func resolve(
     storedDate: String?,
     today: String,

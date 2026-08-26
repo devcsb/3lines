@@ -107,6 +107,26 @@ void main() {
       expect(await settingsRepo.getSetting('prompt_0', defaultValue: ''), '');
       expect(await settingsRepo.getSetting('prompt_4', defaultValue: ''), '');
     });
+
+    test('custom prompt 변경은 widget sync용 journal change를 발행한다', () async {
+      await container.read(settingsControllerProvider.future);
+      final before = container.read(journalChangesProvider);
+
+      await container
+          .read(settingsControllerProvider.notifier)
+          .updatePrompt(0, '새 질문');
+
+      expect(container.read(journalChangesProvider), before + 1);
+    });
+
+    test('prompt reset은 widget sync용 journal change를 발행한다', () async {
+      await container.read(settingsControllerProvider.future);
+      final before = container.read(journalChangesProvider);
+
+      await container.read(settingsControllerProvider.notifier).resetPrompts();
+
+      expect(container.read(journalChangesProvider), before + 1);
+    });
   });
 
   group('setReminderTime', () {

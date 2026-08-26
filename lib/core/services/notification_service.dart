@@ -76,6 +76,7 @@ final class NotificationService implements ReminderScheduler {
     129,
   ];
   static const streakId = 200;
+  static const streakReminderCount = 30;
   static const weeklyId = 300;
   static const legacyIds = <int>[0, 1, 2];
 
@@ -112,7 +113,7 @@ final class NotificationService implements ReminderScheduler {
   Future<void> replaceDailyAndStreak(ReminderContext context) async {
     await initialize();
     final current = _now(tz.local);
-    await _cancelIds([...dailyIds, streakId]);
+    await _cancelIds([...dailyIds, ..._streakIds()]);
 
     var firstOffset = context.hasEntryToday ? 1 : 0;
     final todayAtTime = _dailyDate(
@@ -148,31 +149,26 @@ final class NotificationService implements ReminderScheduler {
     }
 
     if (context.currentStreak > 0) {
-      var targetDaily = _dailyDate(
-        now: current,
-        dayOffset: firstOffset,
-        hour: context.hour,
-        minute: context.minute,
-      );
-      var riskDate = targetDaily.subtract(const Duration(hours: 1));
-      if (!riskDate.isAfter(current)) {
-        targetDaily = _dailyDate(
+      for (var index = 0; index < dailyIds.length; index++) {
+        final targetDaily = _dailyDate(
           now: current,
-          dayOffset: firstOffset + 1,
+          dayOffset: firstOffset + index,
           hour: context.hour,
           minute: context.minute,
         );
-        riskDate = targetDaily.subtract(const Duration(hours: 1));
+        final riskDate = targetDaily.subtract(const Duration(hours: 1));
+        if (!riskDate.isAfter(current)) continue;
+
+        await _platform.schedule(
+          ScheduledLocalNotification(
+            id: streakId + index,
+            title: '3Lines',
+            body: '스트릭이 위험해요! 오늘의 기록을 잊지 마세요 🔥',
+            scheduledDate: riskDate,
+            notificationDetails: _streakDetails,
+          ),
+        );
       }
-      await _platform.schedule(
-        ScheduledLocalNotification(
-          id: streakId,
-          title: '3Lines',
-          body: '스트릭이 위험해요! 오늘의 기록을 잊지 마세요 🔥',
-          scheduledDate: riskDate,
-          notificationDetails: _streakDetails,
-        ),
-      );
     }
   }
 
@@ -211,10 +207,15 @@ final class NotificationService implements ReminderScheduler {
 
   @override
   Future<void> cancelAll() =>
-      _cancelIds([...dailyIds, streakId, weeklyId, ...legacyIds]);
+      _cancelIds([...dailyIds, ..._streakIds(), weeklyId, ...legacyIds]);
 
   @override
   Future<void> migrateLegacyReminders() => _cancelIds(legacyIds);
+
+  List<int> _streakIds() => List<int>.generate(
+        streakReminderCount,
+        (index) => streakId + index,
+      );
 
   Future<void> _cancelIds(Iterable<int> ids) async {
     Object? firstError;
