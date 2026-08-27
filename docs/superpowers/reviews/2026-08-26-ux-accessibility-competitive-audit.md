@@ -39,6 +39,7 @@
 - `flutter_local_notifications` v22 요구사항에 맞춰 scheduled/boot receiver와 `RECEIVE_BOOT_COMPLETED`를 앱 manifest에 명시했다. 예약 구현은 `inexactAllowWhileIdle`이므로 exact-alarm 권한은 추가하지 않았다.
 - 스트릭 위험 알림은 최대 30일 단발 horizon을 미리 등록한다. 앱이 종료돼도 OS 예약이 유지되며, 기록/설정 변경 시 이전 ID 범위를 모두 취소하고 다시 만든다.
 - 웹에서는 지원되지 않는 로컬 예약 알림을 초기화·예약하지 않고 권한 요청을 거부해 설정 토글이 예외로 종료되지 않는다. 모바일 알림 기능은 Android/iOS 범위로 명시한다.
+- 개인화 알림의 다음 날 본문에 오늘의 감사 답변이 포함될 수 있어 잠금 화면에 저널 내용이 노출될 가능성이 있다. 현재 설계 요구사항을 유지하되, 중립 문구·미리보기 숨김·사용자 opt-in 중 하나를 제품 프라이버시 결정으로 확정해야 한다(P2).
 - 배터리 수치 자체는 실기기에서 측정해야 한다. 자동화 통과를 배터리 절감 수치로 환산하지 않았다.
 
 빌드 로그에는 향후 Flutter 지원 중단 예정인 Gradle 8.14/AGP 8.11.1/Kotlin 2.2.20 경고와 CupertinoIcons font 탐색 경고가 있다. 현재 APK 생성과 앱 코드에는 영향이 없지만, 다음 유지보수 릴리스에서 Android 도구체인을 상향하고 Cupertino 아이콘을 실제 도입할 경우 폰트 asset을 명시적으로 검증해야 한다.

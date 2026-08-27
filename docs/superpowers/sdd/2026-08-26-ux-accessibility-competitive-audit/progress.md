@@ -78,6 +78,7 @@
 - P2: Calm/Headspace 유형의 오디오·가이드 명상 콘텐츠(콘텐츠/저작권/오프라인 캐시 정책 필요)
 - P2: 실제 기기 배터리·알림 지연 프로파일링 및 저사양 기기 접근성 수동 점검
 - P2: 웹 알림 미지원 상태를 설정 화면에서 더 명확히 안내할지 제품 문구 결정
+- P2: 잠금 화면 알림에 감사 답변을 표시할지 프라이버시 정책 결정(중립 문구·미리보기 숨김·opt-in 검토)
 - P1 release: Android upload keystore를 CI secret으로 연결하고 Play 내부 테스트 트랙에 서명 artifact 배포
 - P1 release: iOS `DEVELOPMENT_TEAM`, signing certificate/provisioning profile/App Group을 CI에 연결하고 TestFlight archive 검증
 - P1 release: 실기기에서 예약 알림(앱 종료/재부팅), 자정 위젯, timezone 변경, Face ID, 배터리 프로파일링 수행
