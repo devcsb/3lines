@@ -57,7 +57,7 @@
 
 릴리스 게이트 수정 후 Android JDK 21 단위 테스트, merged manifest 검사, 예약 알림 집중 테스트, iOS 순수 Swift 상태 테스트를 별도로 재실행해 통과했다. Flutter 빌드가 재생성하는 플랫폼 registrant는 커밋 대상이 아니므로 원상 복구했다. `flutter build`가 생성하는 `GeneratedPluginRegistrant`는 `integration_test` dev dependency를 일시적으로 포함할 수 있으므로 직접 Gradle release 작업은 Flutter 생성 단계 이후에 실행하고, 배포 CI는 표준 `flutter build` 경로를 사용한다.
 
-코드 수준에서는 예약 receiver 누락, 자정 위젯 stale 및 재부팅/시간대 변경, 단발 스트릭 위험 알림, 설정 질문 위젯 stale, Face ID privacy key를 보강했다. 배터리 전류·알림 지연·VoiceOver/TalkBack 체감은 실기기에서만 측정 가능하므로 여전히 미검증이다.
+코드 수준에서는 예약 receiver 누락, 자정 위젯 stale 및 재부팅/시간대 변경, 단발 스트릭 위험 알림, 설정 질문 위젯 stale, Face ID privacy key를 보강했다. 앱 resume에서 시간대 변경을 감지하면 Android/iOS 알림·위젯을 함께 재조정하고, 종료 중 변경은 다음 실행에서 복구한다. 배터리 전류·알림 지연·VoiceOver/TalkBack 체감은 실기기에서만 측정 가능하므로 여전히 미검증이다.
 
 ## 확인된 비차단 경고
 
@@ -78,7 +78,7 @@
 - P2: Calm/Headspace 유형의 오디오·가이드 명상 콘텐츠(콘텐츠/저작권/오프라인 캐시 정책 필요)
 - P2: 실제 기기 배터리·알림 지연 프로파일링 및 저사양 기기 접근성 수동 점검
 - P2: 웹 알림 미지원 상태를 설정 화면에서 더 명확히 안내할지 제품 문구 결정
-- P2: 잠금 화면 알림에 감사 답변을 표시할지 프라이버시 정책 결정(중립 문구·미리보기 숨김·opt-in 검토)
+- P2: 개인화 알림 미리보기를 재도입할 경우 명시적 opt-in·잠금 화면 테스트·프라이버시 문구를 먼저 확정
 - P1 release: Android upload keystore를 CI secret으로 연결하고 Play 내부 테스트 트랙에 서명 artifact 배포
 - P1 release: iOS `DEVELOPMENT_TEAM`, signing certificate/provisioning profile/App Group을 CI에 연결하고 TestFlight archive 검증
 - P1 release: iOS CI에서 Flutter 생성 xcconfig를 갱신한 뒤 `xcodebuild -showBuildSettings`가 `1.2.3 (6)`을 가리키는지 assertion

@@ -50,7 +50,18 @@ final class DefaultReminderCoordinator implements ReminderCoordinator {
   }
 
   Future<bool> _setEnabled(bool enabled) async {
-    if (enabled && !await _scheduler.requestPermission()) return false;
+    if (enabled) {
+      try {
+        if (!await _scheduler.requestPermission()) return false;
+      } catch (error, stackTrace) {
+        developer.log(
+          'Failed to request reminder permission',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return false;
+      }
+    }
 
     final stored = await _settingsRepository.getReminderSettings();
     final storedContext = await _context(
@@ -142,7 +153,6 @@ final class DefaultReminderCoordinator implements ReminderCoordinator {
       minute: minute ?? settings.minute,
       hasEntryToday: entry != null,
       currentStreak: streak,
-      gratitudeAnswer: entry?.answer1,
     );
   }
 

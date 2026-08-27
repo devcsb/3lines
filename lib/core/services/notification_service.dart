@@ -13,14 +13,12 @@ final class ReminderContext {
     required this.minute,
     required this.hasEntryToday,
     required this.currentStreak,
-    this.gratitudeAnswer,
   });
 
   final int hour;
   final int minute;
   final bool hasEntryToday;
   final int currentStreak;
-  final String? gratitudeAnswer;
 }
 
 abstract interface class ReminderScheduler {
@@ -129,17 +127,12 @@ final class NotificationService implements ReminderScheduler {
       firstOffset = 1;
     }
 
-    final answer = context.gratitudeAnswer?.trim() ?? '';
     for (var index = 0; index < dailyIds.length; index++) {
-      final personalized =
-          index == 0 && context.hasEntryToday && answer.isNotEmpty;
       await _platform.schedule(
         ScheduledLocalNotification(
           id: dailyIds[index],
           title: '3Lines',
-          body: personalized
-              ? '어제의 감사: "${_truncate(answer, 30)}"'
-              : '오늘의 3줄을 기록할 시간이에요',
+          body: '오늘의 3줄을 기록할 시간이에요',
           scheduledDate: _dailyDate(
             now: current,
             dayOffset: firstOffset + index,
@@ -254,11 +247,6 @@ final class NotificationService implements ReminderScheduler {
       hour,
       minute,
     );
-  }
-
-  String _truncate(String value, int maxCharacters) {
-    if (value.length <= maxCharacters) return value;
-    return '${value.substring(0, maxCharacters)}…';
   }
 }
 

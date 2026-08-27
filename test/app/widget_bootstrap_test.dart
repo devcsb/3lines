@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:three_lines/app/router.dart';
 import 'package:three_lines/app/widget_bootstrap.dart';
 import 'package:three_lines/core/events/journal_changes.dart';
+import 'package:three_lines/core/services/device_time_zone_resolver.dart';
 import 'package:three_lines/core/services/journal_side_effects.dart';
 import 'package:three_lines/core/services/widget_sync_service.dart';
 import 'package:three_lines/features/today/today_controller.dart';
@@ -51,18 +52,30 @@ final class RecordingJournalSideEffects implements JournalSideEffects {
   Future<void> onJournalChanged() async => journalChangedCount++;
 }
 
+final class RecordingTimeZoneResolver implements DeviceTimeZoneResolver {
+  RecordingTimeZoneResolver(this.identifier);
+
+  String identifier;
+
+  @override
+  Future<String> getIdentifier() async => identifier;
+}
+
 void main() {
   late ProviderContainer container;
   late RecordingJournalSideEffects sideEffects;
   late RecordingWidgetSync widgetSync;
+  late RecordingTimeZoneResolver timeZone;
 
   setUp(() {
     sideEffects = RecordingJournalSideEffects();
     widgetSync = RecordingWidgetSync();
+    timeZone = RecordingTimeZoneResolver('Asia/Seoul');
     container = ProviderContainer(
       overrides: [
         journalSideEffectsProvider.overrideWithValue(sideEffects),
         widgetSyncServiceProvider.overrideWithValue(widgetSync),
+        deviceTimeZoneResolverProvider.overrideWithValue(timeZone),
         todayControllerProvider.overrideWith(StubTodayController.new),
         biometricLockEnabledProvider.overrideWith((ref) => Future.value(true)),
       ],
@@ -120,6 +133,21 @@ void main() {
 
     expect(widgetSync.syncCount, 1);
     expect(sideEffects.journalChangedCount, 0);
+
+    await disposeBootstrap(tester);
+  });
+
+  testWidgets('resumed에서 timezone이 바뀌면 알림과 위젯을 함께 재조정한다', (tester) async {
+    await pumpBootstrap(tester);
+
+    timeZone.identifier = 'America/Los_Angeles';
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    await tester.pump();
+
+    expect(sideEffects.launchCount, 2);
+    expect(sideEffects.journalChangedCount, 0);
+    expect(widgetSync.syncCount, 0);
 
     await disposeBootstrap(tester);
   });

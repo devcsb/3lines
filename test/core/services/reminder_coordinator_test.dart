@@ -12,6 +12,7 @@ import 'package:three_lines/data/repositories/settings_repository.dart';
 
 final class RecordingReminderScheduler implements ReminderScheduler {
   bool permissionGranted = true;
+  Object? permissionError;
   bool failCancelAll = false;
   bool failWeekly = false;
   final failReplaceOnCalls = <int>{};
@@ -22,6 +23,7 @@ final class RecordingReminderScheduler implements ReminderScheduler {
   @override
   Future<bool> requestPermission() async {
     calls.add('permission');
+    if (permissionError != null) throw permissionError!;
     return permissionGranted;
   }
 
@@ -125,6 +127,14 @@ void main() {
     expect((await settings.getReminderSettings()).enabled, isFalse);
   });
 
+  test('권한 요청 예외 시 UI 실패로 닫고 예약과 DB 활성화를 하지 않는다', () async {
+    scheduler.permissionError = StateError('permission failed');
+
+    expect(await coordinator.setEnabled(true), isFalse);
+    expect(scheduler.calls, ['permission']);
+    expect((await settings.getReminderSettings()).enabled, isFalse);
+  });
+
   test('권한 거부 시 저장된 설정을 조회하지 않는다', () async {
     final trackingSettings = TrackingSettingsRepository(db);
     coordinator = DefaultReminderCoordinator(
@@ -223,21 +233,19 @@ void main() {
     expect(scheduler.calls, ['replace:21:0']);
   });
 
-  test('오늘 기록 answer1을 첫 다음 날 개인화 문구 context로 전달한다', () async {
+  test('오늘 기록이 있으면 알림 context에 완료 상태만 전달한다', () async {
     await storeReminder(enabled: true);
     await storeTodayEntry(answer1: '친구의 안부');
     await coordinator.reconcileAfterJournalChange();
     expect(scheduler.contexts.single.hasEntryToday, isTrue);
-    expect(scheduler.contexts.single.gratitudeAnswer, '친구의 안부');
   });
 
-  test('오늘 기록 삭제 뒤 hasEntryToday false context를 전달한다', () async {
+  test('오늘 기록 삭제 뒤 미완료 상태 context를 전달한다', () async {
     await storeReminder(enabled: true);
     await storeTodayEntry();
     await entries.deleteEntry('2026-08-06');
     await coordinator.reconcileAfterJournalChange();
     expect(scheduler.contexts.single.hasEntryToday, isFalse);
-    expect(scheduler.contexts.single.gratitudeAnswer, isNull);
   });
 
   test('동시 시간 변경은 요청 순서대로 실행되어 마지막 값이 DB에 남는다', () async {

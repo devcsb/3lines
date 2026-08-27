@@ -138,21 +138,20 @@ void main() {
     expect(daily.last.scheduledDate, tz.TZDateTime(tz.local, 2026, 9, 5, 18));
   });
 
-  test('작성 완료면 내일부터 시작하고 첫 알림만 감사 문구를 쓴다', () async {
+  test('작성 완료면 내일부터 시작하고 모든 알림은 중립 문구를 쓴다', () async {
     await service.replaceDailyAndStreak(
       const ReminderContext(
         hour: 21,
         minute: 0,
         hasEntryToday: true,
         currentStreak: 7,
-        gratitudeAnswer: '저녁의 작은 산책',
       ),
     );
     final daily = platform.scheduled
         .where((item) => item.id >= 100 && item.id <= 129)
         .toList();
     expect(daily.first.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 7, 21));
-    expect(daily.first.body, '어제의 감사: "저녁의 작은 산책"');
+    expect(daily.first.body, '오늘의 3줄을 기록할 시간이에요');
     expect(
       daily.skip(1).every((item) => item.body == '오늘의 3줄을 기록할 시간이에요'),
       isTrue,
@@ -192,7 +191,10 @@ void main() {
         currentStreak: 0,
       ),
     );
-    expect(platform.cancelled, containsAll(List<int>.generate(30, (i) => 200 + i)));
+    expect(
+      platform.cancelled,
+      containsAll(List<int>.generate(30, (i) => 200 + i)),
+    );
     expect(
       platform.scheduled.where((item) => item.id >= 200 && item.id <= 229),
       isEmpty,
