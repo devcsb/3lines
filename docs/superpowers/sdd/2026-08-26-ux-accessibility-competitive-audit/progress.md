@@ -26,11 +26,12 @@
 3. Timeline/Insights pull-to-refresh가 provider Future 완료까지 spinner를 유지한다.
 4. iOS 위젯이 저장 날짜와 현지 오늘 날짜가 다르면 완료·감정·상태를 오늘 기본값으로 초기화한다.
 5. JSON export `version`을 실제 앱 버전으로 기록하고 플랫폼 조회 실패 시 state/`unknown`으로 안전하게 fallback한다.
-6. Android 예약 알림 receiver와 재부팅 권한을 명시하고, 위젯은 현지 자정에 다음 갱신을 한 번 예약한다.
+6. Android 예약 알림 receiver와 재부팅 권한을 명시하고, 위젯은 현지 자정에 다음 갱신을 한 번 예약하며 재부팅·시간대·시계 변경 시 재예약한다.
 7. 스트릭 위험 알림을 30일 단발 horizon으로 미리 예약해 앱을 열지 않아도 다음 날 알림이 유지되도록 했다.
 8. 설정 질문 변경/초기화도 `journalChangesProvider`를 발행해 열린 앱의 위젯이 즉시 동기화된다.
 9. Face ID privacy 문구와 `flutter_timezone` CocoaPods lock을 반영했다.
 10. Android release는 debug key fallback을 제거하고, keystore가 없으면 배포 작업을 fail-closed한다.
+11. 기존 최신 tag `v1.2.2`(build 5)와 중복되지 않도록 앱 버전을 `1.2.3+6`으로 올렸다.
 
 ## 검증 원장
 
@@ -42,20 +43,21 @@
 | `flutter test --coverage` | 기준 루프에서 381개 통과, 최신 일반 실행은 383개 통과 |
 | focused Flutter tests | 35개 통과 |
 | Swift 순수 상태 테스트 (`swiftc ... && /tmp/...`) | 통과 |
-| `xcodebuild -project ios/Runner.xcodeproj -list` | Runner/Widget target 및 scheme 인식 |
-| `xcodebuild ... -target ThreeLinesWidgetExtension ... build` | `BUILD SUCCEEDED`; Runner archive/signing은 Team·profile 부재로 미검증 |
+| `xcodebuild -project ios/Runner.xcodeproj -list` | Runner/Widget target 및 scheme 인식; `ThreeLinesWidgetTests` target은 아직 없음 |
+| `xcodebuild ... -target ThreeLinesWidgetExtension ... build` | `BUILD SUCCEEDED`; 전체 Runner 빌드는 `Pods/Manifest.lock` 부재로 CocoaPods sync 단계에서 중단되고 archive/signing은 Team·profile 부재로 미검증 |
 | Android JDK 21 `app:testDebugUnitTest --tests ...ThreeLinesWidgetStateTest` | `BUILD SUCCESSFUL` |
 | `./gradlew app:processReleaseManifest -PallowUnsignedRelease=true` | 성공; 예약 receiver/`RECEIVE_BOOT_COMPLETED`가 merged manifest에 포함 |
 | `./gradlew app:assembleRelease` | 의도적으로 실패; keystore가 없으면 배포 작업을 차단 |
+| `./gradlew :app:assemble` (집계 경로) | 의도적으로 실패; `preReleaseBuild`에 `validateReleaseSigning`을 연결해 unsigned release 우회를 차단 |
 | `./gradlew app:assembleRelease -PallowUnsignedRelease=true` | 로컬 unsigned 검증용으로만 성공 |
 | `flutter build apk --release ... --android-project-arg=allowUnsignedRelease=true` | 로컬 unsigned arm64 컴파일만 성공; 운영 artifact 아님 |
 | release signing report | keystore 미설정 상태에서 release signing Config가 없음(debug fallback 없음) |
 
 ## 2차 영향 재검증
 
-현재 릴리스 게이트 수정 후에는 Android JDK 21 단위 테스트, merged manifest 검사, 예약 알림 집중 테스트, iOS 순수 Swift 상태 테스트를 별도로 다시 실행한다. Flutter 빌드가 재생성하는 플랫폼 registrant는 커밋 대상이 아니므로 원상 복구한다.
+릴리스 게이트 수정 후 Android JDK 21 단위 테스트, merged manifest 검사, 예약 알림 집중 테스트, iOS 순수 Swift 상태 테스트를 별도로 재실행해 통과했다. Flutter 빌드가 재생성하는 플랫폼 registrant는 커밋 대상이 아니므로 원상 복구했다. `flutter build`가 생성하는 `GeneratedPluginRegistrant`는 `integration_test` dev dependency를 일시적으로 포함할 수 있으므로 직접 Gradle release 작업은 Flutter 생성 단계 이후에 실행하고, 배포 CI는 표준 `flutter build` 경로를 사용한다.
 
-코드 수준에서는 예약 receiver 누락, 자정 위젯 stale, 단발 스트릭 위험 알림, 설정 질문 위젯 stale, Face ID privacy key를 보강했다. 배터리 전류·알림 지연·VoiceOver/TalkBack 체감은 실기기에서만 측정 가능하므로 여전히 미검증이다.
+코드 수준에서는 예약 receiver 누락, 자정 위젯 stale 및 재부팅/시간대 변경, 단발 스트릭 위험 알림, 설정 질문 위젯 stale, Face ID privacy key를 보강했다. 배터리 전류·알림 지연·VoiceOver/TalkBack 체감은 실기기에서만 측정 가능하므로 여전히 미검증이다.
 
 ## 확인된 비차단 경고
 
@@ -75,6 +77,7 @@
 - P2: 태그/즐겨찾기와 다중 리마인더(데이터 모델·알림 UX·개인정보 정책 결정 필요)
 - P2: Calm/Headspace 유형의 오디오·가이드 명상 콘텐츠(콘텐츠/저작권/오프라인 캐시 정책 필요)
 - P2: 실제 기기 배터리·알림 지연 프로파일링 및 저사양 기기 접근성 수동 점검
+- P2: 웹 알림 미지원 상태를 설정 화면에서 더 명확히 안내할지 제품 문구 결정
 - P1 release: Android upload keystore를 CI secret으로 연결하고 Play 내부 테스트 트랙에 서명 artifact 배포
 - P1 release: iOS `DEVELOPMENT_TEAM`, signing certificate/provisioning profile/App Group을 CI에 연결하고 TestFlight archive 검증
 - P1 release: 실기기에서 예약 알림(앱 종료/재부팅), 자정 위젯, timezone 변경, Face ID, 배터리 프로파일링 수행

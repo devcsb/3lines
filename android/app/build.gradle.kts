@@ -33,15 +33,9 @@ val allowUnsignedRelease = providers.gradleProperty("allowUnsignedRelease")
     .map(String::toBoolean)
     .orElse(false)
     .get()
-val isReleaseTask = gradle.startParameter.taskNames.any {
-    it.contains("Release", ignoreCase = true)
-}
-if (isReleaseTask && !hasReleaseSigning && !allowUnsignedRelease) {
-    throw GradleException(
-        "Release signing is not configured. Add android/keystore.properties for a distributable build, " +
-            "or pass --android-project-arg=allowUnsignedRelease=true only for local non-distribution builds.",
-    )
-}
+val releaseSigningError =
+    "Release signing is not configured. Add android/keystore.properties for a distributable build, " +
+        "or pass --android-project-arg=allowUnsignedRelease=true only for local non-distribution builds."
 
 android {
     namespace = "com.threelines.three_lines"
@@ -87,6 +81,20 @@ android {
             }
         }
     }
+}
+
+val validateReleaseSigning = tasks.register("validateReleaseSigning") {
+    doLast {
+        if (!hasReleaseSigning && !allowUnsignedRelease) {
+            throw GradleException(releaseSigningError)
+        }
+    }
+}
+
+// Attach validation to the release lifecycle so aggregate `assemble`/`build` tasks
+// cannot produce an unsigned release artifact by omitting "Release" in taskNames.
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(validateReleaseSigning)
 }
 
 dependencies {

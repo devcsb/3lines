@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
@@ -88,7 +89,7 @@ final class NotificationService implements ReminderScheduler {
   Future<void>? _initFuture;
 
   Future<void> initialize() {
-    if (_initialized) return Future<void>.value();
+    if (kIsWeb || _initialized) return Future<void>.value();
     return _initFuture ??= _doInitialize().whenComplete(() {
       if (!_initialized) _initFuture = null;
     });
@@ -105,12 +106,14 @@ final class NotificationService implements ReminderScheduler {
 
   @override
   Future<bool> requestPermission() async {
+    if (kIsWeb) return false;
     await initialize();
     return _platform.requestPermission();
   }
 
   @override
   Future<void> replaceDailyAndStreak(ReminderContext context) async {
+    if (kIsWeb) return;
     await initialize();
     final current = _now(tz.local);
     await _cancelIds([...dailyIds, ..._streakIds()]);
@@ -174,6 +177,7 @@ final class NotificationService implements ReminderScheduler {
 
   @override
   Future<void> scheduleWeeklyRetrospective() async {
+    if (kIsWeb) return;
     await initialize();
     final current = _now(tz.local);
     var nextSundayAt20 = tz.TZDateTime(
@@ -206,16 +210,19 @@ final class NotificationService implements ReminderScheduler {
   }
 
   @override
-  Future<void> cancelAll() =>
-      _cancelIds([...dailyIds, ..._streakIds(), weeklyId, ...legacyIds]);
+  Future<void> cancelAll() {
+    if (kIsWeb) return Future<void>.value();
+    return _cancelIds([...dailyIds, ..._streakIds(), weeklyId, ...legacyIds]);
+  }
 
   @override
-  Future<void> migrateLegacyReminders() => _cancelIds(legacyIds);
+  Future<void> migrateLegacyReminders() {
+    if (kIsWeb) return Future<void>.value();
+    return _cancelIds(legacyIds);
+  }
 
-  List<int> _streakIds() => List<int>.generate(
-        streakReminderCount,
-        (index) => streakId + index,
-      );
+  List<int> _streakIds() =>
+      List<int>.generate(streakReminderCount, (index) => streakId + index);
 
   Future<void> _cancelIds(Iterable<int> ids) async {
     Object? firstError;

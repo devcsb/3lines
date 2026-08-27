@@ -206,9 +206,9 @@ void main() {
     expect((stored.hour, stored.minute), (21, 0));
   });
 
-  test('비활성 launch는 알림 플랫폼을 호출하지 않는다', () async {
+  test('비활성 launch도 legacy 예약만 정리하고 새 알림은 만들지 않는다', () async {
     await coordinator.reconcileOnLaunch();
-    expect(scheduler.calls, isEmpty);
+    expect(scheduler.calls, ['migrate']);
   });
 
   test('활성 launch는 legacy 취소 후 전체 계획을 조정한다', () async {

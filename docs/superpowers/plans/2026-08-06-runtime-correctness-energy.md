@@ -15,7 +15,7 @@
 - `flutter_timezone`은 정확히 `^5.1.0`을 사용한다.
 - 기기 IANA 시간대 확인 실패 시 UTC로 대체 예약하지 않고 실패를 상위 계층에 전달한다.
 - 알림 권한은 사용자가 설정에서 알림을 켜는 명시적 행동 뒤에만 요청한다.
-- 일일 알림은 향후 30일을 관리 ID 30개로 예약한 단발 알림이며, 스트릭 위험 알림은 가장 가까운 단발 1개, 주간 회고만 요일·시간 반복 1개다.
+- 일일 알림과 스트릭 위험 알림은 향후 30일을 관리 ID 30개씩 예약한 단발 알림이며, 주간 회고만 요일·시간 반복 1개다.
 - 저널 DB 커밋은 알림 또는 위젯 후속 작업 실패로 되돌리지 않는다.
 - 데이터베이스 스키마와 JSON 내보내기 형식은 변경하지 않는다.
 - 네트워크, 분석 SDK, 원격 로깅, 새 사용자 추적을 추가하지 않는다.
@@ -358,16 +358,17 @@ test('작성 완료면 내일부터 시작하고 첫 알림만 감사 문구를 
   expect(risk.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 7, 20));
 });
 
-test('활성 스트릭은 한 시간 전 가장 가까운 단발 알림 하나를 만든다', () async {
+test('활성 스트릭은 한 시간 전부터 30일치 단발 위험 알림을 만든다', () async {
   await service.replaceDailyAndStreak(const ReminderContext(
     hour: 21,
     minute: 0,
     hasEntryToday: false,
     currentStreak: 3,
   ));
-  final risk = platform.scheduled.singleWhere((item) => item.id == 200);
-  expect(risk.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 6, 20));
-  expect(risk.matchDateTimeComponents, isNull);
+  final risks = platform.scheduled.where((item) => item.id >= 200 && item.id <= 229).toList();
+  expect(risks, hasLength(30));
+  expect(risks.first.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 6, 20));
+  expect(risks.every((item) => item.matchDateTimeComponents == null), isTrue);
 });
 
 test('스트릭이 없으면 위험 ID만 취소한다', () async {
@@ -458,7 +459,7 @@ final class NotificationService implements ReminderScheduler {
 
 생성자는 `NotificationPlatform platform`, `DeviceTimeZoneResolver timeZoneResolver`, `tz.TZDateTime Function(tz.Location) now`를 주입받는다. `initialize()`는 하나의 in-flight Future를 공유하고 실패하면 Future 캐시를 비운다. 초기화 순서는 `tz.initializeTimeZones()` → resolver identifier → `tz.getLocation` → `tz.setLocalLocation` → `platform.initialize()`이며 권한 메서드는 호출하지 않는다.
 
-- [ ] **Step 4: 30일 단발 일일 예약과 스트릭 단발 예약을 구현한다**
+- [ ] **Step 4: 30일 단발 일일 예약과 30일 단발 스트릭 위험 예약을 구현한다**
 
 일일 날짜는 DST에서도 달력 날짜가 보존되도록 Duration 누적 대신 생성자 day offset을 사용한다.
 
@@ -1792,9 +1793,11 @@ Run: `cd android && ./gradlew app:testDebugUnitTest`
 
 Expected: `BUILD SUCCESSFUL`.
 
-Run: `flutter build apk --release --target-platform android-arm64 --analyze-size`
+Run (CI, keystore 주입): `flutter build apk --release --target-platform android-arm64 --analyze-size`
 
-Expected: release APK와 size analysis 생성, 빌드 성공. 현재 디버그 서명은 루프 4 범위이므로 이 단계에서 서명 구성을 바꾸지 않는다.
+로컬 서명 없는 검증은 `--android-project-arg=allowUnsignedRelease=true`를 명시한다.
+
+Expected: CI에서는 서명된 release APK와 size analysis가 생성되고, 로컬 override에서는 unsigned APK만 생성된다. unsigned 산출물은 배포하지 않는다.
 
 - [ ] **Step 6: 병합 manifest와 위젯 주기를 검증한다**
 

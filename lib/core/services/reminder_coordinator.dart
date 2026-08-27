@@ -113,10 +113,10 @@ final class DefaultReminderCoordinator implements ReminderCoordinator {
   Future<void> reconcileOnLaunch() {
     return _serialize(() async {
       final stored = await _settingsRepository.getReminderSettings();
+      await _scheduler.migrateLegacyReminders();
       if (!stored.enabled) return;
 
       final context = await _context(hour: stored.hour, minute: stored.minute);
-      await _scheduler.migrateLegacyReminders();
       await _scheduler.replaceDailyAndStreak(context);
       await _scheduler.scheduleWeeklyRetrospective();
     });

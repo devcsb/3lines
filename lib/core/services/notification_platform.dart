@@ -49,12 +49,13 @@ final class LiveNotificationPlatform implements NotificationPlatform {
 
   @override
   Future<void> initialize() async {
+    if (kIsWeb) return;
     await _plugin.initialize(settings: notificationInitializationSettings());
   }
 
   @override
   Future<bool> requestPermission() async {
-    if (kIsWeb) return true;
+    if (kIsWeb) return false;
 
     if (defaultTargetPlatform == TargetPlatform.android) {
       final android = _plugin
@@ -82,6 +83,7 @@ final class LiveNotificationPlatform implements NotificationPlatform {
 
   @override
   Future<void> schedule(ScheduledLocalNotification notification) async {
+    if (kIsWeb) return;
     await _plugin.zonedSchedule(
       id: notification.id,
       title: notification.title,
@@ -95,6 +97,7 @@ final class LiveNotificationPlatform implements NotificationPlatform {
 
   @override
   Future<void> cancel(int id) {
+    if (kIsWeb) return Future<void>.value();
     return _plugin.cancel(id: id);
   }
 }

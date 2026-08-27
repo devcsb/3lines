@@ -123,8 +123,16 @@ dart run build_runner build --delete-conflicting-outputs
 flutter run
 
 # 5. APK 빌드
+# 배포 빌드는 CI에서 android/keystore.properties를 주입해야 합니다.
 flutter build apk --release --split-per-abi
+
+# 서명 없는 로컬 컴파일/매니페스트 검증만 필요한 경우
+flutter build apk --release --split-per-abi \
+  --android-project-arg=allowUnsignedRelease=true
 ```
+
+`allowUnsignedRelease=true`로 만든 APK는 배포·업데이트에 사용할 수 없습니다. Play 배포 전에는
+upload keystore와 CI 서명 검사를 반드시 구성하세요.
 
 ---
 

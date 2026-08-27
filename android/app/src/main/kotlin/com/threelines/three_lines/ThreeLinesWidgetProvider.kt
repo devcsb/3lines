@@ -37,6 +37,12 @@ class ThreeLinesWidgetProvider : AppWidgetProvider() {
             }
             return next.timeInMillis + 5_000L
         }
+
+        internal fun shouldRescheduleForSystemChange(action: String?): Boolean {
+            return action == Intent.ACTION_BOOT_COMPLETED ||
+                action == Intent.ACTION_TIMEZONE_CHANGED ||
+                action == Intent.ACTION_TIME_CHANGED
+        }
     }
 
     override fun onEnabled(context: Context) {
@@ -59,7 +65,11 @@ class ThreeLinesWidgetProvider : AppWidgetProvider() {
             }
             return
         }
+        val shouldReschedule = shouldRescheduleForSystemChange(intent.action)
         super.onReceive(context, intent)
+        if (shouldReschedule) {
+            scheduleNextMidnight(context)
+        }
     }
 
     override fun onUpdate(
@@ -148,6 +158,12 @@ class ThreeLinesWidgetProvider : AppWidgetProvider() {
 
     private fun scheduleNextMidnight(context: Context) {
         val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val component = ComponentName(context, ThreeLinesWidgetProvider::class.java)
+        if (appWidgetManager.getAppWidgetIds(component).isEmpty()) {
+            alarmManager.cancel(midnightPendingIntent(context))
+            return
+        }
         val pendingIntent = midnightPendingIntent(context)
         alarmManager.setWindow(
             AlarmManager.RTC_WAKEUP,

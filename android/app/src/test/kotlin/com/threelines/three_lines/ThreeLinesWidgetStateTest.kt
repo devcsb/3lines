@@ -1,5 +1,6 @@
 package com.threelines.three_lines
 
+import android.content.Intent
 import java.util.Calendar
 import java.util.TimeZone
 import org.junit.Assert.assertEquals
@@ -8,6 +9,26 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ThreeLinesWidgetStateTest {
+    @Test
+    fun `시스템 재부팅과 시간 변경은 자정 갱신을 재예약한다`() {
+        assertTrue(
+            ThreeLinesWidgetProvider.shouldRescheduleForSystemChange(
+                Intent.ACTION_BOOT_COMPLETED,
+            ),
+        )
+        assertTrue(
+            ThreeLinesWidgetProvider.shouldRescheduleForSystemChange(
+                Intent.ACTION_TIMEZONE_CHANGED,
+            ),
+        )
+        assertTrue(
+            ThreeLinesWidgetProvider.shouldRescheduleForSystemChange(
+                Intent.ACTION_TIME_CHANGED,
+            ),
+        )
+        assertFalse(ThreeLinesWidgetProvider.shouldRescheduleForSystemChange(Intent.ACTION_MAIN))
+    }
+
     @Test
     fun `다음 자정 갱신 시각은 현지 날짜의 00시 00분 05초다`() {
         val zone = TimeZone.getTimeZone("Asia/Seoul")
