@@ -63,3 +63,5 @@
 ### 배포 권고
 
 현재는 서명된 산출물이 없어 운영 배포를 진행하지 않는다. `allowUnsignedRelease=true`는 로컬 컴파일/매니페스트 검증 전용이며 배포용 우회 수단이 아니다. 다음 단계는 Android upload keystore와 iOS 서명 설정을 CI에 주입한 뒤, 실제 기기에서 200% 글자 크기·VoiceOver/TalkBack·히트맵 조작·앱 종료/재부팅 예약 알림·자정 위젯·timezone 변경·배터리 영향을 확인하고 Play 내부 테스트와 TestFlight로 승격하는 것이다.
+
+iOS CI는 `flutter pub get` 또는 `flutter build`로 `Generated.xcconfig`를 먼저 재생성한 뒤 `xcodebuild -showBuildSettings`에서 `FLUTTER_BUILD_NAME=1.2.3`, `FLUTTER_BUILD_NUMBER=6`을 assertion해야 한다. 무시 대상 xcconfig를 갱신하지 않고 Xcode archive를 직접 실행하면 이전 1.2.2(5)가 남을 수 있다.

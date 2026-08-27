@@ -81,4 +81,5 @@
 - P2: 잠금 화면 알림에 감사 답변을 표시할지 프라이버시 정책 결정(중립 문구·미리보기 숨김·opt-in 검토)
 - P1 release: Android upload keystore를 CI secret으로 연결하고 Play 내부 테스트 트랙에 서명 artifact 배포
 - P1 release: iOS `DEVELOPMENT_TEAM`, signing certificate/provisioning profile/App Group을 CI에 연결하고 TestFlight archive 검증
+- P1 release: iOS CI에서 Flutter 생성 xcconfig를 갱신한 뒤 `xcodebuild -showBuildSettings`가 `1.2.3 (6)`을 가리키는지 assertion
 - P1 release: 실기기에서 예약 알림(앱 종료/재부팅), 자정 위젯, timezone 변경, Face ID, 배터리 프로파일링 수행
