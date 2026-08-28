@@ -50,7 +50,7 @@
 - Produces `AppMotion.instant`, `AppMotion.micro`, `AppMotion.standard`, `AppMotion.entrance`, `AppMotion.celebration`, `AppMotion.standardCurve`, and `AppMotion.reduceMotion(BuildContext)`.
 - Existing widgets continue to accept their current public constructors; callers do not pass raw animation settings for this task.
 
-- [ ] **Step 1: Write the failing token test**
+- [x] **Step 1: Write the failing token test**
 
 Create `test/core/theme/app_motion_test.dart` with exact contract values:
 
@@ -71,7 +71,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails**
+- [x] **Step 2: Run the focused test and verify it fails**
 
 Run:
 
@@ -81,7 +81,7 @@ flutter test test/core/theme/app_motion_test.dart
 
 Expected: FAIL because `lib/core/theme/app_motion.dart` does not exist yet.
 
-- [ ] **Step 3: Add the minimal token implementation**
+- [x] **Step 3: Add the minimal token implementation**
 
 Create `lib/core/theme/app_motion.dart`:
 
@@ -101,13 +101,13 @@ abstract final class AppMotion {
 }
 ```
 
-- [ ] **Step 4: Replace targeted raw durations and bound stagger delay**
+- [x] **Step 4: Replace targeted raw durations and bound stagger delay**
 
 In `StaggeredFadeIn`, import `app_motion.dart`, set the default interval to `AppMotion.micro`, set the controller duration to `AppMotion.entrance`, and use `AppMotion.standardCurve` for both animations. Cap the index at `4` so the largest entrance delay is `480ms`; keep the existing timer cancellation and `AppMotion.reduceMotion(context)` snap behavior.
 
 In `HeatmapGrid`, set `_waveController` duration to `AppMotion.entrance` and use `AppMotion.standardCurve` for the interval. In `InsightsLockedView`, set the controller duration to `AppMotion.entrance`, use the same curve for fade/scale/progress, and in `didChangeDependencies` set `_controller.value = 1.0` when `AppMotion.reduceMotion(context)` is true. Do not alter chart data or unlock thresholds.
 
-- [ ] **Step 5: Update the staggered widget test for the new bound**
+- [x] **Step 5: Update the staggered widget test for the new bound**
 
 Add this test to `test/shared/widgets/staggered_fade_in_test.dart`:
 
@@ -144,7 +144,7 @@ testWidgets('높은 index도 480ms 안에 진입을 시작한다', (tester) asyn
 });
 ```
 
-- [ ] **Step 6: Run focused tests and static analysis**
+- [x] **Step 6: Run focused tests and static analysis**
 
 Run:
 
@@ -155,7 +155,7 @@ dart analyze lib/core/theme/app_motion.dart lib/shared/widgets/staggered_fade_in
 
 Expected: all focused tests pass and analyzer reports no issues.
 
-- [ ] **Step 7: Commit the task**
+- [x] **Step 7: Commit the task**
 
 ```bash
 git add lib/core/theme/app_motion.dart lib/shared/widgets/staggered_fade_in.dart lib/features/timeline/widgets/heatmap_grid.dart lib/features/insights/widgets/insights_locked_view.dart test/core/theme/app_motion_test.dart test/shared/widgets/staggered_fade_in_test.dart
@@ -173,7 +173,7 @@ git commit -m "feat: centralize motion timing and reduce stagger delay"
 - `BranchFadeThrough({Key? key, required Object transitionKey, required Widget child})` keeps exactly one `child` in the tree and restarts only when `transitionKey` changes.
 - `ScaffoldWithNavBar` continues to receive the same `StatefulNavigationShell` and retains `goBranch` behavior and `NavigationBar` semantics.
 
-- [ ] **Step 1: Write transition and reduced-motion tests**
+- [x] **Step 1: Write transition and reduced-motion tests**
 
 Create `test/shared/widgets/branch_fade_through_test.dart`:
 
@@ -255,13 +255,13 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails**
+- [x] **Step 2: Run the focused test and verify it fails**
 
 Run `flutter test test/shared/widgets/branch_fade_through_test.dart`.
 
 Expected: FAIL because the wrapper has not been implemented.
 
-- [ ] **Step 3: Implement a single-child transition wrapper**
+- [x] **Step 3: Implement a single-child transition wrapper**
 
 Create `lib/shared/widgets/branch_fade_through.dart`:
 
@@ -345,7 +345,7 @@ class _BranchFadeThroughState extends State<BranchFadeThrough>
 }
 ```
 
-- [ ] **Step 4: Wire the wrapper without duplicating the navigation shell**
+- [x] **Step 4: Wire the wrapper without duplicating the navigation shell**
 
 In `lib/shared/widgets/app_bottom_nav.dart`, import the new wrapper and replace `body: navigationShell` with:
 
@@ -358,7 +358,7 @@ body: BranchFadeThrough(
 
 Update the nearby comment to state that the shell remains a single child and only the wrapper’s opacity/offset animates. Do not use `AnimatedSwitcher`, `KeyedSubtree` around a second shell, or a second `StatefulNavigationShell` instance.
 
-- [ ] **Step 5: Run transition tests and existing navigation regression tests**
+- [x] **Step 5: Run transition tests and existing navigation regression tests**
 
 Run:
 
@@ -368,7 +368,7 @@ flutter test test/shared/widgets/branch_fade_through_test.dart test/app/routing_
 
 Expected: all tests pass, including no onboarding/lock flash and no duplicate GlobalKey exception.
 
-- [ ] **Step 6: Commit the task**
+- [x] **Step 6: Commit the task**
 
 ```bash
 git add lib/shared/widgets/branch_fade_through.dart lib/shared/widgets/app_bottom_nav.dart test/shared/widgets/branch_fade_through_test.dart
@@ -385,7 +385,7 @@ git commit -m "feat: add global-key-safe branch fade transition"
 - `CompletionAnimation` constructor remains source-compatible (`onComplete`, `streak`, `emotion`).
 - The private `_dismiss()` method invokes `onComplete` at most once, regardless of background auto-dismiss or repeated taps.
 
-- [ ] **Step 1: Add failing tests for semantics, immediate close, and neutral copy**
+- [x] **Step 1: Add failing tests for semantics, immediate close, and neutral copy**
 
 Extend `test/features/today/widgets/completion_animation_test.dart`. First add `int emotion = 3` to the existing `buildApp` helper and pass it to `CompletionAnimation`, then add these tests:
 
@@ -425,13 +425,13 @@ testWidgets('닫기와 자동 종료가 중복 callback을 만들지 않는다',
 });
 ```
 
-- [ ] **Step 2: Run the focused tests and verify the new tests fail**
+- [x] **Step 2: Run the focused tests and verify the new tests fail**
 
 Run `flutter test test/features/today/widgets/completion_animation_test.dart`.
 
 Expected: the semantics labels/buttons are missing and the old efficacy copy is still present.
 
-- [ ] **Step 3: Apply motion tokens and add an idempotent dismiss path**
+- [x] **Step 3: Apply motion tokens and add an idempotent dismiss path**
 
 Import `app_motion.dart`. Set checkmark, particle, and text controller durations to `AppMotion.celebration`, `AppMotion.celebration`, and `AppMotion.standard` respectively. Replace the fixed 400ms text delay with `AppMotion.micro`; retain the 2500ms hold only as a non-blocking automatic fallback. Add:
 
@@ -447,7 +447,7 @@ void _dismiss() {
 
 Use `_dismiss()` for the delayed callback and all tap actions. Keep the existing mounted checks before calling it from asynchronous code.
 
-- [ ] **Step 4: Add accessible close semantics and neutral copy**
+- [x] **Step 4: Add accessible close semantics and neutral copy**
 
 Change the root to a `Semantics` container with `scopesRoute: true`, `namesRoute: true`, `label: '기록 저장 완료'`, and `explicitChildNodes: true`. Keep the full-screen tap as a convenience gesture using `_dismiss`, but add a bottom `SafeArea` child that is always built:
 
@@ -464,11 +464,11 @@ Semantics(
 
 Remove the low-contrast `탭하여 닫기` instruction. Replace the emotion-5 message `감사를 기록하는 사람이 행복해진대요` with the neutral `오늘의 감정을 차분히 남겼어요`. Keep the emotion label and streak badge as descriptive, non-clinical text.
 
-- [ ] **Step 5: Make reduce-motion completion immediate without removing the close action**
+- [x] **Step 5: Make reduce-motion completion immediate without removing the close action**
 
 Use `AppMotion.reduceMotion(context)` in `didChangeDependencies` and preserve the existing final-state snap. The close button must remain present during reduce-motion and the automatic 2500ms fallback must still be guarded by `_dismiss()`.
 
-- [ ] **Step 6: Run completion tests and static analysis**
+- [x] **Step 6: Run completion tests and static analysis**
 
 Run:
 
@@ -479,7 +479,7 @@ dart analyze lib/features/today/widgets/completion_animation.dart
 
 Expected: all focused tests pass and analyzer reports no issues.
 
-- [ ] **Step 7: Commit the task**
+- [x] **Step 7: Commit the task**
 
 ```bash
 git add lib/features/today/widgets/completion_animation.dart test/features/today/widgets/completion_animation_test.dart
@@ -496,7 +496,7 @@ git commit -m "feat: make completion feedback accessible and dismissible"
 - Timeline data/controller and database schema remain unchanged.
 - The empty-state CTA navigates with the existing `go_router` route `/`; no new global state is introduced.
 
-- [ ] **Step 1: Add a failing empty-state CTA test**
+- [x] **Step 1: Add a failing empty-state CTA test**
 
 Add `import 'package:go_router/go_router.dart';`, then add an empty controller and test to `test/features/timeline/timeline_screen_test.dart`:
 
@@ -541,13 +541,13 @@ testWidgets('기록이 없는 타임라인은 오늘 기록 CTA를 제공한다'
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails**
+- [x] **Step 2: Run the focused test and verify it fails**
 
 Run `flutter test test/features/timeline/timeline_screen_test.dart`.
 
 Expected: FAIL because the empty state has no `오늘 기록하기` button.
 
-- [ ] **Step 3: Add the CTA with existing router semantics**
+- [x] **Step 3: Add the CTA with existing router semantics**
 
 Import `package:go_router/go_router.dart` and `../../core/theme/app_motion.dart`. In the empty-state `Column`, after `첫 기록을 시작해보세요`, add:
 
@@ -561,7 +561,7 @@ FilledButton.tonal(
 
 Keep the existing non-judgmental copy and 600ms entrance behavior, but replace that raw duration with `AppMotion.entrance`. Do not add a streak warning or imply that an empty timeline is a failure.
 
-- [ ] **Step 4: Run timeline tests and analyzer**
+- [x] **Step 4: Run timeline tests and analyzer**
 
 Run:
 
@@ -572,7 +572,7 @@ dart analyze lib/features/timeline/timeline_screen.dart
 
 Expected: all tests pass and analyzer reports no issues.
 
-- [ ] **Step 5: Commit the task**
+- [x] **Step 5: Commit the task**
 
 ```bash
 git add lib/features/timeline/timeline_screen.dart test/features/timeline/timeline_screen_test.dart
@@ -584,7 +584,7 @@ git commit -m "feat: add one-tap recovery from empty timeline"
 **Files:**
 - Create: `docs/superpowers/reviews/2026-08-28-frictionless-calm-ux-evolution.md` — 실행한 검증 결과와 잔여 실기기 게이트를 기록한다.
 
-- [ ] **Step 1: Run the complete Flutter verification suite**
+- [x] **Step 1: Run the complete Flutter verification suite**
 
 Run:
 
@@ -595,9 +595,23 @@ flutter test
 git diff --check "$(git merge-base HEAD main)"..HEAD
 ```
 
-Expected: formatter exits 0, analyzer reports no issues, all tests pass, and diff check is clean. If the number of tests changes, record the actual count rather than a hard-coded expectation.
+Expected: analyzer reports no issues, all tests pass, and diff check is clean. On the current branch the repository-wide formatter check reports 49 pre-existing files that differ under the installed Dart formatter; it must not be used as evidence against this UX change. Run the targeted formatter check below and require exit 0 for every file touched by this plan. If the number of tests changes, record the actual count rather than a hard-coded expectation.
 
-- [ ] **Step 2: Run targeted accessibility checks**
+```bash
+dart format --output=none --set-exit-if-changed \
+  lib/core/theme/app_motion.dart lib/shared/widgets/branch_fade_through.dart \
+  lib/shared/widgets/app_bottom_nav.dart lib/shared/widgets/staggered_fade_in.dart \
+  lib/features/timeline/widgets/heatmap_grid.dart \
+  lib/features/insights/widgets/insights_locked_view.dart \
+  lib/features/today/widgets/completion_animation.dart \
+  lib/features/timeline/timeline_screen.dart \
+  test/core/theme/app_motion_test.dart test/shared/widgets/branch_fade_through_test.dart \
+  test/shared/widgets/staggered_fade_in_test.dart \
+  test/features/today/widgets/completion_animation_test.dart \
+  test/features/timeline/timeline_screen_test.dart
+```
+
+- [x] **Step 2: Run targeted accessibility checks**
 
 Run the existing accessibility suites and the new completion/branch tests:
 
@@ -607,19 +621,19 @@ flutter test test/app/accessibility_guideline_test.dart test/app/text_scaling_te
 
 Expected: Android/iOS tap-target and labeled-target guidelines pass; 200% text scaling test passes; reduce-motion and close semantics tests pass.
 
-- [ ] **Step 3: Perform a connected-device profile check**
+- [x] **Step 3: Perform a connected-device profile check**
 
 On one Android and one iOS device, execute this exact flow in profile mode: cold launch → Today first input → save → tap close before 600ms → Timeline → Insights → Settings → return to Today. Repeat with system reduce-motion enabled and 200% text size. Confirm no frame hitch is visible during branch switch, the close button is reachable, and no animation blocks the next input. Record device/OS/mode and qualitative result; do not claim a fixed 60fps from host widget tests.
 
-- [ ] **Step 4: Review safety and release gates**
+- [x] **Step 4: Review safety and release gates**
 
 Confirm that completion/notification copy contains no journal answer or clinical efficacy promise. Keep iOS signing/provisioning, CocoaPods sync, real-device notification/widget reboot-timezone, Face ID, and battery tests as separate release gates; this plan does not mark those blocked operational items as solved.
 
-- [ ] **Step 5: Write the verification review**
+- [x] **Step 5: Write the verification review**
 
 Create `docs/superpowers/reviews/2026-08-28-frictionless-calm-ux-evolution.md` with sections `변경 요약`, `자동 검증`, `접근성 검증`, `실기기 검증`, `잔여 릴리스 게이트`. Include command outputs and explicit pass/fail status, with unknown device checks marked `미실행` rather than inferred as passed.
 
-- [ ] **Step 6: Commit the verification record**
+- [x] **Step 6: Commit the verification record**
 
 ```bash
 git add docs/superpowers/reviews/2026-08-28-frictionless-calm-ux-evolution.md
