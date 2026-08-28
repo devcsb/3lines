@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_motion.dart';
+import '../../core/time/app_clock.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../shared/widgets/staggered_fade_in.dart';
 import 'today_controller.dart';
@@ -52,6 +53,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
   Widget build(BuildContext context) {
     final asyncState = ref.watch(todayControllerProvider);
     final theme = Theme.of(context);
+    final now = ref.read(appClockProvider).now();
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -99,7 +101,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                         const SizedBox(height: 8),
                         // Date
                         Text(
-                          du.formatKoreanDate(DateTime.now()),
+                          du.formatKoreanDate(now),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurface.withValues(
                               alpha: 0.45,
@@ -192,6 +194,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                   const SizedBox(height: 12),
                                   _MiniSparkline(
                                     recentEmotions: state.recentEmotions,
+                                    now: now,
                                   ),
                                 ],
                               ],
@@ -462,16 +465,16 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
 }
 
 class _MiniSparkline extends StatelessWidget {
-  const _MiniSparkline({required this.recentEmotions});
+  const _MiniSparkline({required this.recentEmotions, required this.now});
 
   final List<({DateTime date, int emotion})> recentEmotions;
+  final DateTime now;
 
   static const _dayLabels = ['월', '화', '수', '목', '금', '토', '일'];
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final now = DateTime.now();
     final days = List.generate(7, (i) => now.subtract(Duration(days: 6 - i)));
 
     return Container(

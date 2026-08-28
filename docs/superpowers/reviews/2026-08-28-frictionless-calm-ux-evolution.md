@@ -18,16 +18,17 @@
 7. EmotionTrendChart·StatCard·StreakBadge·KeywordCloud의 진입/카운트업/stagger를 360ms·600ms 이내로 제한하고 reduced-motion에서 최종 상태로 스냅했다.
 8. 히트맵 셀 강조, 인사이트 해금 배너·기간 칩, Today 완료 배지·미니 스파크라인도 동일한 duration 계약을 적용했다.
 9. 온보딩 점·버튼·페이지 parallax·이동, 액센트 테마 선택, 빈 타임라인 진입, 온보딩 라우트에서 reduced-motion을 존중한다. 스트릭 glow는 무한 반복 대신 진입 1회(600ms) 펄스로 제한해 화면 체류 중 ticker를 제거했다.
+10. Today 헤더 날짜와 최근 7일 미니 그래프가 컨트롤러·저장 로직과 동일한 `AppClock` 기준을 사용하도록 정리했다.
 
 ## 자동 검증
 
 | 검사 | 결과 | 증거 |
 |---|---|---|
-| `flutter test` 전체 | PASS — 418개 | `/tmp/3lines-flutter-test-final-reduced-motion-v2.log` 마지막 줄 `+418: All tests passed!` |
+| `flutter test` 전체 | PASS — 419개 | `/tmp/3lines-flutter-test-final-reduced-motion-v3.log` 마지막 줄 `+419: All tests passed!` |
 | `dart analyze` | PASS | `No issues found!` |
 | 신규·핵심 focused tests | PASS | 모션 토큰, stagger, branch transition, completion, timeline 테스트 실행 결과 |
 | 입력 모션 focused tests | PASS — 26개 | `app_motion`, `emotion_picker`, `prompt_card`, `animated_save_button` 실행 결과 |
-| 인사이트·잔여 화면·배터리 focused tests | PASS — 45개 | 인사이트 시각화 21개, 히트맵·인사이트·Today 상태 12개, 온보딩·설정·타임라인·스트릭 pulse 12개 |
+| 인사이트·잔여 화면·배터리 focused tests | PASS — 46개 | 인사이트 시각화 21개, 히트맵·인사이트·Today 상태 13개, 온보딩·설정·타임라인·스트릭 pulse 12개 |
 | 접근성·reduce-motion focused | PASS — 11개 | `accessibility_guideline_test.dart`, `text_scaling_test.dart`, branch/completion semantics·reduce-motion 실행 결과 |
 | 기존 routing/integration 회귀 | PASS — 5개 | `routing_flash_test.dart`, `integration/app_flow_test.dart`, branch test 실행 결과 |
 | 변경 파일 formatter | PASS | 이번 루프의 모든 변경 Dart 파일 대상 `dart format --output=none --set-exit-if-changed` exit 0 |
@@ -43,6 +44,7 @@
 - 입력 피드백: EmotionPicker·PromptCard·저장 진행 링의 duration 즉시 상태 테스트 PASS.
 - 인사이트·Today·Timeline 시각화와 온보딩·설정 전환이 reduced-motion에서 0ms/최종 상태가 되는 테스트 PASS.
 - 스트릭 glow는 정상 모드에서도 1회 펄스 후 ticker가 멈추고, reduced-motion에서는 시작하지 않는 테스트 PASS.
+- 고정 시계에서 Today 헤더와 미니 그래프의 기준일이 일관되는 테스트 PASS.
 - 실제 VoiceOver/TalkBack 탐색, 실제 200% 화면 레이아웃, 실제 색상 대비 측정: **미실행**.
 
 ## 회귀 위험 검토

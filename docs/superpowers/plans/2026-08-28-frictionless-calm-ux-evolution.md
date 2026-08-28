@@ -34,6 +34,7 @@
 - Modify: `lib/features/settings/widgets/appearance_section.dart` — 액센트 테마 선택 피드백을 공통 토큰으로 통일한다.
 - Modify: `lib/app/router.dart` — 온보딩 라우트 전환에서 reduced-motion을 존중한다.
 - Modify: `lib/features/today/widgets/streak_pulse_badge.dart` — 상시 반복 펄스를 1회 finite 강조로 바꿔 화면 체류 중 ticker를 제거한다.
+- Modify: `lib/features/today/today_screen.dart` — 화면 날짜·미니 그래프의 기준을 `AppClock`으로 통일한다.
 - Create: `test/core/theme/app_motion_test.dart` — token 불변값 테스트.
 - Create: `test/shared/widgets/branch_fade_through_test.dart` — transition/reduce-motion/dispose 테스트.
 - Modify: `test/shared/widgets/staggered_fade_in_test.dart` — entrance token과 bounded delay 기대값.
@@ -801,10 +802,36 @@ git commit -m "feat: finish reduced motion coverage"
 
 전체 Flutter 테스트·접근성 검증 및 formatter/diff 검사를 Task 5 최종 실행에 포함하고, 실제 테스트 수와 미실행 실기기 게이트를 review 문서에 기록한다.
 
+### Task 10: Today 날짜 기준 단일화
+
+**Files:**
+- Modify: `lib/features/today/today_screen.dart` — 헤더 날짜와 최근 7일 미니 그래프가 컨트롤러·저장 로직과 동일한 `AppClock`을 사용하도록 한다.
+- Test: `test/features/today/today_screen_test.dart` — 고정 시계에서 표시 날짜가 어긋나지 않는지 검증한다.
+
+- [x] **Step 1: Write the failing clock-consistency test**
+
+`appClockProvider`를 고정 날짜로 override하고 Today 화면의 헤더가 실제 시스템 시각이 아닌 앱 시계 날짜를 표시해야 한다는 테스트를 추가했다.
+
+- [x] **Step 2: Run the focused test and verify it fails**
+
+기존 `DateTime.now()` 경로에서 고정 날짜 텍스트를 찾지 못하는 RED를 확인했다.
+
+- [x] **Step 3: Use the shared clock for all Today date-derived visuals**
+
+화면 build에서 `AppClock.now()`를 한 번 읽어 헤더와 `_MiniSparkline`에 전달하고, 그래프의 7일 범위도 같은 기준 인스턴스를 사용한다. 저장·알림·DB 계약은 변경하지 않는다.
+
+- [x] **Step 4: Run focused tests and static analysis**
+
+Today 화면 focused tests 2개와 변경 파일 `dart analyze`를 통과했다.
+
+- [x] **Step 5: Include in complete regression and release review**
+
+전체 Flutter 테스트와 diff/formatter 검증 결과를 review 문서에 최신 수로 기록한다.
+
 ## Plan Self-Review
 
-- **Spec coverage:** MOT-001/002/003 map to Tasks 1–2 and 6–9; SAVE-001 maps to Task 3; A11Y-001 maps to Tasks 2–3 and 5–9; REC-001 maps to Task 4; DATE-001 remains covered by the existing local-calendar implementation and its existing date tests. P1 notification controls, iOS signing, and physical notification/DST gates are explicitly not silently claimed by this plan.
+- **Spec coverage:** MOT-001/002/003 map to Tasks 1–2 and 6–9; SAVE-001 maps to Task 3; A11Y-001 maps to Tasks 2–3 and 5–10; REC-001 maps to Task 4; DATE-001 maps to the existing local-calendar implementation plus Task 10's shared-clock display test. P1 notification controls, iOS signing, and physical notification/DST gates are explicitly not silently claimed by this plan.
 - **Placeholder scan:** 완료되지 않은 항목을 숨기는 표시어나 추후로 미루는 구현 지시가 없고, 오류 처리·테스트 명령이 각 단계에 구체적으로 적혀 있다.
 - **Type consistency:** `AppMotion` names are used consistently; `BranchFadeThrough.transitionKey` is `Object`; `ScaffoldWithNavBar` passes `navigationShell.currentIndex`; `_dismiss()` is the sole completion callback path; the empty timeline test uses the existing `TimelineState` defaults.
-- **Scope check:** Tasks 1–4 and 6–9 are independently testable and share only the motion helper. Task 5 is verification/documentation; Tasks 6–9 change only finite visual feedback and do not alter data, notification, or persistence contracts.
+- **Scope check:** Tasks 1–4 and 6–10 are independently testable and share only the motion helper/clock abstractions. Task 5 is verification/documentation; Tasks 6–9 change only finite visual feedback and Task 10 only aligns display dates with the existing clock, without altering data, notification, or persistence contracts.
 - **Test observability:** Task 4는 `/` 라우트에 `today destination` 텍스트를 렌더링하는 테스트 전용 목적지를 두고, CTA 탭 후 해당 텍스트를 검사해 실제 경로 이동을 증명한다. 버튼 탭 성공만으로 통과시키지 않는다.

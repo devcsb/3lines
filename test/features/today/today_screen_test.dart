@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:three_lines/core/time/app_clock.dart';
+import 'package:three_lines/core/utils/date_utils.dart' as du;
 import 'package:three_lines/features/today/today_controller.dart';
 import 'package:three_lines/features/today/today_screen.dart';
 import 'package:three_lines/features/today/today_state.dart';
@@ -18,6 +20,15 @@ final class _CompletedTodayController extends TodayController {
       recentEmotions: [(date: DateTime(2026, 8, 29), emotion: 4)],
     );
   }
+}
+
+final class _FixedTodayClock extends AppClock {
+  const _FixedTodayClock(this.value);
+
+  final DateTime value;
+
+  @override
+  DateTime now() => value;
 }
 
 void main() {
@@ -43,5 +54,22 @@ void main() {
       find.byKey(const ValueKey<String>('read-mode-badge')),
     );
     expect(badge.duration, Duration.zero);
+  });
+
+  testWidgets('표시 날짜는 기록 조회와 같은 AppClock 기준을 사용한다', (tester) async {
+    final fixedNow = DateTime(2024, 1, 2, 9);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appClockProvider.overrideWithValue(_FixedTodayClock(fixedNow)),
+          todayControllerProvider.overrideWith(_CompletedTodayController.new),
+        ],
+        child: const MaterialApp(home: TodayScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text(du.formatKoreanDate(fixedNow)), findsOneWidget);
   });
 }
