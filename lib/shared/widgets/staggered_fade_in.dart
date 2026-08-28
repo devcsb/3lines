@@ -38,12 +38,10 @@ class _StaggeredFadeInState extends State<StaggeredFadeIn>
     _opacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _controller, curve: AppMotion.standardCurve),
     );
-    _offset = Tween<Offset>(
-      begin: const Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _controller, curve: AppMotion.standardCurve),
-    );
+    _offset = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: _controller, curve: AppMotion.standardCurve),
+        );
 
     // 지연은 index 에 비례하되, 검색 결과처럼 항목이 많을 때 뒤쪽이 오래
     // 안 보이는 것을 막으려 상한을 둔다(최대 480ms). Timer 는 dispose 시 취소해
@@ -75,10 +73,7 @@ class _StaggeredFadeInState extends State<StaggeredFadeIn>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _opacity,
-      child: SlideTransition(
-        position: _offset,
-        child: widget.child,
-      ),
+      child: SlideTransition(position: _offset, child: widget.child),
     );
   }
 }

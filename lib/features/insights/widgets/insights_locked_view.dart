@@ -45,8 +45,7 @@ class _InsightsLockedViewState extends State<InsightsLockedView>
         curve: const Interval(0, 0.5, curve: AppMotion.standardCurve),
       ),
     );
-    final progress =
-        (widget.totalCount / widget.requiredCount).clamp(0.0, 1.0);
+    final progress = (widget.totalCount / widget.requiredCount).clamp(0.0, 1.0);
     _progressAnimation = Tween<double>(begin: 0, end: progress).animate(
       CurvedAnimation(
         parent: _controller,
@@ -80,10 +79,7 @@ class _InsightsLockedViewState extends State<InsightsLockedView>
         builder: (context, child) {
           return Opacity(
             opacity: _fadeAnimation.value.clamp(0.0, 1.0),
-            child: Transform.scale(
-              scale: _scaleAnimation.value,
-              child: child,
-            ),
+            child: Transform.scale(scale: _scaleAnimation.value, child: child),
           );
         },
         child: Padding(
@@ -112,8 +108,7 @@ class _InsightsLockedViewState extends State<InsightsLockedView>
                     child: Icon(
                       Icons.auto_graph_rounded,
                       size: 36,
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                     ),
                   ),
                 ),
@@ -123,8 +118,7 @@ class _InsightsLockedViewState extends State<InsightsLockedView>
                 '${widget.requiredCount}일 이상 기록하면\n인사이트가 열려요',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   height: 1.5,
                 ),
               ),
@@ -134,9 +128,12 @@ class _InsightsLockedViewState extends State<InsightsLockedView>
                 animation: _progressAnimation,
                 builder: (context, _) {
                   final animatedCount =
-                      (widget.totalCount * _progressAnimation.value /
-                              (widget.totalCount / widget.requiredCount)
-                                  .clamp(0.01, 1.0))
+                      (widget.totalCount *
+                              _progressAnimation.value /
+                              (widget.totalCount / widget.requiredCount).clamp(
+                                0.01,
+                                1.0,
+                              ))
                           .clamp(0, widget.totalCount)
                           .round();
                   return Text(
