@@ -98,4 +98,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('today destination'), findsOneWidget);
   });
+
+  testWidgets('reduce-motion에서는 빈 타임라인 진입이 즉시 표시된다', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          timelineControllerProvider.overrideWith(
+            () => _EmptyTimelineController(),
+          ),
+        ],
+        child: const MediaQuery(
+          data: MediaQueryData(disableAnimations: true),
+          child: MaterialApp(home: TimelineScreen()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final entrance = tester.widget<TweenAnimationBuilder<double>>(
+      find.byType(TweenAnimationBuilder<double>),
+    );
+    expect(entrance.duration, Duration.zero);
+  });
 }

@@ -80,4 +80,54 @@ void main() {
 
     semantics.dispose();
   });
+
+  testWidgets('reduce-motion에서는 기간 칩 전환이 즉시 끝난다', (tester) async {
+    final controller = _GateInsightsController(Completer<void>());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [insightsControllerProvider.overrideWith(() => controller)],
+        child: const MediaQuery(
+          data: MediaQueryData(disableAnimations: true),
+          child: MaterialApp(home: InsightsScreen()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final target = find.byWidgetPredicate(
+      (widget) =>
+          widget is Semantics && widget.properties.label == '인사이트 기간: 1주, 선택됨',
+    );
+    final chip = tester.widget<AnimatedContainer>(
+      find.descendant(of: target, matching: find.byType(AnimatedContainer)),
+    );
+    expect(chip.duration, Duration.zero);
+  });
+
+  testWidgets('reduce-motion에서는 인사이트 해금 배너가 최종 위치에 표시된다', (tester) async {
+    final controller = _GateInsightsController(Completer<void>());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [insightsControllerProvider.overrideWith(() => controller)],
+        child: const MediaQuery(
+          data: MediaQueryData(disableAnimations: true),
+          child: MaterialApp(home: InsightsScreen()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('인사이트가 열렸어요!'), findsOneWidget);
+    final bannerTransform = tester
+        .widgetList<Transform>(
+          find.ancestor(
+            of: find.text('인사이트가 열렸어요!'),
+            matching: find.byType(Transform),
+          ),
+        )
+        .first;
+    expect(bannerTransform.transform.getTranslation().y, 0.0);
+  });
 }

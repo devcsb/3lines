@@ -4,7 +4,7 @@
 
 - 버전: 1.0
 - 작성일: 2026-08-28
-- 상태: 구현 전 설계안
+- 상태: 구현·검증 기준 (2026-08-29 업데이트)
 - 대상 릴리스: 3Lines UX 고도화 루프 (스토어 버전은 별도 릴리스 게이트에서 결정)
 - 기준 브랜치: `codex/runtime-correctness-energy`
 
@@ -121,6 +121,7 @@
 - GlobalKey 중복을 피하기 위해 이전·새 shell을 동시에 트리에 두지 않고, 브랜치 교체 후 opacity/offset만 애니메이션한다.
 - 온보딩·상세 BottomSheet·탭 전환은 동일한 easing 방향을 사용한다.
 - 화면 이탈·dispose 시 모든 controller/timer를 정리한다.
+- 스트릭 배지는 진입 시 1회만 강조하고, 화면 체류 중 무한 glow ticker를 실행하지 않는다.
 
 ### 7.4 Insights: 회고의 한 화면 연결
 
@@ -208,7 +209,7 @@ KPI는 건강 상태의 개선이나 임상 효과를 의미하지 않는다. �
 
 ## 12. 단계별 구현 순서
 
-1. Motion token과 reduce-motion helper를 추가하고 기존 `StaggeredFadeIn`, 핵심 입력 피드백, 완료 애니메이션, 차트 갱신에 적용한다.
+1. Motion token과 reduce-motion helper를 추가하고 기존 `StaggeredFadeIn`, 핵심 입력 피드백, 완료 애니메이션, 차트·배지·온보딩·빈 상태 갱신에 적용한다.
 2. `ScaffoldWithNavBar`를 상태 보존형 fade-through 컨테이너로 교체하고 GlobalKey·dispose·접근성 회귀 테스트를 추가한다.
 3. `CompletionAnimation`에 명시적 Semantics 닫기 동작과 중립 완료 문구를 추가하고, 자동 종료·탭 종료·reduce motion을 테스트한다.
 4. Today/Insights 회복 CTA와 빈 상태 문구를 정리한다. 데이터·알림 계약을 변경하지 않는다.
@@ -220,3 +221,4 @@ KPI는 건강 상태의 개선이나 임상 효과를 의미하지 않는다. �
 - 이번 PRD 구현만으로 정신건강 치료·예방 효과를 주장하지 않는다.
 - 위기 대응·자살 위험 감지 기능을 추가하려면 임상 자문, 지역별 연락처 검증, 안전성 평가, 개인정보 영향평가를 별도 수행한다.
 - 알림 문구·스크린샷·스토어 설명이 실제 중립 개인정보 정책과 일치하는지 확인한다.
+- 자동 검증 결과는 [`Frictionless Calm UX 고도화 검증 보고서`](../reviews/2026-08-28-frictionless-calm-ux-evolution.md)에 기록하며, 실기기 배터리·프레임·알림·위젯·서명 게이트는 별도 결과 없이는 통과로 표시하지 않는다.

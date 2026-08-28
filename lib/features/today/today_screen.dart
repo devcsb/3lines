@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../shared/widgets/staggered_fade_in.dart';
 import 'today_controller.dart';
@@ -137,8 +138,11 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                           TweenAnimationBuilder<double>(
                             key: const ValueKey('read-mode-badge'),
                             tween: Tween(begin: 0.0, end: 1.0),
-                            duration: const Duration(milliseconds: 450),
-                            curve: Curves.easeOutCubic,
+                            duration: AppMotion.durationFor(
+                              context,
+                              AppMotion.entrance,
+                            ),
+                            curve: AppMotion.standardCurve,
                             builder: (context, value, child) => Opacity(
                               opacity: value.clamp(0.0, 1.0),
                               child: Transform.translate(
@@ -522,7 +526,11 @@ class _MiniSparkline extends StatelessWidget {
                 child: Column(
                   children: [
                     AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
+                      duration: AppMotion.durationFor(
+                        context,
+                        AppMotion.standard,
+                      ),
+                      curve: AppMotion.standardCurve,
                       width: emotion != null ? 28 : 22,
                       height: emotion != null ? 28 : 22,
                       decoration: BoxDecoration(
@@ -558,8 +566,9 @@ class _MiniSparkline extends StatelessWidget {
                         color: theme.colorScheme.onSurface.withValues(
                           alpha: isToday ? 0.7 : 0.35,
                         ),
-                        fontWeight:
-                            isToday ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: isToday
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ],

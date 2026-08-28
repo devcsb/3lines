@@ -3,7 +3,7 @@
 ## 검증 범위
 
 - 브랜치: `codex/runtime-correctness-energy`
-- 대상: 모션 토큰·reduce-motion, 하단 탭 전환, 저장 완료 피드백, 빈 타임라인 회복 CTA
+- 대상: 모션 토큰·reduce-motion, 하단 탭 전환, 저장 완료 피드백, 빈 타임라인 회복 CTA, 인사이트 시각화, 온보딩·설정 전환, 배터리 상시 ticker
 - 제외: iOS 서명·프로비저닝, CocoaPods 설치 상태, 실기기 알림/위젯, 실제 배터리·프레임 측정
 - 설계 기준: `docs/superpowers/specs/2026-08-28-frictionless-calm-ux-evolution-design.md`
 
@@ -15,18 +15,22 @@
 4. 완료 문구에서 글쓰기 효능·행복 보장·변화 보장으로 읽힐 수 있는 표현을 제거하고 감정 기록을 인정하는 중립 문구로 바꿨다.
 5. 기록이 없는 타임라인에 `오늘 기록하기` 한 번의 회복 CTA를 추가했다. 데이터 모델·알림·위젯 계약은 변경하지 않았다.
 6. `AppMotion.durationFor`를 추가해 EmotionPicker·PromptCard·저장 진행 링의 유한 피드백이 reduce-motion에서 즉시 끝나도록 통일했다.
+7. EmotionTrendChart·StatCard·StreakBadge·KeywordCloud의 진입/카운트업/stagger를 360ms·600ms 이내로 제한하고 reduced-motion에서 최종 상태로 스냅했다.
+8. 히트맵 셀 강조, 인사이트 해금 배너·기간 칩, Today 완료 배지·미니 스파크라인도 동일한 duration 계약을 적용했다.
+9. 온보딩 점·버튼·페이지 parallax·이동, 액센트 테마 선택, 빈 타임라인 진입, 온보딩 라우트에서 reduced-motion을 존중한다. 스트릭 glow는 무한 반복 대신 진입 1회(600ms) 펄스로 제한해 화면 체류 중 ticker를 제거했다.
 
 ## 자동 검증
 
 | 검사 | 결과 | 증거 |
 |---|---|---|
-| `flutter test` 전체 | PASS — 406개 | `/tmp/3lines-flutter-test-followup.log` 마지막 줄 `+406: All tests passed!` |
+| `flutter test` 전체 | PASS — 418개 | `/tmp/3lines-flutter-test-final-reduced-motion-v2.log` 마지막 줄 `+418: All tests passed!` |
 | `dart analyze` | PASS | `No issues found!` |
 | 신규·핵심 focused tests | PASS | 모션 토큰, stagger, branch transition, completion, timeline 테스트 실행 결과 |
 | 입력 모션 focused tests | PASS — 26개 | `app_motion`, `emotion_picker`, `prompt_card`, `animated_save_button` 실행 결과 |
+| 인사이트·잔여 화면·배터리 focused tests | PASS — 45개 | 인사이트 시각화 21개, 히트맵·인사이트·Today 상태 12개, 온보딩·설정·타임라인·스트릭 pulse 12개 |
 | 접근성·reduce-motion focused | PASS — 11개 | `accessibility_guideline_test.dart`, `text_scaling_test.dart`, branch/completion semantics·reduce-motion 실행 결과 |
 | 기존 routing/integration 회귀 | PASS — 5개 | `routing_flash_test.dart`, `integration/app_flow_test.dart`, branch test 실행 결과 |
-| 변경 파일 formatter | PASS | 13개 대상 `dart format --output=none --set-exit-if-changed` exit 0 |
+| 변경 파일 formatter | PASS | 이번 루프의 모든 변경 Dart 파일 대상 `dart format --output=none --set-exit-if-changed` exit 0 |
 | 저장소 전체 formatter | 기준 차이 | 설치된 formatter가 기존 49개 파일을 변경 대상으로 보고했으나 파일은 수정하지 않았다. 이번 변경 파일은 모두 별도 formatter 검사 PASS. |
 | `git diff --check` | PASS | feature 브랜치와 `main` merge-base 기준 공백 오류 없음 |
 
@@ -37,6 +41,8 @@
 - `CompletionAnimation`: `기록 저장 완료` route semantics와 `완료 화면 닫기` button semantics PASS.
 - reduce-motion: StaggeredFadeIn·BranchFadeThrough·완료 오버레이의 즉시 최종 상태 테스트 PASS.
 - 입력 피드백: EmotionPicker·PromptCard·저장 진행 링의 duration 즉시 상태 테스트 PASS.
+- 인사이트·Today·Timeline 시각화와 온보딩·설정 전환이 reduced-motion에서 0ms/최종 상태가 되는 테스트 PASS.
+- 스트릭 glow는 정상 모드에서도 1회 펄스 후 ticker가 멈추고, reduced-motion에서는 시작하지 않는 테스트 PASS.
 - 실제 VoiceOver/TalkBack 탐색, 실제 200% 화면 레이아웃, 실제 색상 대비 측정: **미실행**.
 
 ## 회귀 위험 검토
@@ -46,6 +52,7 @@
 - 자동 종료 타이머와 버튼이 같은 idempotent dismiss 경로를 사용해 중복 저장/중복 라우팅 callback을 막는다.
 - 알림 본문은 저널 답변을 참조하지 않으며, 이번 변경은 알림 예약·위젯 동기화 로직을 건드리지 않는다.
 - 앱 상태가 이미 완료된 Today 화면을 다시 열 때의 기존 read/edit 상태와 integration test는 유지됐다.
+- 스트릭 배지의 무한 반복을 제거했으며, `RepaintBoundary`는 유지해 유한 강조 중에도 repaint 범위를 제한한다.
 
 ## 실기기 검증
 
@@ -64,5 +71,5 @@
 
 - 사용성 P0 구현과 자동 회귀 검증: **통과**.
 - 저장 완료의 접근성·중립 문구·빠른 닫기, 빈 상태 회복, 공통 모션 토큰: **통과**.
-- 배터리 효율: 상시 polling·무한 animation을 추가하지 않았고, 실제 배터리 측정은 **미실행**.
+- 배터리 효율: 상시 polling을 추가하지 않았고 스트릭 무한 animation을 1회 펄스로 제거했다. 실제 배터리 측정은 **미실행**.
 - 운영 배포: 기존 iOS signed distribution 설정 부재와 CI CocoaPods/실기기 게이트가 남아 있으므로 이 보고서만으로 운영 배포 승인하지 않는다.

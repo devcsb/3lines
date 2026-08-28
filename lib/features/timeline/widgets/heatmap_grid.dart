@@ -267,6 +267,9 @@ class _HeatmapCellState extends State<_HeatmapCell> {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = AppMotion.reduceMotion(context);
+    final highlightDuration = AppMotion.durationFor(context, AppMotion.micro);
+
     return Tooltip(
       message: widget.tooltipMsg,
       waitDuration: const Duration(milliseconds: 300),
@@ -274,16 +277,22 @@ class _HeatmapCellState extends State<_HeatmapCell> {
         behavior: HitTestBehavior.opaque,
         onTapDown: widget.onTap != null
             ? (_) {
-                if (mounted) setState(() => _highlighted = true);
+                if (!reduceMotion && mounted) {
+                  setState(() => _highlighted = true);
+                }
               }
             : null,
         onTapUp: widget.onTap != null
             ? (_) {
                 HapticService.light();
                 widget.onTap!();
-                Future.delayed(const Duration(milliseconds: 250), () {
+                if (reduceMotion) {
                   if (mounted) setState(() => _highlighted = false);
-                });
+                } else {
+                  Future.delayed(highlightDuration, () {
+                    if (mounted) setState(() => _highlighted = false);
+                  });
+                }
               }
             : null,
         onTapCancel: () {
@@ -309,8 +318,8 @@ class _HeatmapCellState extends State<_HeatmapCell> {
             child: Center(
               child: AnimatedScale(
                 scale: _highlighted ? 1.4 : 1.0,
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOut,
+                duration: highlightDuration,
+                curve: AppMotion.standardCurve,
                 child: Container(
                   width: widget.cellSize,
                   height: widget.cellSize,

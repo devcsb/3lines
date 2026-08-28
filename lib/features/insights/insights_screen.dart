@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/services/haptic_service.dart';
 import '../../core/services/pdf_report_service.dart';
+import '../../core/theme/app_motion.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../shared/widgets/staggered_fade_in.dart';
 import 'insights_controller.dart';
@@ -274,24 +275,33 @@ class _CongratsBannerState extends State<_CongratsBanner>
   late AnimationController _controller;
   late Animation<double> _slideAnimation;
   late Animation<double> _fadeAnimation;
+  var _reduceMotion = false;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: AppMotion.celebration,
       vsync: this,
     );
-    _slideAnimation = Tween<double>(
-      begin: -20,
-      end: 0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-    _fadeAnimation = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _slideAnimation = Tween<double>(begin: -20, end: 0).animate(
+      CurvedAnimation(parent: _controller, curve: AppMotion.standardCurve),
+    );
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: AppMotion.standardCurve),
+    );
     _controller.forward();
     HapticService.medium();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = AppMotion.reduceMotion(context);
+    if (_reduceMotion) {
+      _controller.stop();
+      _controller.value = 1.0;
+    }
   }
 
   @override
@@ -404,6 +414,7 @@ class _PeriodChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ts = Theme.of(context).textTheme;
+    final duration = AppMotion.durationFor(context, AppMotion.micro);
 
     return Semantics(
       container: true,
@@ -421,7 +432,8 @@ class _PeriodChip extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 48),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+              duration: duration,
+              curve: AppMotion.standardCurve,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: selected ? cs.primary : Colors.transparent,

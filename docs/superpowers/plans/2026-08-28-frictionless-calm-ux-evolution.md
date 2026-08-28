@@ -30,6 +30,10 @@
 - Modify: `lib/shared/widgets/app_bottom_nav.dart` — navigation shell을 위 래퍼로 감싼다.
 - Modify: `lib/features/today/widgets/completion_animation.dart` — 모션 상한, 중립 문구, 닫기 semantics, 중복 dismiss 방지.
 - Modify: `lib/features/timeline/timeline_screen.dart` — 빈 타임라인의 오늘 기록 CTA.
+- Modify: `lib/features/onboarding/onboarding_screen.dart` — 온보딩 모션과 reduced-motion 전환을 공통 토큰으로 통일한다.
+- Modify: `lib/features/settings/widgets/appearance_section.dart` — 액센트 테마 선택 피드백을 공통 토큰으로 통일한다.
+- Modify: `lib/app/router.dart` — 온보딩 라우트 전환에서 reduced-motion을 존중한다.
+- Modify: `lib/features/today/widgets/streak_pulse_badge.dart` — 상시 반복 펄스를 1회 finite 강조로 바꿔 화면 체류 중 ticker를 제거한다.
 - Create: `test/core/theme/app_motion_test.dart` — token 불변값 테스트.
 - Create: `test/shared/widgets/branch_fade_through_test.dart` — transition/reduce-motion/dispose 테스트.
 - Modify: `test/shared/widgets/staggered_fade_in_test.dart` — entrance token과 bounded delay 기대값.
@@ -694,10 +698,113 @@ git add lib/core/theme/app_motion.dart lib/features/today/widgets/emotion_picker
 git commit -m "feat: respect reduced motion in input feedback"
 ```
 
+### Task 7: 인사이트 시각화 모션의 상한·reduce-motion 정합성
+
+**Files:**
+- Modify: `lib/features/insights/widgets/emotion_trend_chart.dart` — 차트 진입 애니메이션을 360ms 토큰으로 제한하고 reduce-motion에서 즉시 표시한다.
+- Modify: `lib/features/insights/widgets/stat_card.dart` — 카운트업/진입 애니메이션을 토큰화하고 reduce-motion에서 최종 값을 바로 표시한다.
+- Modify: `lib/features/timeline/widgets/streak_badge.dart` — 스트릭 카운트업을 토큰화하고 reduce-motion에서 최종 값을 바로 표시한다.
+- Modify: `lib/features/insights/widgets/keyword_cloud.dart` — 키워드 stagger를 600ms 이내로 제한하고 reduce-motion에서 모든 pill을 즉시 표시한다.
+- Test: 각 위젯의 기존 테스트에 reduce-motion 최종 상태 회귀를 추가한다.
+
+- [x] **Step 1: Write failing visualization tests**
+
+Pump each visualization under `MediaQuery(disableAnimations: true)` and assert that the chart opacity, numeric values, streak values, and keyword pills are already at their final visible state after one frame.
+
+- [x] **Step 2: Run the focused tests and verify they fail**
+
+Run the four existing widget test files. Expected: at least one finite visualization remains at its initial animation state because the current implementation does not read `disableAnimations`.
+
+- [x] **Step 3: Apply shared motion tokens and snap behavior**
+
+Use `AppMotion.entrance`, `AppMotion.standardCurve`, and `AppMotion.reduceMotion(context)` in the four widgets. Set controller values to `1.0` for reduced motion and guard `didUpdateWidget` restarts so data refreshes remain immediate. Preserve chart data, labels, and count semantics.
+
+- [x] **Step 4: Run focused tests and static analysis**
+
+Run the four focused tests and `dart analyze` for the changed widgets. Expected: all tests pass with no issues.
+
+- [x] **Step 5: Run the complete regression suite and update evidence**
+
+Run `flutter test`, the accessibility/text-scaling suite, targeted formatter, and `git diff --check`; restore Flutter-generated metadata and record the final count in the review report.
+
+- [x] **Step 6: Commit the visualization follow-up**
+
+```bash
+git add lib/features/insights/widgets/emotion_trend_chart.dart lib/features/insights/widgets/stat_card.dart lib/features/timeline/widgets/streak_badge.dart lib/features/insights/widgets/keyword_cloud.dart test/features/insights/widgets/emotion_trend_chart_test.dart test/features/insights/widgets/stat_card_test.dart test/features/timeline/widgets/streak_badge_test.dart test/features/insights/widgets/keyword_cloud_test.dart docs/superpowers/specs/2026-08-28-frictionless-calm-ux-evolution-design.md docs/superpowers/plans/2026-08-28-frictionless-calm-ux-evolution.md docs/superpowers/reviews/2026-08-28-frictionless-calm-ux-evolution.md
+git commit -m "feat: align insight motion with accessibility settings"
+```
+
+### Task 8: 잔여 화면 상태·히트 피드백의 모션 계약
+
+**Files:**
+- Modify: `lib/features/timeline/widgets/heatmap_grid.dart` — 기록 셀 선택 강조를 reduce-motion에서 즉시 종료하고 공통 micro duration을 사용한다.
+- Modify: `lib/features/insights/insights_screen.dart` — 인사이트 해금 배너와 기간 칩의 finite transition을 토큰화하고 reduce-motion에서 최종 상태로 스냅한다.
+- Modify: `lib/features/today/today_screen.dart` — 완료 후 sparkline/상태 배지 전환을 토큰화한다.
+- Test: `test/features/timeline/widgets/heatmap_grid_test.dart`, `test/features/insights/insights_screen_test.dart`.
+- Create: `test/features/today/today_screen_test.dart` — 완료 상태 배지의 reduce-motion 최종 표시를 검증한다.
+
+- [x] **Step 1: Write failing residual-motion tests**
+
+Under `MediaQuery(disableAnimations: true)`, assert the heatmap highlight, period chip, unlock banner, and Today completed-state badge expose zero-duration or final-state behavior after one frame.
+
+- [x] **Step 2: Run the focused tests and verify they fail**
+
+Run the three focused widget test files. Expected: current hard-coded transitions retain non-zero durations or an intermediate controller value.
+
+- [x] **Step 3: Apply tokens and immediate-state behavior**
+
+Use `AppMotion.durationFor`, `AppMotion.standardCurve`, and controller snapping where needed. Keep haptic feedback, navigation, data queries, and existing semantics unchanged; do not add polling or continuous animation.
+
+- [x] **Step 4: Run focused tests and static analysis**
+
+Run the three focused tests and `dart analyze` for changed files. Expected: all tests pass with no issues.
+
+- [x] **Step 5: Run the complete regression suite and update evidence**
+
+Run `flutter test`, accessibility/text-scaling suites, targeted formatter, and `git diff --check`; restore unrelated generated metadata and record the final count.
+
+- [x] **Step 6: Commit the residual-motion follow-up**
+
+```bash
+git add lib/features/timeline/widgets/heatmap_grid.dart lib/features/insights/insights_screen.dart lib/features/today/today_screen.dart test/features/timeline/widgets/heatmap_grid_test.dart test/features/insights/insights_screen_test.dart test/features/today/today_screen_test.dart docs/superpowers/plans/2026-08-28-frictionless-calm-ux-evolution.md docs/superpowers/reviews/2026-08-28-frictionless-calm-ux-evolution.md
+git commit -m "feat: finish reduced motion coverage"
+```
+
+### Task 9: 앱 외곽 화면의 모션 계약 정합성
+
+**Files:**
+- Modify: `lib/features/onboarding/onboarding_screen.dart` — 온보딩 점·버튼·다음 페이지 전환에 `AppMotion`과 reduced-motion을 적용한다.
+- Modify: `lib/features/settings/widgets/appearance_section.dart` — 액센트 선택 상태 전환에 `AppMotion.durationFor`를 적용한다.
+- Modify: `lib/features/timeline/timeline_screen.dart` — 빈 타임라인 진입 애니메이션을 reduced-motion에서 즉시 완료한다.
+- Modify: `lib/app/router.dart` — 온보딩 라우트 전환에서 시각적 이동을 제거한다.
+- Modify: `lib/features/today/widgets/streak_pulse_badge.dart` — 무한 glow 반복을 진입 1회 펄스로 제한한다.
+- Test: `test/features/onboarding/onboarding_screen_test.dart`, `test/features/settings/widgets/appearance_section_test.dart`, `test/features/timeline/timeline_screen_test.dart`.
+- Test: `test/features/today/widgets/streak_pulse_badge_test.dart`.
+
+- [x] **Step 1: Write failing residual-screen tests**
+
+`MediaQuery(disableAnimations: true)`에서 온보딩 `AnimatedSwitcher`·점 표시기, 액센트 칩, 빈 타임라인 진입의 duration이 0인지 확인하는 위젯 테스트를 먼저 추가했다.
+
+- [x] **Step 2: Run the focused tests and verify they fail**
+
+기존 하드코딩 duration(200–300ms)과 360ms 진입 애니메이션 때문에 세 테스트가 RED가 되는 것을 확인했다.
+
+- [x] **Step 3: Apply tokens and immediate page navigation**
+
+화면별 duration·curve를 `AppMotion`으로 통일하고, reduced-motion에서는 온보딩 parallax를 고정하고 다음 페이지를 `jumpToPage`로 이동하며 라우트 전환을 시각적으로 생략한다. 스트릭 배지는 화면 체류 중 무한 ticker 대신 진입 1회 펄스만 재생한다.
+
+- [x] **Step 4: Run focused tests and static analysis**
+
+온보딩·설정·타임라인·스트릭 focused tests 12개와 변경 파일 `dart analyze`를 통과했다.
+
+- [x] **Step 5: Include in complete regression and release review**
+
+전체 Flutter 테스트·접근성 검증 및 formatter/diff 검사를 Task 5 최종 실행에 포함하고, 실제 테스트 수와 미실행 실기기 게이트를 review 문서에 기록한다.
+
 ## Plan Self-Review
 
-- **Spec coverage:** MOT-001/002/003 map to Tasks 1–2 and Task 6; SAVE-001 maps to Task 3; A11Y-001 maps to Tasks 2–3, 5, and 6; REC-001 maps to Task 4; DATE-001 remains covered by the existing local-calendar implementation and its existing date tests. P1 notification controls, iOS signing, and physical notification/DST gates are explicitly not silently claimed by this plan.
+- **Spec coverage:** MOT-001/002/003 map to Tasks 1–2 and 6–9; SAVE-001 maps to Task 3; A11Y-001 maps to Tasks 2–3 and 5–9; REC-001 maps to Task 4; DATE-001 remains covered by the existing local-calendar implementation and its existing date tests. P1 notification controls, iOS signing, and physical notification/DST gates are explicitly not silently claimed by this plan.
 - **Placeholder scan:** 완료되지 않은 항목을 숨기는 표시어나 추후로 미루는 구현 지시가 없고, 오류 처리·테스트 명령이 각 단계에 구체적으로 적혀 있다.
 - **Type consistency:** `AppMotion` names are used consistently; `BranchFadeThrough.transitionKey` is `Object`; `ScaffoldWithNavBar` passes `navigationShell.currentIndex`; `_dismiss()` is the sole completion callback path; the empty timeline test uses the existing `TimelineState` defaults.
-- **Scope check:** Tasks 1–4 and Task 6 are independently testable and share only the motion helper. Task 5 is verification/documentation and Task 6 changes only finite input feedback; neither changes data, notification, or routing contracts.
+- **Scope check:** Tasks 1–4 and 6–9 are independently testable and share only the motion helper. Task 5 is verification/documentation; Tasks 6–9 change only finite visual feedback and do not alter data, notification, or persistence contracts.
 - **Test observability:** Task 4는 `/` 라우트에 `today destination` 텍스트를 렌더링하는 테스트 전용 목적지를 두고, CTA 탭 후 해당 텍스트를 검사해 실제 경로 이동을 증명한다. 버튼 탭 성공만으로 통과시키지 않는다.

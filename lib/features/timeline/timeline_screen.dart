@@ -66,8 +66,8 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
             return Center(
               child: TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0.0, end: 1.0),
-                duration: AppMotion.entrance,
-                curve: Curves.easeOutCubic,
+                duration: AppMotion.durationFor(context, AppMotion.entrance),
+                curve: AppMotion.standardCurve,
                 builder: (context, value, child) {
                   return Opacity(
                     opacity: value.clamp(0.0, 1.0),

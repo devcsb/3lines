@@ -6,9 +6,7 @@ import 'package:three_lines/features/insights/widgets/emotion_trend_chart.dart';
 void main() {
   Widget buildChart(List<({DateTime date, int emotion})> data) {
     return MaterialApp(
-      home: Scaffold(
-        body: EmotionTrendChart(data: data),
-      ),
+      home: Scaffold(body: EmotionTrendChart(data: data)),
     );
   }
 
@@ -93,14 +91,37 @@ void main() {
     expect(barData.length, 3);
   });
 
-  testWidgets('single data point renders summary instead of chart', (tester) async {
-    final data = [
-      (date: DateTime(2025, 1, 1), emotion: 4),
-    ];
+  testWidgets('single data point renders summary instead of chart', (
+    tester,
+  ) async {
+    final data = [(date: DateTime(2025, 1, 1), emotion: 4)];
     await tester.pumpWidget(buildChart(data));
     // Single data point shows a summary card, not a LineChart
     expect(find.byType(LineChart), findsNothing);
     expect(find.text('4'), findsOneWidget);
     expect(find.textContaining('평온'), findsOneWidget);
+  });
+
+  testWidgets('reduce-motion에서는 차트가 한 프레임에 표시된다', (tester) async {
+    final data = [
+      (date: DateTime(2025, 1, 1), emotion: 3),
+      (date: DateTime(2025, 1, 2), emotion: 4),
+    ];
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: buildChart(data),
+      ),
+    );
+
+    final fade = tester
+        .widgetList<FadeTransition>(
+          find.descendant(
+            of: find.byType(EmotionTrendChart),
+            matching: find.byType(FadeTransition),
+          ),
+        )
+        .first;
+    expect(fade.opacity.value, 1.0);
   });
 }

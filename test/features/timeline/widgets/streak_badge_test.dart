@@ -51,4 +51,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('15일'), findsOneWidget);
   });
+
+  testWidgets('reduce-motion에서는 두 스트릭 값이 즉시 표시된다', (tester) async {
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: buildApp(currentStreak: 10, longestStreak: 20),
+      ),
+    );
+
+    expect(find.text('10일'), findsOneWidget);
+    expect(find.text('20일'), findsOneWidget);
+  });
 }

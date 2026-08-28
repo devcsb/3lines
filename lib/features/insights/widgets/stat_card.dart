@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_motion.dart';
+
 /// 값 문자열의 선행 숫자 추출용 정규식. 카운트업 애니메이션이 매 프레임 값을
 /// 파싱하므로 재컴파일을 피하려 상수로 둔다.
 final _leadingNumber = RegExp(r'^(\d+\.?\d*)');
@@ -25,12 +27,13 @@ class _StatCardState extends State<StatCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+  var _reduceMotion = false;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: AppMotion.entrance,
       vsync: this,
     );
     _animation = CurvedAnimation(
@@ -41,10 +44,24 @@ class _StatCardState extends State<StatCard>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = AppMotion.reduceMotion(context);
+    if (_reduceMotion) {
+      _controller.stop();
+      _controller.value = 1.0;
+    }
+  }
+
+  @override
   void didUpdateWidget(StatCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.value != widget.value) {
-      _controller.forward(from: 0);
+      if (_reduceMotion) {
+        _controller.value = 1.0;
+      } else {
+        _controller.forward(from: 0);
+      }
     }
   }
 
@@ -72,8 +89,9 @@ class _StatCardState extends State<StatCard>
                 color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color:
-                      theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.5,
+                  ),
                 ),
               ),
               child: Column(
@@ -83,12 +101,16 @@ class _StatCardState extends State<StatCard>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer
-                          .withValues(alpha: 0.5),
+                      color: theme.colorScheme.primaryContainer.withValues(
+                        alpha: 0.5,
+                      ),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(widget.icon,
-                        size: 18, color: theme.colorScheme.primary),
+                    child: Icon(
+                      widget.icon,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
                   const Spacer(),
                   // Animated value
@@ -111,8 +133,7 @@ class _StatCardState extends State<StatCard>
                   Text(
                     widget.title,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.5),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                 ],

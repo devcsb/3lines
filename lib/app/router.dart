@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/theme/app_motion.dart';
 import '../data/repositories/settings_repository.dart';
 import '../features/insights/insights_screen.dart';
 import '../features/lock/lock_screen.dart';
@@ -79,9 +80,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, _) => CustomTransitionPage(
           child: const OnboardingScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            if (AppMotion.reduceMotion(context)) return child;
             final curved = CurvedAnimation(
               parent: animation,
-              curve: Curves.easeInOut,
+              curve: AppMotion.standardCurve,
             );
             return FadeTransition(
               opacity: curved,
@@ -94,7 +96,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             );
           },
-          transitionDuration: const Duration(milliseconds: 300),
+          transitionDuration: AppMotion.standard,
+          reverseTransitionDuration: AppMotion.standard,
         ),
       ),
       GoRoute(path: '/lock', builder: (_, _) => const LockScreen()),

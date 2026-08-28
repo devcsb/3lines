@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 
 class EmotionTrendChart extends StatefulWidget {
   final List<({DateTime date, int emotion})> data;
@@ -16,12 +17,13 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
     with SingleTickerProviderStateMixin {
   late AnimationController _drawController;
   late Animation<double> _drawAnimation;
+  var _reduceMotion = false;
 
   @override
   void initState() {
     super.initState();
     _drawController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: AppMotion.entrance,
       vsync: this,
     );
     _drawAnimation = CurvedAnimation(
@@ -32,10 +34,24 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = AppMotion.reduceMotion(context);
+    if (_reduceMotion) {
+      _drawController.stop();
+      _drawController.value = 1.0;
+    }
+  }
+
+  @override
   void didUpdateWidget(EmotionTrendChart oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.data != widget.data) {
-      _drawController.forward(from: 0);
+      if (_reduceMotion) {
+        _drawController.value = 1.0;
+      } else {
+        _drawController.forward(from: 0);
+      }
     }
   }
 
@@ -55,8 +71,7 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
       return SizedBox(
         height: 200,
         child: Center(
-          child: Text('데이터가 없어요',
-              style: theme.textTheme.bodyMedium),
+          child: Text('데이터가 없어요', style: theme.textTheme.bodyMedium),
         ),
       );
     }
@@ -77,8 +92,10 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppColors.emotionColors[data.first.emotion]
-                          ?.withValues(alpha: 0.2) ??
+                  color:
+                      AppColors.emotionColors[data.first.emotion]?.withValues(
+                        alpha: 0.2,
+                      ) ??
                       theme.colorScheme.primaryContainer,
                   shape: BoxShape.circle,
                 ),
@@ -152,8 +169,8 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
             final emotion = spot.y.toInt();
             return FlDotCirclePainter(
               radius: 4,
-              color: AppColors.emotionColors[emotion] ??
-                  theme.colorScheme.primary,
+              color:
+                  AppColors.emotionColors[emotion] ?? theme.colorScheme.primary,
               strokeWidth: 0,
             );
           },
@@ -169,8 +186,8 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
     final bottomInterval = totalDays > 14
         ? (totalDays / 4).ceilToDouble()
         : totalDays > 0
-            ? 1.0
-            : 1.0;
+        ? 1.0
+        : 1.0;
 
     // FadeTransition 은 자식(LineChart)을 재빌드하지 않고 레이어 알파만 갱신한다.
     // 기존 AnimatedBuilder+Opacity 는 페이드 1초 동안 매 프레임 차트 전체를
@@ -181,90 +198,89 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
         height: 200,
         child: LineChart(
           LineChartData(
-          minX: 0,
-          maxX: totalDays.toDouble(),
-          minY: 0.5,
-          maxY: 5.5,
-          gridData: FlGridData(
-            show: true,
-            horizontalInterval: 1,
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-              strokeWidth: 1,
-            ),
-            drawVerticalLine: false,
-          ),
-          titlesData: FlTitlesData(
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 30,
-                interval: 1,
-                getTitlesWidget: (value, _) {
-                  if (value < 1 || value > 5) return const SizedBox();
-                  return Text(
-                    AppColors.emotionLabels[value.toInt()] ?? '',
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: AppColors.emotionColors[value.toInt()],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  );
-                },
+            minX: 0,
+            maxX: totalDays.toDouble(),
+            minY: 0.5,
+            maxY: 5.5,
+            gridData: FlGridData(
+              show: true,
+              horizontalInterval: 1,
+              getDrawingHorizontalLine: (value) => FlLine(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                strokeWidth: 1,
               ),
+              drawVerticalLine: false,
             ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 24,
-                interval: bottomInterval,
-                getTitlesWidget: (value, _) {
-                  final dayOffset = value.toInt();
-                  if (dayOffset < 0 || dayOffset > totalDays) {
-                    return const SizedBox();
-                  }
-                  final date = firstDate.add(Duration(days: dayOffset));
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      '${date.month}/${date.day}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 10,
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 30,
+                  interval: 1,
+                  getTitlesWidget: (value, _) {
+                    if (value < 1 || value > 5) return const SizedBox();
+                    return Text(
+                      AppColors.emotionLabels[value.toInt()] ?? '',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: AppColors.emotionColors[value.toInt()],
+                        fontWeight: FontWeight.w500,
                       ),
-                    ),
-                  );
+                    );
+                  },
+                ),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 24,
+                  interval: bottomInterval,
+                  getTitlesWidget: (value, _) {
+                    final dayOffset = value.toInt();
+                    if (dayOffset < 0 || dayOffset > totalDays) {
+                      return const SizedBox();
+                    }
+                    final date = firstDate.add(Duration(days: dayOffset));
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '${date.month}/${date.day}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 10,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+            ),
+            borderData: FlBorderData(show: false),
+            lineBarsData: lineBars,
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipItems: (touchedSpots) {
+                  return touchedSpots.map((spot) {
+                    final dayOffset = spot.x.toInt();
+                    final entry = dataByOffset[dayOffset];
+                    if (entry == null) return null;
+                    final label = AppColors.emotionLabels[entry.emotion] ?? '';
+                    return LineTooltipItem(
+                      '$label ${entry.date.month}/${entry.date.day}',
+                      TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 12,
+                      ),
+                    );
+                  }).toList();
                 },
               ),
             ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          lineBarsData: lineBars,
-          lineTouchData: LineTouchData(
-            touchTooltipData: LineTouchTooltipData(
-              getTooltipItems: (touchedSpots) {
-                return touchedSpots.map((spot) {
-                  final dayOffset = spot.x.toInt();
-                  final entry = dataByOffset[dayOffset];
-                  if (entry == null) return null;
-                  final label =
-                      AppColors.emotionLabels[entry.emotion] ?? '';
-                  return LineTooltipItem(
-                    '$label ${entry.date.month}/${entry.date.day}',
-                    TextStyle(
-                      color: theme.colorScheme.onSurface,
-                      fontSize: 12,
-                    ),
-                  );
-                }).toList();
-              },
-            ),
-          ),
           ),
         ),
       ),

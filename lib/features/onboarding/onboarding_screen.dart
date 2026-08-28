@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../core/settings/settings_keys.dart';
 import '../../core/services/haptic_service.dart';
+import '../../core/theme/app_motion.dart';
 import '../../data/repositories/settings_repository.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -59,6 +60,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isLastPage = _currentPage == _pages.length - 1;
+    final reduceMotion = AppMotion.reduceMotion(context);
+    final motionDuration = AppMotion.durationFor(context, AppMotion.standard);
 
     return Scaffold(
       body: SafeArea(
@@ -100,7 +103,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     animation: _pageController,
                     builder: (context, child) {
                       double value = 1.0;
-                      if (_pageController.position.haveDimensions) {
+                      if (!reduceMotion &&
+                          _pageController.position.haveDimensions) {
                         value = (_pageController.page ?? 0) - index;
                         value = (1 - value.abs()).clamp(0.0, 1.0);
                       }
@@ -129,8 +133,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     children: List.generate(
                       _pages.length,
                       (index) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
+                        duration: motionDuration,
+                        curve: AppMotion.standardCurve,
                         width: _currentPage == index ? 24 : 6,
                         height: 6,
                         margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -149,7 +153,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
+                      duration: motionDuration,
                       child: isLastPage
                           ? SizedBox(
                               key: const ValueKey('start'),
@@ -167,10 +171,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                               width: double.infinity,
                               child: OutlinedButton(
                                 onPressed: () {
-                                  _pageController.nextPage(
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeInOut,
-                                  );
+                                  if (reduceMotion) {
+                                    _pageController.jumpToPage(
+                                      _currentPage + 1,
+                                    );
+                                  } else {
+                                    _pageController.nextPage(
+                                      duration: motionDuration,
+                                      curve: AppMotion.standardCurve,
+                                    );
+                                  }
                                 },
                                 child: const Text('다음'),
                               ),

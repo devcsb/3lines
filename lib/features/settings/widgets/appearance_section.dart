@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/theme_notifier.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../settings_controller.dart';
@@ -123,6 +124,7 @@ class _AccentChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final opacity = isUnlocked ? 1.0 : 0.35;
+    final duration = AppMotion.durationFor(context, AppMotion.micro);
 
     return Semantics(
       button: true,
@@ -137,7 +139,8 @@ class _AccentChip extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 48),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+              duration: duration,
+              curve: AppMotion.standardCurve,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected

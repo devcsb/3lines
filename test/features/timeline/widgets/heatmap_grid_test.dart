@@ -79,4 +79,22 @@ void main() {
 
     semantics.dispose();
   });
+
+  testWidgets('reduce-motion에서는 셀 강조가 즉시 표시된다', (tester) async {
+    final today = DateTime.now();
+    final dateStr = du.dateToString(today);
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: buildGrid(
+          startDate: today,
+          emotionMap: {dateStr: 4},
+          onCellTap: (_) {},
+        ),
+      ),
+    );
+
+    final scale = tester.widget<AnimatedScale>(find.byType(AnimatedScale));
+    expect(scale.duration, Duration.zero);
+  });
 }

@@ -43,4 +43,30 @@ void main() {
 
     semantics.dispose();
   });
+
+  testWidgets('reduce-motion에서는 액센트 선택 전환이 즉시 완료된다', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsRepositoryProvider.overrideWithValue(SettingsRepository(db)),
+        ],
+        child: const MediaQuery(
+          data: MediaQueryData(disableAnimations: true),
+          child: MaterialApp(
+            home: Scaffold(body: AppearanceSection(themeMode: 'system')),
+          ),
+        ),
+      ),
+    );
+
+    final animatedContainers = tester.widgetList<AnimatedContainer>(
+      find.byType(AnimatedContainer),
+    );
+    expect(
+      animatedContainers.every(
+        (container) => container.duration == Duration.zero,
+      ),
+      isTrue,
+    );
+  });
 }
