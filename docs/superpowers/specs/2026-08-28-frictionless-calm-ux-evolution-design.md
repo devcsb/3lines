@@ -208,7 +208,7 @@ KPI는 건강 상태의 개선이나 임상 효과를 의미하지 않는다. �
 
 ## 12. 단계별 구현 순서
 
-1. Motion token과 reduce-motion helper를 추가하고 기존 `StaggeredFadeIn`, 완료 애니메이션, 차트 갱신에 적용한다.
+1. Motion token과 reduce-motion helper를 추가하고 기존 `StaggeredFadeIn`, 핵심 입력 피드백, 완료 애니메이션, 차트 갱신에 적용한다.
 2. `ScaffoldWithNavBar`를 상태 보존형 fade-through 컨테이너로 교체하고 GlobalKey·dispose·접근성 회귀 테스트를 추가한다.
 3. `CompletionAnimation`에 명시적 Semantics 닫기 동작과 중립 완료 문구를 추가하고, 자동 종료·탭 종료·reduce motion을 테스트한다.
 4. Today/Insights 회복 CTA와 빈 상태 문구를 정리한다. 데이터·알림 계약을 변경하지 않는다.

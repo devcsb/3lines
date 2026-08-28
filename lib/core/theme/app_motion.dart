@@ -11,4 +11,10 @@ abstract final class AppMotion {
 
   static bool reduceMotion(BuildContext context) =>
       MediaQuery.disableAnimationsOf(context);
+
+  /// Resolves a finite animation duration for the current accessibility
+  /// setting. Reduced motion keeps state changes immediate without changing
+  /// the caller's normal-mode timing contract.
+  static Duration durationFor(BuildContext context, Duration normal) =>
+      reduceMotion(context) ? instant : normal;
 }

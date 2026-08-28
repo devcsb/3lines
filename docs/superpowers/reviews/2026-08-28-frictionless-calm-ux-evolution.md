@@ -14,14 +14,16 @@
 3. 저장 완료 오버레이의 주요 모션을 600ms 이하로 줄이고, 자동 종료와 별개로 즉시 누를 수 있는 `완료 화면 닫기` 버튼을 추가했다. 완료 callback은 한 번만 실행된다.
 4. 완료 문구에서 글쓰기 효능·행복 보장·변화 보장으로 읽힐 수 있는 표현을 제거하고 감정 기록을 인정하는 중립 문구로 바꿨다.
 5. 기록이 없는 타임라인에 `오늘 기록하기` 한 번의 회복 CTA를 추가했다. 데이터 모델·알림·위젯 계약은 변경하지 않았다.
+6. `AppMotion.durationFor`를 추가해 EmotionPicker·PromptCard·저장 진행 링의 유한 피드백이 reduce-motion에서 즉시 끝나도록 통일했다.
 
 ## 자동 검증
 
 | 검사 | 결과 | 증거 |
 |---|---|---|
-| `flutter test` 전체 | PASS — 401개 | `/tmp/3lines-flutter-test.log` 마지막 줄 `+401: All tests passed!` |
+| `flutter test` 전체 | PASS — 406개 | `/tmp/3lines-flutter-test-followup.log` 마지막 줄 `+406: All tests passed!` |
 | `dart analyze` | PASS | `No issues found!` |
 | 신규·핵심 focused tests | PASS | 모션 토큰, stagger, branch transition, completion, timeline 테스트 실행 결과 |
+| 입력 모션 focused tests | PASS — 26개 | `app_motion`, `emotion_picker`, `prompt_card`, `animated_save_button` 실행 결과 |
 | 접근성·reduce-motion focused | PASS — 11개 | `accessibility_guideline_test.dart`, `text_scaling_test.dart`, branch/completion semantics·reduce-motion 실행 결과 |
 | 기존 routing/integration 회귀 | PASS — 5개 | `routing_flash_test.dart`, `integration/app_flow_test.dart`, branch test 실행 결과 |
 | 변경 파일 formatter | PASS | 13개 대상 `dart format --output=none --set-exit-if-changed` exit 0 |
@@ -34,6 +36,7 @@
 - `test/app/text_scaling_test.dart`: 시스템 200% text scaler를 루트에서 제한하지 않음 PASS.
 - `CompletionAnimation`: `기록 저장 완료` route semantics와 `완료 화면 닫기` button semantics PASS.
 - reduce-motion: StaggeredFadeIn·BranchFadeThrough·완료 오버레이의 즉시 최종 상태 테스트 PASS.
+- 입력 피드백: EmotionPicker·PromptCard·저장 진행 링의 duration 즉시 상태 테스트 PASS.
 - 실제 VoiceOver/TalkBack 탐색, 실제 200% 화면 레이아웃, 실제 색상 대비 측정: **미실행**.
 
 ## 회귀 위험 검토

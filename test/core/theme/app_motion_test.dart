@@ -11,4 +11,38 @@ void main() {
     expect(AppMotion.celebration, const Duration(milliseconds: 600));
     expect(AppMotion.standardCurve, Curves.easeOutCubic);
   });
+
+  testWidgets('reduce-motion에서는 일반 duration을 즉시 상태로 바꾼다', (tester) async {
+    Duration? resolved;
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: Builder(
+          builder: (context) {
+            resolved = AppMotion.durationFor(context, AppMotion.entrance);
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+
+    expect(resolved, AppMotion.instant);
+  });
+
+  testWidgets('일반 모드에서는 전달한 duration을 유지한다', (tester) async {
+    Duration? resolved;
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(disableAnimations: false),
+        child: Builder(
+          builder: (context) {
+            resolved = AppMotion.durationFor(context, AppMotion.standard);
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+
+    expect(resolved, AppMotion.standard);
+  });
 }

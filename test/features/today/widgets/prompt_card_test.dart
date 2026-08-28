@@ -83,4 +83,18 @@ void main() {
     expect(textField.minLines, 2);
     expect(textField.maxLines, 4);
   });
+
+  testWidgets('reduce-motion에서는 답변 모드 전환이 즉시 끝난다', (tester) async {
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: buildApp(readOnly: true, answer: '기록'),
+      ),
+    );
+
+    final switcher = tester.widget<AnimatedSwitcher>(
+      find.byType(AnimatedSwitcher),
+    );
+    expect(switcher.duration, Duration.zero);
+  });
 }

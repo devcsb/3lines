@@ -640,10 +640,64 @@ git add docs/superpowers/reviews/2026-08-28-frictionless-calm-ux-evolution.md
 git commit -m "docs: record frictionless calm ux verification"
 ```
 
+### Task 6: 핵심 입력 피드백의 reduce-motion·모션 토큰 일관성
+
+**Files:**
+- Modify: `lib/core/theme/app_motion.dart` — 일반 모션을 reduce-motion에서 즉시 상태로 바꾸는 helper를 추가한다.
+- Modify: `lib/features/today/widgets/emotion_picker.dart` — 선택 scale·색상·라벨 전환에 helper와 공통 curve를 사용한다.
+- Modify: `lib/features/today/widgets/prompt_card.dart` — focus/read-only 전환과 답변 editor switcher에 helper를 사용한다.
+- Modify: `lib/features/today/widgets/animated_save_button.dart` — 진행 링·카운터 전환에 helper를 사용한다.
+- Test: `test/core/theme/app_motion_test.dart`, `test/features/today/widgets/emotion_picker_test.dart`, `test/features/today/widgets/prompt_card_test.dart`, `test/features/today/widgets/animated_save_button_test.dart`.
+
+- [x] **Step 1: Write failing reduce-motion tests**
+
+Add a unit test for `AppMotion.durationFor(context, normal)` and widget tests that pump the three input widgets under `MediaQuery(disableAnimations: true)`. Assert that selection feedback, read/edit switching, and progress/count feedback settle at their final state without advancing a finite animation clock.
+
+- [x] **Step 2: Run the focused tests and verify they fail**
+
+Run:
+
+```bash
+flutter test test/core/theme/app_motion_test.dart test/features/today/widgets/emotion_picker_test.dart test/features/today/widgets/prompt_card_test.dart test/features/today/widgets/animated_save_button_test.dart
+```
+
+Expected: the new helper assertion fails because it does not exist and at least one widget remains in its animated intermediate state under `disableAnimations`.
+
+- [x] **Step 3: Add the minimal duration helper**
+
+Add `AppMotion.durationFor(BuildContext context, Duration normal)` that returns `AppMotion.instant` when `AppMotion.reduceMotion(context)` is true and otherwise returns `normal`. Keep existing token values and public widget constructors unchanged.
+
+- [x] **Step 4: Apply the helper only to core input feedback**
+
+Use `AppMotion.durationFor` and `AppMotion.standardCurve` for the `AnimatedOpacity`, `AnimatedScale`, `AnimatedContainer`, `AnimatedDefaultTextStyle`, `AnimatedSwitcher`, `TweenAnimationBuilder`, and count/progress transitions in the three input widgets. Do not add new continuous animation, change text validation, or alter save semantics.
+
+- [x] **Step 5: Run focused tests and static analysis**
+
+Run the focused test command again plus:
+
+```bash
+dart analyze lib/core/theme/app_motion.dart lib/features/today/widgets/emotion_picker.dart lib/features/today/widgets/prompt_card.dart lib/features/today/widgets/animated_save_button.dart
+```
+
+Expected: all focused tests pass, reduced-motion widgets render their final state immediately, and analyzer reports no issues.
+
+- [x] **Step 6: Run the complete regression suite**
+
+Run `flutter test` and the existing accessibility/text-scaling suites. Restore unrelated generated Flutter metadata after the command, then run the targeted formatter check and `git diff --check`.
+
+- [x] **Step 7: Record and commit the follow-up**
+
+Update the verification report with the new focused command and commit:
+
+```bash
+git add lib/core/theme/app_motion.dart lib/features/today/widgets/emotion_picker.dart lib/features/today/widgets/prompt_card.dart lib/features/today/widgets/animated_save_button.dart test/core/theme/app_motion_test.dart test/features/today/widgets/emotion_picker_test.dart test/features/today/widgets/prompt_card_test.dart test/features/today/widgets/animated_save_button_test.dart docs/superpowers/reviews/2026-08-28-frictionless-calm-ux-evolution.md
+git commit -m "feat: respect reduced motion in input feedback"
+```
+
 ## Plan Self-Review
 
-- **Spec coverage:** MOT-001/002/003 map to Tasks 1–2; SAVE-001 maps to Task 3; A11Y-001 maps to Tasks 2–3 and 5; REC-001 maps to Task 4; DATE-001 remains covered by the existing local-calendar implementation and its existing date tests. P1 notification controls, iOS signing, and physical notification/DST gates are explicitly not silently claimed by this P0 plan.
+- **Spec coverage:** MOT-001/002/003 map to Tasks 1–2 and Task 6; SAVE-001 maps to Task 3; A11Y-001 maps to Tasks 2–3, 5, and 6; REC-001 maps to Task 4; DATE-001 remains covered by the existing local-calendar implementation and its existing date tests. P1 notification controls, iOS signing, and physical notification/DST gates are explicitly not silently claimed by this plan.
 - **Placeholder scan:** 완료되지 않은 항목을 숨기는 표시어나 추후로 미루는 구현 지시가 없고, 오류 처리·테스트 명령이 각 단계에 구체적으로 적혀 있다.
 - **Type consistency:** `AppMotion` names are used consistently; `BranchFadeThrough.transitionKey` is `Object`; `ScaffoldWithNavBar` passes `navigationShell.currentIndex`; `_dismiss()` is the sole completion callback path; the empty timeline test uses the existing `TimelineState` defaults.
-- **Scope check:** Tasks 1–4 are independently testable and share only the new token file. Task 5 is verification/documentation and does not expand runtime scope.
+- **Scope check:** Tasks 1–4 and Task 6 are independently testable and share only the motion helper. Task 5 is verification/documentation and Task 6 changes only finite input feedback; neither changes data, notification, or routing contracts.
 - **Test observability:** Task 4는 `/` 라우트에 `today destination` 텍스트를 렌더링하는 테스트 전용 목적지를 두고, CTA 탭 후 해당 텍스트를 검사해 실제 경로 이동을 증명한다. 버튼 탭 성공만으로 통과시키지 않는다.

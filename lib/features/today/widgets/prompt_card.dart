@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/default_prompts.dart';
+import '../../../core/theme/app_motion.dart';
 
 class PromptCard extends StatefulWidget {
   final int index;
@@ -65,6 +66,7 @@ class _PromptCardState extends State<PromptCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final standardDuration = AppMotion.durationFor(context, AppMotion.standard);
     final category = widget.index < promptCategories.length
         ? promptCategories[widget.index]
         : null;
@@ -72,8 +74,8 @@ class _PromptCardState extends State<PromptCard> {
     final accent = _accentColors[widget.index.clamp(0, 2)];
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOut,
+      duration: standardDuration,
+      curve: AppMotion.standardCurve,
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -97,8 +99,8 @@ class _PromptCardState extends State<PromptCard> {
         children: [
           // Left accent bar — widens on focus
           AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOut,
+            duration: standardDuration,
+            curve: AppMotion.standardCurve,
             width: _isFocused ? 5 : 4,
             constraints: const BoxConstraints(minHeight: 100),
             decoration: BoxDecoration(
@@ -138,8 +140,8 @@ class _PromptCardState extends State<PromptCard> {
                   ),
                   const SizedBox(height: 8),
                   AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 320),
-                    switchInCurve: Curves.easeOutCubic,
+                    duration: standardDuration,
+                    switchInCurve: AppMotion.standardCurve,
                     switchOutCurve: Curves.easeInCubic,
                     transitionBuilder: (child, animation) => FadeTransition(
                       opacity: animation,
