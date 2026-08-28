@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 
 /// Full-screen celebration shown after first save of the day.
 /// Includes: particle burst, checkmark, motivational message, streak info.
@@ -39,36 +40,23 @@ class _CompletionAnimationState extends State<CompletionAnimation>
   late List<_Particle> _particles;
 
   static const _messagesByEmotion = <int, List<String>>{
-    1: [
-      '힘든 날도 기록하는 당신, 대단해요',
-      '오늘의 감정을 솔직하게 마주했어요',
-      '어려운 하루를 버텨낸 것만으로 충분해요',
-    ],
-    2: [
-      '불안한 마음을 꺼내놓은 것, 용기 있는 일이에요',
-      '글로 쓰면 조금 가벼워져요',
-      '오늘의 감정을 기록한 당신, 괜찮아요',
-    ],
-    3: [
-      '오늘도 나를 기록했어요',
-      '작은 기록이 큰 변화를 만들어요',
-      '하루를 마무리하는 가장 좋은 방법',
-    ],
-    4: [
-      '평온한 하루를 잘 담아냈어요',
-      '오늘의 나에게 한 걸음 더 가까이',
-      '기록하는 당신, 충분히 멋져요',
-    ],
-    5: [
-      '감사한 마음이 하루를 빛나게 해요',
-      '오늘의 감사를 내일로 이어가요',
-      '감사를 기록하는 사람이 행복해진대요',
-    ],
+    1: ['힘든 날도 기록하는 당신, 대단해요', '오늘의 감정을 솔직하게 마주했어요', '어려운 하루를 버텨낸 것만으로 충분해요'],
+    2: ['불안한 마음을 꺼내놓은 것, 용기 있는 일이에요', '글로 쓰면 조금 가벼워져요', '오늘의 감정을 기록한 당신, 괜찮아요'],
+    3: ['오늘도 나를 기록했어요', '작은 기록이 큰 변화를 만들어요', '하루를 마무리하는 가장 좋은 방법'],
+    4: ['평온한 하루를 잘 담아냈어요', '오늘의 나에게 한 걸음 더 가까이', '기록하는 당신, 충분히 멋져요'],
+    5: ['감사한 마음이 하루를 빛나게 해요', '오늘의 감사를 내일로 이어가요', '오늘의 감정을 차분히 남겼어요'],
   };
 
   late String _message;
   bool _started = false;
   bool _reduceMotion = false;
+  bool _dismissed = false;
+
+  void _dismiss() {
+    if (_dismissed) return;
+    _dismissed = true;
+    widget.onComplete?.call();
+  }
 
   @override
   void initState() {
@@ -80,51 +68,50 @@ class _CompletionAnimationState extends State<CompletionAnimation>
     // Generate particles
     _particles = List.generate(20, (_) => _Particle.random(_random));
 
-    // Checkmark animation (0 → 800ms)
+    // Checkmark animation (0 → 600ms)
     _checkController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: AppMotion.celebration,
       vsync: this,
     );
     _checkScale = CurvedAnimation(
       parent: _checkController,
-      curve: Curves.elasticOut,
+      curve: AppMotion.standardCurve,
     );
     _checkDraw = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _checkController,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.6, curve: AppMotion.standardCurve),
       ),
     );
 
-    // Particle animation (0 → 1200ms)
+    // Particle animation (0 → 600ms)
     _particleController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+      duration: AppMotion.celebration,
       vsync: this,
     );
 
-    // Text fade-in (delayed 400ms, duration 500ms)
+    // Text fade-in (delayed 120ms, duration 240ms)
     _textController = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: AppMotion.standard,
       vsync: this,
     );
     _textOpacity = CurvedAnimation(
       parent: _textController,
-      curve: Curves.easeOut,
+      curve: AppMotion.standardCurve,
     );
-    _textSlide = Tween<Offset>(
-      begin: const Offset(0, 0.15),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _textController,
-      curve: Curves.easeOut,
-    ));
-
+    _textSlide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _textController,
+            curve: AppMotion.standardCurve,
+          ),
+        );
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _reduceMotion = MediaQuery.disableAnimationsOf(context);
+    _reduceMotion = AppMotion.reduceMotion(context);
     if (!_started) {
       _started = true;
       _startSequence();
@@ -143,7 +130,7 @@ class _CompletionAnimationState extends State<CompletionAnimation>
       _textController.value = 1.0;
       HapticService.light();
       await Future.delayed(const Duration(milliseconds: 2500));
-      if (mounted) widget.onComplete?.call();
+      if (mounted) _dismiss();
       return;
     }
 
@@ -151,7 +138,7 @@ class _CompletionAnimationState extends State<CompletionAnimation>
     unawaited(_particleController.forward());
 
     // Text appears after checkmark settles
-    await Future.delayed(const Duration(milliseconds: 400));
+    await Future.delayed(AppMotion.micro);
     if (!mounted) return;
     unawaited(_textController.forward());
 
@@ -160,7 +147,7 @@ class _CompletionAnimationState extends State<CompletionAnimation>
 
     // Hold the celebration for a moment, then dismiss
     await Future.delayed(const Duration(milliseconds: 2500));
-    if (mounted) widget.onComplete?.call();
+    if (mounted) _dismiss();
   }
 
   @override
@@ -177,97 +164,119 @@ class _CompletionAnimationState extends State<CompletionAnimation>
     final color =
         AppColors.emotionColors[widget.emotion] ?? theme.colorScheme.primary;
 
-    return GestureDetector(
-      onTap: widget.onComplete,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox.expand(
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Particle burst
-            AnimatedBuilder(
-              animation: _particleController,
-              builder: (context, _) => CustomPaint(
-                size: const Size(280, 280),
-                painter: _ParticlePainter(
-                  particles: _particles,
-                  progress: _particleController.value,
-                  color: color,
+    return Semantics(
+      container: true,
+      scopesRoute: true,
+      namesRoute: true,
+      explicitChildNodes: true,
+      label: '기록 저장 완료',
+      child: GestureDetector(
+        onTap: _dismiss,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox.expand(
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Particle burst
+              AnimatedBuilder(
+                animation: _particleController,
+                builder: (context, _) => CustomPaint(
+                  size: const Size(280, 280),
+                  painter: _ParticlePainter(
+                    particles: _particles,
+                    progress: _particleController.value,
+                    color: color,
+                  ),
                 ),
               ),
-            ),
 
-            // Checkmark + text column
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Checkmark
-                ScaleTransition(
-                  scale: _checkScale,
-                  child: AnimatedBuilder(
-                    animation: _checkDraw,
-                    builder: (context, _) => CustomPaint(
-                      size: const Size(72, 72),
-                      painter: _CheckmarkPainter(
-                        progress: _checkDraw.value,
-                        color: color,
+              // Checkmark + text column
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Checkmark
+                  ScaleTransition(
+                    scale: _checkScale,
+                    child: AnimatedBuilder(
+                      animation: _checkDraw,
+                      builder: (context, _) => CustomPaint(
+                        size: const Size(72, 72),
+                        painter: _CheckmarkPainter(
+                          progress: _checkDraw.value,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // Motivational message
+                  SlideTransition(
+                    position: _textSlide,
+                    child: FadeTransition(
+                      opacity: _textOpacity,
+                      child: Column(
+                        children: [
+                          Text(
+                            _message,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.8,
+                              ),
+                              fontWeight: FontWeight.w600,
+                              height: 1.4,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          if (widget.streak > 0) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '${widget.streak}일 연속 기록 중',
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: color,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              // A visible, high-contrast action keeps dismissal discoverable
+              // without waiting for the automatic fallback timer.
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Semantics(
+                      button: true,
+                      label: '완료 화면 닫기',
+                      child: TextButton(
+                        onPressed: _dismiss,
+                        child: const Text('닫기'),
                       ),
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 28),
-
-                // Motivational message
-                SlideTransition(
-                  position: _textSlide,
-                  child: FadeTransition(
-                    opacity: _textOpacity,
-                    child: Column(
-                      children: [
-                        Text(
-                          _message,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.8),
-                            fontWeight: FontWeight.w600,
-                            height: 1.4,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        if (widget.streak > 0) ...[
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '${widget.streak}일 연속 기록 중',
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                color: color,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 20),
-                        Text(
-                          '탭하여 닫기',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.25),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -322,9 +331,7 @@ class _ParticlePainter extends CustomPainter {
       final radius = maxRadius * t * p.speed;
 
       // Fade out in the second half
-      final fadeOut = progress > 0.5
-          ? 1.0 - ((progress - 0.5) / 0.5)
-          : 1.0;
+      final fadeOut = progress > 0.5 ? 1.0 - ((progress - 0.5) / 0.5) : 1.0;
 
       final x = center.dx + cos(p.angle) * radius;
       final y = center.dy + sin(p.angle) * radius;
