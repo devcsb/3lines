@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/date_utils.dart' as du;
 
@@ -28,7 +29,7 @@ class _HeatmapGridState extends State<HeatmapGrid>
   void initState() {
     super.initState();
     _waveController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: AppMotion.entrance,
       vsync: this,
     )..forward();
   }
@@ -37,7 +38,7 @@ class _HeatmapGridState extends State<HeatmapGrid>
   void didChangeDependencies() {
     super.didChangeDependencies();
     // reduce-motion(동작 줄이기): 진입 웨이브를 생략하고 즉시 완전 표시.
-    if (MediaQuery.disableAnimationsOf(context)) {
+    if (AppMotion.reduceMotion(context)) {
       _waveController.value = 1.0;
     }
   }
@@ -48,7 +49,7 @@ class _HeatmapGridState extends State<HeatmapGrid>
     // Re-trigger animation when data changes (period switch)
     if (oldWidget.emotionMap != widget.emotionMap ||
         oldWidget.startDate != widget.startDate) {
-      if (MediaQuery.disableAnimationsOf(context)) {
+      if (AppMotion.reduceMotion(context)) {
         _waveController.value = 1.0;
       } else {
         _waveController
@@ -171,7 +172,7 @@ class _HeatmapGridState extends State<HeatmapGrid>
                           final interval = Interval(
                             start,
                             end,
-                            curve: Curves.easeOutCubic,
+                            curve: AppMotion.standardCurve,
                           );
                           final progress = interval.transform(
                             _waveController.value,

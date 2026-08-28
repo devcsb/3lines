@@ -114,20 +114,31 @@ Add this test to `test/shared/widgets/staggered_fade_in_test.dart`:
 ```dart
 testWidgets('높은 index도 480ms 안에 진입을 시작한다', (tester) async {
   await tester.pumpWidget(const MaterialApp(
-    home: Scaffold(
-      body: StaggeredFadeIn(index: 99, child: Text('bounded')),
+      home: Scaffold(
+        body: StaggeredFadeIn(
+          key: const ValueKey<String>('bounded-stagger'),
+          index: 99,
+          child: const Text('bounded'),
+        ),
     ),
   ));
 
-  await tester.pump(const Duration(milliseconds: 479));
-  final before = tester.widget<FadeTransition>(
-    find.byType(FadeTransition).first,
+    await tester.pump(const Duration(milliseconds: 479));
+    final before = tester.widget<FadeTransition>(
+      find.descendant(
+        of: find.byKey(const ValueKey<String>('bounded-stagger')),
+        matching: find.byType(FadeTransition),
+      ),
   );
   expect(before.opacity.value, lessThan(1.0));
 
-  await tester.pump(const Duration(milliseconds: 361));
-  final after = tester.widget<FadeTransition>(
-    find.byType(FadeTransition).first,
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 360));
+    final after = tester.widget<FadeTransition>(
+      find.descendant(
+        of: find.byKey(const ValueKey<String>('bounded-stagger')),
+        matching: find.byType(FadeTransition),
+      ),
   );
   expect(after.opacity.value, 1.0);
 });

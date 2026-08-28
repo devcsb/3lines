@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_motion.dart';
+
 /// Locked view with animated progress ring and fade-in entrance.
 class InsightsLockedView extends StatefulWidget {
   final int totalCount;
@@ -28,19 +30,19 @@ class _InsightsLockedViewState extends State<InsightsLockedView>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: AppMotion.entrance,
       vsync: this,
     );
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0, 0.5, curve: Curves.easeOut),
+        curve: const Interval(0, 0.5, curve: AppMotion.standardCurve),
       ),
     );
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0, 0.5, curve: Curves.easeOutCubic),
+        curve: const Interval(0, 0.5, curve: AppMotion.standardCurve),
       ),
     );
     final progress =
@@ -48,10 +50,18 @@ class _InsightsLockedViewState extends State<InsightsLockedView>
     _progressAnimation = Tween<double>(begin: 0, end: progress).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.3, 1.0, curve: Curves.easeOutCubic),
+        curve: const Interval(0.3, 1.0, curve: AppMotion.standardCurve),
       ),
     );
     _controller.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (AppMotion.reduceMotion(context)) {
+      _controller.value = 1.0;
+    }
   }
 
   @override
