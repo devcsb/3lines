@@ -21,7 +21,8 @@
 |---|---|---|
 | `flutter test` 전체 | PASS — 401개 | `/tmp/3lines-flutter-test.log` 마지막 줄 `+401: All tests passed!` |
 | `dart analyze` | PASS | `No issues found!` |
-| 신규·핵심 focused tests | PASS — 15개 | 모션 토큰, stagger, branch transition, completion, timeline 테스트 실행 결과 |
+| 신규·핵심 focused tests | PASS | 모션 토큰, stagger, branch transition, completion, timeline 테스트 실행 결과 |
+| 접근성·reduce-motion focused | PASS — 11개 | `accessibility_guideline_test.dart`, `text_scaling_test.dart`, branch/completion semantics·reduce-motion 실행 결과 |
 | 기존 routing/integration 회귀 | PASS — 5개 | `routing_flash_test.dart`, `integration/app_flow_test.dart`, branch test 실행 결과 |
 | 변경 파일 formatter | PASS | 13개 대상 `dart format --output=none --set-exit-if-changed` exit 0 |
 | 저장소 전체 formatter | 기준 차이 | 설치된 formatter가 기존 49개 파일을 변경 대상으로 보고했으나 파일은 수정하지 않았다. 이번 변경 파일은 모두 별도 formatter 검사 PASS. |
