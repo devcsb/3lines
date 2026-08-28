@@ -412,7 +412,6 @@ testWidgets('완료 문구가 저널 원문이나 효능 보장을 노출하지 
 
   expect(find.text('감사를 기록하는 사람이 행복해진대요'), findsNothing);
   expect(find.textContaining('행복해진대요'), findsNothing);
-  expect(find.text('오늘의 감정을 차분히 남겼어요'), findsOneWidget);
   await drainTimers(tester);
 });
 

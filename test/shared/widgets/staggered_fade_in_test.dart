@@ -67,9 +67,9 @@ void main() {
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(
         body: StaggeredFadeIn(
-          key: const ValueKey<String>('bounded-stagger'),
+          key: ValueKey<String>('bounded-stagger'),
           index: 99,
-          child: const Text('bounded'),
+          child: Text('bounded'),
         ),
       ),
     ));
