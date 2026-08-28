@@ -200,14 +200,21 @@ void main() {
     ));
     await tester.pump();
 
-    final fade = tester.widget<FadeTransition>(find.byType(FadeTransition));
+    final fade = tester.widget<FadeTransition>(
+      find.byKey(const ValueKey<String>('branch-fade-through')),
+    );
     expect(fade.opacity.value, lessThan(1.0));
     expect(find.text('첫 화면'), findsNothing);
     expect(find.text('다음 화면'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 240));
     expect(
-      tester.widget<FadeTransition>(find.byType(FadeTransition)).opacity.value,
+      tester
+          .widget<FadeTransition>(
+            find.byKey(const ValueKey<String>('branch-fade-through')),
+          )
+          .opacity
+          .value,
       1.0,
     );
   });
@@ -236,7 +243,12 @@ void main() {
     await tester.pump();
 
     expect(
-      tester.widget<FadeTransition>(find.byType(FadeTransition)).opacity.value,
+      tester
+          .widget<FadeTransition>(
+            find.byKey(const ValueKey<String>('branch-fade-through')),
+          )
+          .opacity
+          .value,
       1.0,
     );
   });
@@ -325,6 +337,7 @@ class _BranchFadeThroughState extends State<BranchFadeThrough>
   @override
   Widget build(BuildContext context) {
     return FadeTransition(
+      key: const ValueKey<String>('branch-fade-through'),
       opacity: _opacity,
       child: SlideTransition(position: _offset, child: widget.child),
     );
