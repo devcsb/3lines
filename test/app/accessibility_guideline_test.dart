@@ -30,4 +30,32 @@ void main() {
     await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
     semantics.dispose();
   });
+
+  testWidgets('기록이 있는 히트맵 셀은 스크린 리더 탭 동작을 제공한다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final today = DateTime.now();
+    final label = '${du.formatKoreanDate(today)}, 감정 4점';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: HeatmapGrid(
+            startDate: today,
+            emotionMap: {du.dateToString(today): 4},
+            onCellTap: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    final target = find.byWidgetPredicate(
+      (widget) =>
+          widget is Semantics &&
+          widget.properties.label == label &&
+          widget.properties.onTap != null,
+    );
+    expect(target, findsOneWidget);
+
+    semantics.dispose();
+  });
 }

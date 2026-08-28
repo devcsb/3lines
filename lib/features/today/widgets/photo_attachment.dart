@@ -105,8 +105,11 @@ class _PhotoThumbnail extends StatelessWidget {
                 clipBehavior: Clip.antiAlias,
                 child: IconButton(
                   onPressed: onRemove,
-                  icon: const Icon(Icons.close_rounded,
-                      size: 18, color: Colors.white),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.black.withValues(alpha: 0.5),
                     minimumSize: const Size(40, 40),
@@ -126,11 +129,7 @@ class _AddPhotoButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
 
-  const _AddPhotoButton({
-    required this.icon,
-    required this.label,
-    this.onTap,
-  });
+  const _AddPhotoButton({required this.icon, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -138,32 +137,42 @@ class _AddPhotoButton extends StatelessWidget {
 
     return Semantics(
       button: true,
+      enabled: onTap != null,
       label: label,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-            ),
+      child: Material(
+        color: theme.colorScheme.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon,
-                  size: 16,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon,
+                    size: 16,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

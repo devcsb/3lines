@@ -68,6 +68,47 @@ void main() {
       expect(state.emotion, 4);
       expect(state.answer1, '좋은 날씨');
     });
+
+    test(
+      'keeps the saved questions when the current prompt settings changed',
+      () async {
+        await settingsRepo.setSetting('prompt_1', '새 질문');
+        await entryRepo.saveEntry(
+          DailyEntry(
+            date: du.getTodayString(),
+            emotion: 4,
+            prompt1: '저장 당시 질문',
+            answer1: '좋은 날씨',
+            prompt2: '저장 당시 질문 2',
+            answer2: '',
+            prompt3: '저장 당시 질문 3',
+            answer3: '',
+          ),
+        );
+
+        final state = await container.read(todayControllerProvider.future);
+
+        expect(state.prompts, ['저장 당시 질문', '저장 당시 질문 2', '저장 당시 질문 3']);
+      },
+    );
+
+    test(
+      'falls back to current questions for entries without saved snapshots',
+      () async {
+        await settingsRepo.setSetting('prompt_1', '현재 질문');
+        await entryRepo.saveEntry(
+          DailyEntry(date: du.getTodayString(), emotion: 4, answer1: '예전 답변'),
+        );
+
+        final state = await container.read(todayControllerProvider.future);
+
+        expect(state.prompts.first, '현재 질문');
+        expect(
+          state.prompts.skip(1).every((prompt) => prompt.isNotEmpty),
+          isTrue,
+        );
+      },
+    );
   });
 
   group('setEmotion', () {

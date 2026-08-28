@@ -357,7 +357,9 @@ class _PeriodSelector extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Semantics(
       label: '인사이트 기간 선택',
-      child: Row(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
         children: [
           _PeriodChip(
             label: '1주',
@@ -366,7 +368,6 @@ class _PeriodSelector extends ConsumerWidget {
                 .read(insightsControllerProvider.notifier)
                 .setPeriod(InsightsPeriod.week1),
           ),
-          const SizedBox(width: 8),
           _PeriodChip(
             label: '1개월',
             selected: period == InsightsPeriod.month1,
@@ -374,7 +375,6 @@ class _PeriodSelector extends ConsumerWidget {
                 .read(insightsControllerProvider.notifier)
                 .setPeriod(InsightsPeriod.month1),
           ),
-          const SizedBox(width: 8),
           _PeriodChip(
             label: '3개월',
             selected: period == InsightsPeriod.month3,
@@ -405,26 +405,41 @@ class _PeriodChip extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final ts = Theme.of(context).textTheme;
 
-    return GestureDetector(
-      onTap: () {
-        HapticService.selection();
-        onTap();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? cs.primary : Colors.transparent,
+    return Semantics(
+      container: true,
+      button: true,
+      selected: selected,
+      label: '인사이트 기간: $label${selected ? ', 선택됨' : ''}',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? cs.primary : cs.outlineVariant),
-        ),
-        child: Text(
-          label,
-          style: ts.labelMedium?.copyWith(
-            color: selected
-                ? cs.onPrimary
-                : cs.onSurface.withValues(alpha: 0.6),
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+          onTap: () {
+            HapticService.selection();
+            onTap();
+          },
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: selected ? cs.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: selected ? cs.primary : cs.outlineVariant,
+                ),
+              ),
+              child: Text(
+                label,
+                style: ts.labelMedium?.copyWith(
+                  color: selected
+                      ? cs.onPrimary
+                      : cs.onSurface.withValues(alpha: 0.6),
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ),
           ),
         ),
       ),

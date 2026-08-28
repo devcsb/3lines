@@ -293,6 +293,15 @@ class _HeatmapCellState extends State<_HeatmapCell> {
           button: widget.onTap != null,
           enabled: widget.onTap != null,
           label: widget.semanticLabel,
+          // GestureDetector의 onTapUp만으로는 스크린 리더가 실행할
+          // SemanticsAction.tap이 생성되지 않는다. 포인터 탭과 동일한
+          // 동작을 명시해 키보드/VoiceOver/TalkBack에서도 셀을 열 수 있게 한다.
+          onTap: widget.onTap == null
+              ? null
+              : () {
+                  HapticService.light();
+                  widget.onTap!();
+                },
           child: SizedBox(
             width: widget.tapSize,
             height: widget.tapSize,

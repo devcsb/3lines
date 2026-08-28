@@ -56,4 +56,28 @@ void main() {
     await refresh;
     expect(completed, isTrue);
   });
+
+  testWidgets('인사이트 기간 선택은 라벨과 48dp 조작 영역을 제공한다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final controller = _GateInsightsController(Completer<void>());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [insightsControllerProvider.overrideWith(() => controller)],
+        child: const MaterialApp(home: InsightsScreen()),
+      ),
+    );
+    await tester.pump();
+
+    final target = find.byWidgetPredicate(
+      (widget) =>
+          widget is Semantics && widget.properties.label == '인사이트 기간: 1주, 선택됨',
+    );
+    expect(target, findsOneWidget);
+    final rect = tester.getRect(target);
+    expect(rect.width, greaterThanOrEqualTo(48));
+    expect(rect.height, greaterThanOrEqualTo(48));
+
+    semantics.dispose();
+  });
 }

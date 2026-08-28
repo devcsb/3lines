@@ -28,11 +28,14 @@ String getTodayString() => DateFormat('yyyy-MM-dd').format(DateTime.now());
 
 /// Days elapsed since a fixed epoch (2024-01-01). Used for deterministic
 /// daily prompt rotation without storing any state.
-int daysSinceEpoch() {
-  const epoch = Duration(days: 19723); // 2024-01-01 in days since Unix epoch
-  final today = DateTime.now();
-  final daysSinceUnix = today.millisecondsSinceEpoch ~/ 86400000;
-  return daysSinceUnix - epoch.inDays;
+int daysSinceEpoch([DateTime? now]) {
+  // Use the user's local calendar date, then convert both dates to UTC
+  // midnights. Calculating from the instant would shift rotation to 09:00 in
+  // Asia/Seoul (and to another hour in other non-UTC time zones).
+  final localDate = now ?? DateTime.now();
+  final today = DateTime.utc(localDate.year, localDate.month, localDate.day);
+  final epoch = DateTime.utc(2024, 1, 1);
+  return today.difference(epoch).inDays;
 }
 
 /// Subtracts [months] from [from], clamping the day to the last day of

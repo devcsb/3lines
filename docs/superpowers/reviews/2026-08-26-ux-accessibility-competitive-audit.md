@@ -2,7 +2,7 @@
 
 ## 결론
 
-현재 코드는 **조건부 릴리스 후보**로 판단한다. 핵심 기록 루프와 로컬 데이터 경로에 대한 회귀 테스트, Flutter 정적 분석, Android 단위 테스트, iOS 위젯 extension 직접 빌드는 통과했다. Android 예약 receiver·위젯 자정 갱신·스트릭 위험 알림 horizon·Face ID privacy·prompt 위젯 sync도 보강했다. 다만 사용자 Android keystore와 iOS Team/인증서가 없어 운영 서명 artifact와 스토어 업로드는 완료할 수 없다.
+현재 코드는 **조건부 릴리스 후보**로 판단한다. 핵심 기록 루프와 로컬 데이터 경로에 대한 회귀 테스트, Flutter 정적 분석, Android 단위 테스트, iOS 위젯 extension 직접 빌드는 통과했다. Android 예약 receiver·위젯 자정 갱신·스트릭 위험 알림 horizon·Face ID privacy·prompt 위젯 sync도 보강했다. 이번 사용성 재검토에서는 저장 당시 질문 스냅샷 보존과 주요 커스텀 컨트롤의 48dp 조작 영역·Semantics를 추가로 보강했다. 다만 사용자 Android keystore와 iOS Team/인증서가 없어 운영 서명 artifact와 스토어 업로드는 완료할 수 없다.
 
 릴리스 게이트 수정 후 Flutter 전체 테스트·Android 단위 테스트·iOS 순수 Swift 테스트·merged manifest를 재확인했고 모두 통과했다. 새 코드가 추가한 background polling이나 네트워크 의존성은 발견되지 않았지만, 실기기 예약 알림/배터리 도착 지연은 이 호스트에서 검증할 수 없다. Android 집계 `assemble`/`build`/`bundle` 경로도 `validateReleaseSigning`에 연결해 서명 없는 release 산출물 우회를 차단한다.
 
@@ -24,6 +24,10 @@
 
 - `ThreeLinesApp`가 시스템 `MediaQuery.textScaler`를 그대로 전달한다. 큰 글자를 억지로 1.3배에서 자르던 결함을 제거했다.
 - 히트맵은 시각 밀도를 유지하면서 semantics label과 48×48 조작 영역을 제공한다. Flutter/Android 가이드의 44–48pt/dp 기준을 테스트로 고정했다.
+- 기록이 있는 히트맵 셀은 포인터 탭뿐 아니라 Semantics `tap` 동작도 노출해 VoiceOver/TalkBack에서 직접 열 수 있고, 사진 추가 버튼은 콜백이 없을 때 비활성 상태를 알린다.
+- 저장된 기록은 작성 당시 `prompt1~3`를 다시 사용하고, 스냅샷이 없는 구형 데이터만 현재 질문으로 보완한다. 질문 설정 변경 후 과거 답변의 의미가 바뀌지 않는다.
+- 일일 질문 회전은 UTC timestamp가 아닌 사용자 로컬 날짜의 자정을 기준으로 한다. 한국 시간 등 UTC+ 시간대에서 오전 9시에 늦게 회전하던 경계 오류를 회귀 테스트로 고정했다.
+- 사진 추가, 액센트 테마, 인사이트 기간 선택은 시각적 컴팩트함을 유지하면서 48dp 이상 hit target과 선택/버튼 semantics를 제공한다. 인사이트 기간은 좁은 화면에서 `Wrap`으로 줄바꿈된다.
 - Timeline/Insights 새로고침 callback은 데이터 Future가 끝날 때까지 완료되지 않아, 사용자에게 보이는 spinner와 실제 상태 전환이 일치한다.
 - 200% text scaler smoke test에서 핵심 앱 shell이 렌더링되고 overflow 예외가 발생하지 않는다.
 
@@ -52,7 +56,7 @@
 | 게이트 | 결과 | 비고 |
 |---|---|---|
 | 정적 분석/포맷 | 통과 | `flutter analyze` 0 issues; format 변경 0 |
-| Flutter 회귀 | 통과 | 전체 383개 통과 |
+| Flutter 회귀 | 통과 | 전체 393개 통과 |
 | Android 단위 | 통과 | JDK 21, 위젯 자정 계산 포함 `ThreeLinesWidgetStateTest` |
 | Android release | 조건부 | unsigned 로컬 컴파일만 허용; variant pre-build 검증으로 `assemble`/`build` 집계 경로도 keystore 없이는 fail-closed |
 | Android 예약 매니페스트 | 통과 | merged manifest에 scheduled/boot receiver와 `RECEIVE_BOOT_COMPLETED` 확인 |

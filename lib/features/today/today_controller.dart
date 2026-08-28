@@ -56,7 +56,21 @@ class TodayController extends AsyncNotifier<TodayState> {
         answer1: todayEntry.answer1,
         answer2: todayEntry.answer2,
         answer3: todayEntry.answer3,
-        prompts: prompts,
+        // A saved entry keeps the questions that were shown when it was
+        // written.  Settings changes apply to future entries; replacing these
+        // snapshots would make an existing answer appear under a different
+        // question when the user revisits Today.
+        prompts: [
+          todayEntry.prompt1.trim().isNotEmpty
+              ? todayEntry.prompt1
+              : prompts[0],
+          todayEntry.prompt2.trim().isNotEmpty
+              ? todayEntry.prompt2
+              : prompts[1],
+          todayEntry.prompt3.trim().isNotEmpty
+              ? todayEntry.prompt3
+              : prompts[2],
+        ],
         isCompleted: true,
         currentStreak: streakResult.count,
         usedGraceDay: streakResult.usedGraceDay,
