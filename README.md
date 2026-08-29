@@ -135,6 +135,9 @@ flutter build apk --release --split-per-abi \
 `allowUnsignedRelease=true`로 만든 APK는 배포·업데이트에 사용할 수 없습니다. Play 배포 전에는
 upload keystore와 CI 서명 검사를 반드시 구성하세요.
 
+모바일 릴리스의 버전·서명·CocoaPods·TestFlight 절차는 [릴리스 가이드](docs/RELEASE.md)를 따르세요. 태그 기반
+GitHub Actions는 검증을 통과한 AAB/IPA만 GitHub Release에 첨부하며, 스토어 업로드는 명시적으로 활성화한 경우에만 실행됩니다.
+
 ---
 
 ## 프로젝트 구조
