@@ -55,5 +55,4 @@ jobs:
         working-directory: android
         run: ./gradlew :app:testDebugUnitTest --no-daemon
       - name: Verify Android release signing gate
-        working-directory: ..
         run: test/tool/release/android_release_gate_test.sh
