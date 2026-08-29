@@ -61,13 +61,13 @@ Apple 자료가 준비되면 secret 5개를 등록하는 것만으로 iOS job이
 
 ### iOS secret 만드는 법
 
-`Yuon Inc.` 팀(Team ID `7D5XL3L4ZT`)의 Apple Distribution 인증서를 사용합니다.
+3Lines 전용 Apple Developer Program 계정이 아직 없어서 iOS 배포는 하지 않습니다. 계정을 만든 뒤 아래 순서로 준비합니다.
 
 1. Apple Developer 포털에서 App ID 두 개와 App Group을 등록합니다.
    - `com.threelines.threeLines`, `com.threelines.threeLines.ThreeLinesWidget`
    - App Group `group.com.threelines.threeLines` 를 두 App ID 모두에 붙입니다.
 2. 두 App ID에 대한 App Store distribution provisioning profile을 만들어 내려받습니다.
-3. Keychain Access에서 `Apple Distribution: Yuon Inc.` 인증서를 개인 키와 함께 `.p12`로 내보냅니다.
+3. Keychain Access에서 해당 팀의 `Apple Distribution` 인증서를 개인 키와 함께 `.p12`로 내보냅니다.
 4. 값을 만들어 등록합니다.
 
 ```bash
@@ -75,7 +75,7 @@ base64 -i distribution.p12 | tr -d '\n' | gh secret set IOS_CERTIFICATE_BASE64
 gh secret set IOS_CERTIFICATE_PASSWORD
 base64 -i ThreeLines_AppStore.mobileprovision | tr -d '\n' | gh secret set IOS_PROVISIONING_PROFILE_BASE64
 base64 -i ThreeLinesWidget_AppStore.mobileprovision | tr -d '\n' | gh secret set IOS_WIDGET_PROVISIONING_PROFILE_BASE64
-gh secret set IOS_DEVELOPMENT_TEAM --body 7D5XL3L4ZT
+gh secret set IOS_DEVELOPMENT_TEAM  # Apple Developer 팀 ID
 ```
 
 ## 로컬 서명 빌드
