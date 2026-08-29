@@ -63,8 +63,8 @@ runner_uuid="$(profile_value "$runner_profile_path" UUID)"
 runner_name="$(profile_value "$runner_profile_path" Name)"
 widget_uuid="$(profile_value "$widget_profile_path" UUID)"
 widget_name="$(profile_value "$widget_profile_path" Name)"
-runner_app_id="$(profile_value "$runner_profile_path" Entitlements:application-identifier)"
-widget_app_id="$(profile_value "$widget_profile_path" Entitlements:application-identifier)"
+runner_app_id="$(profile_value "$runner_profile_path" Entitlements.application-identifier)"
+widget_app_id="$(profile_value "$widget_profile_path" Entitlements.application-identifier)"
 
 if [[ "$runner_app_id" != *"com.threelines.threeLines" || "$widget_app_id" != *"com.threelines.threeLines.ThreeLinesWidget" ]]; then
   echo "Provisioning profiles do not match Runner and widget bundle identifiers" >&2
