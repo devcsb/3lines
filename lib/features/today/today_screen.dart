@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
+import '../../core/time/app_clock.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../shared/widgets/staggered_fade_in.dart';
 import 'today_controller.dart';
@@ -51,6 +53,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
   Widget build(BuildContext context) {
     final asyncState = ref.watch(todayControllerProvider);
     final theme = Theme.of(context);
+    final now = ref.read(appClockProvider).now();
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -98,7 +101,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                         const SizedBox(height: 8),
                         // Date
                         Text(
-                          du.formatKoreanDate(DateTime.now()),
+                          du.formatKoreanDate(now),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurface.withValues(
                               alpha: 0.45,
@@ -137,8 +140,11 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                           TweenAnimationBuilder<double>(
                             key: const ValueKey('read-mode-badge'),
                             tween: Tween(begin: 0.0, end: 1.0),
-                            duration: const Duration(milliseconds: 450),
-                            curve: Curves.easeOutCubic,
+                            duration: AppMotion.durationFor(
+                              context,
+                              AppMotion.entrance,
+                            ),
+                            curve: AppMotion.standardCurve,
                             builder: (context, value, child) => Opacity(
                               opacity: value.clamp(0.0, 1.0),
                               child: Transform.translate(
@@ -188,6 +194,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                   const SizedBox(height: 12),
                                   _MiniSparkline(
                                     recentEmotions: state.recentEmotions,
+                                    now: now,
                                   ),
                                 ],
                               ],
@@ -458,16 +465,16 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
 }
 
 class _MiniSparkline extends StatelessWidget {
-  const _MiniSparkline({required this.recentEmotions});
+  const _MiniSparkline({required this.recentEmotions, required this.now});
 
   final List<({DateTime date, int emotion})> recentEmotions;
+  final DateTime now;
 
   static const _dayLabels = ['월', '화', '수', '목', '금', '토', '일'];
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final now = DateTime.now();
     final days = List.generate(7, (i) => now.subtract(Duration(days: 6 - i)));
 
     return Container(
@@ -522,7 +529,11 @@ class _MiniSparkline extends StatelessWidget {
                 child: Column(
                   children: [
                     AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
+                      duration: AppMotion.durationFor(
+                        context,
+                        AppMotion.standard,
+                      ),
+                      curve: AppMotion.standardCurve,
                       width: emotion != null ? 28 : 22,
                       height: emotion != null ? 28 : 22,
                       decoration: BoxDecoration(
@@ -558,8 +569,9 @@ class _MiniSparkline extends StatelessWidget {
                         color: theme.colorScheme.onSurface.withValues(
                           alpha: isToday ? 0.7 : 0.35,
                         ),
-                        fontWeight:
-                            isToday ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: isToday
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ],

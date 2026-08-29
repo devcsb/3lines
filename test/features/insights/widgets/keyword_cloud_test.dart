@@ -5,9 +5,7 @@ import 'package:three_lines/features/insights/widgets/keyword_cloud.dart';
 void main() {
   Widget buildApp({Map<String, int> keywords = const {}}) {
     return MaterialApp(
-      home: Scaffold(
-        body: KeywordCloud(keywords: keywords),
-      ),
+      home: Scaffold(body: KeywordCloud(keywords: keywords)),
     );
   }
 
@@ -26,5 +24,18 @@ void main() {
   testWidgets('uses Wrap layout', (tester) async {
     await tester.pumpWidget(buildApp(keywords: {'테스트': 1}));
     expect(find.byType(Wrap), findsOneWidget);
+  });
+
+  testWidgets('reduce-motion에서는 모든 키워드가 즉시 표시된다', (tester) async {
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: buildApp(keywords: {'감사': 5, '날씨': 3, '가족': 2}),
+      ),
+    );
+
+    final opacities = tester.widgetList<Opacity>(find.byType(Opacity));
+    expect(opacities, isNotEmpty);
+    expect(opacities.every((opacity) => opacity.opacity == 1.0), isTrue);
   });
 }

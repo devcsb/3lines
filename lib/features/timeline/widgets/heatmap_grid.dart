@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/date_utils.dart' as du;
 
@@ -28,7 +29,7 @@ class _HeatmapGridState extends State<HeatmapGrid>
   void initState() {
     super.initState();
     _waveController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: AppMotion.entrance,
       vsync: this,
     )..forward();
   }
@@ -37,7 +38,7 @@ class _HeatmapGridState extends State<HeatmapGrid>
   void didChangeDependencies() {
     super.didChangeDependencies();
     // reduce-motion(동작 줄이기): 진입 웨이브를 생략하고 즉시 완전 표시.
-    if (MediaQuery.disableAnimationsOf(context)) {
+    if (AppMotion.reduceMotion(context)) {
       _waveController.value = 1.0;
     }
   }
@@ -48,7 +49,7 @@ class _HeatmapGridState extends State<HeatmapGrid>
     // Re-trigger animation when data changes (period switch)
     if (oldWidget.emotionMap != widget.emotionMap ||
         oldWidget.startDate != widget.startDate) {
-      if (MediaQuery.disableAnimationsOf(context)) {
+      if (AppMotion.reduceMotion(context)) {
         _waveController.value = 1.0;
       } else {
         _waveController
@@ -71,16 +72,18 @@ class _HeatmapGridState extends State<HeatmapGrid>
     final now = DateTime.now();
     const dayLabels = ['월', '', '수', '', '금', '', ''];
 
-    final startMonday = widget.startDate
-        .subtract(Duration(days: widget.startDate.weekday - 1));
+    final startMonday = widget.startDate.subtract(
+      Duration(days: widget.startDate.weekday - 1),
+    );
     final endMonday = now.subtract(Duration(days: now.weekday - 1));
     final weeks = (endMonday.difference(startMonday).inDays ~/ 7) + 1;
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final availableWidth = screenWidth - 32 - 30;
     final cellSize = (availableWidth / weeks).clamp(8.0, 20.0);
-    const gap = 2.0;
-    final tapSize = cellSize + gap;
+    // 색상 셀은 작게 유지하되, Semantics와 GestureDetector가 차지하는
+    // 상호작용 영역은 Android 권장 최소 48dp로 확보한다.
+    const tapSize = 48.0;
 
     // 셀 그리드는 웨이브 애니메이션 프레임마다 불변이므로 AnimatedBuilder 밖에서
     // 한 번만 만든다. 프레임마다 바뀌는 건 주(week)별 Opacity/Transform.scale 뿐이라,
@@ -91,7 +94,7 @@ class _HeatmapGridState extends State<HeatmapGrid>
         children: List.generate(7, (dayIndex) {
           final date = weekStart.add(Duration(days: dayIndex));
           if (date.isAfter(now) || date.isBefore(widget.startDate)) {
-            return SizedBox(width: tapSize, height: tapSize);
+            return const SizedBox(width: tapSize, height: tapSize);
           }
           final dateStr = du.dateToString(date);
           final emotion = widget.emotionMap[dateStr];
@@ -134,8 +137,9 @@ class _HeatmapGridState extends State<HeatmapGrid>
                           dayLabels[i],
                           style: theme.textTheme.bodySmall?.copyWith(
                             fontSize: 10,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.5),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.5,
+                            ),
                           ),
                         ),
                       ),
@@ -158,23 +162,28 @@ class _HeatmapGridState extends State<HeatmapGrid>
                         children: List.generate(weeks, (weekIndex) {
                           // Stagger: most recent weeks animate first
                           final reversedIndex = weeks - 1 - weekIndex;
-                          final start =
-                              (reversedIndex / weeks * 0.65).clamp(0.0, 1.0);
+                          final start = (reversedIndex / weeks * 0.65).clamp(
+                            0.0,
+                            1.0,
+                          );
                           final end = (start + 0.35).clamp(0.0, 1.0);
                           // Use Interval.transform directly to avoid
                           // allocating a CurvedAnimation object per frame.
-                          final interval =
-                              Interval(start, end, curve: Curves.easeOutCubic);
-                          final progress =
-                              interval.transform(_waveController.value);
+                          final interval = Interval(
+                            start,
+                            end,
+                            curve: AppMotion.standardCurve,
+                          );
+                          final progress = interval.transform(
+                            _waveController.value,
+                          );
 
                           return Opacity(
                             opacity: progress.clamp(0.0, 1.0),
-                            child: Transform.scale(
-                              scale: 0.6 + 0.4 * progress,
-                              alignment: Alignment.center,
-                              child: weekColumns[weekIndex],
-                            ),
+                            // 셀 전체를 Transform.scale로 감싸면 시맨틱
+                            // 터치 영역까지 축소된다. 시각 셀과 48dp 영역의
+                            // 계약을 유지하기 위해 웨이브는 opacity만 적용한다.
+                            child: weekColumns[weekIndex],
                           );
                         }),
                       );
@@ -190,8 +199,10 @@ class _HeatmapGridState extends State<HeatmapGrid>
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text('적음 ',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
+            Text(
+              '적음 ',
+              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+            ),
             Container(
               width: 12,
               height: 12,
@@ -212,8 +223,10 @@ class _HeatmapGridState extends State<HeatmapGrid>
                 ),
               );
             }),
-            Text(' 많음',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
+            Text(
+              ' 많음',
+              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+            ),
           ],
         ),
       ],
@@ -254,6 +267,9 @@ class _HeatmapCellState extends State<_HeatmapCell> {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = AppMotion.reduceMotion(context);
+    final highlightDuration = AppMotion.durationFor(context, AppMotion.micro);
+
     return Tooltip(
       message: widget.tooltipMsg,
       waitDuration: const Duration(milliseconds: 300),
@@ -261,31 +277,49 @@ class _HeatmapCellState extends State<_HeatmapCell> {
         behavior: HitTestBehavior.opaque,
         onTapDown: widget.onTap != null
             ? (_) {
-                if (mounted) setState(() => _highlighted = true);
+                if (!reduceMotion && mounted) {
+                  setState(() => _highlighted = true);
+                }
               }
             : null,
         onTapUp: widget.onTap != null
             ? (_) {
                 HapticService.light();
                 widget.onTap!();
-                Future.delayed(const Duration(milliseconds: 250), () {
+                if (reduceMotion) {
                   if (mounted) setState(() => _highlighted = false);
-                });
+                } else {
+                  Future.delayed(highlightDuration, () {
+                    if (mounted) setState(() => _highlighted = false);
+                  });
+                }
               }
             : null,
         onTapCancel: () {
           if (mounted) setState(() => _highlighted = false);
         },
         child: Semantics(
+          container: true,
+          button: widget.onTap != null,
+          enabled: widget.onTap != null,
           label: widget.semanticLabel,
+          // GestureDetector의 onTapUp만으로는 스크린 리더가 실행할
+          // SemanticsAction.tap이 생성되지 않는다. 포인터 탭과 동일한
+          // 동작을 명시해 키보드/VoiceOver/TalkBack에서도 셀을 열 수 있게 한다.
+          onTap: widget.onTap == null
+              ? null
+              : () {
+                  HapticService.light();
+                  widget.onTap!();
+                },
           child: SizedBox(
             width: widget.tapSize,
             height: widget.tapSize,
             child: Center(
               child: AnimatedScale(
                 scale: _highlighted ? 1.4 : 1.0,
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOut,
+                duration: highlightDuration,
+                curve: AppMotion.standardCurve,
                 child: Container(
                   width: widget.cellSize,
                   height: widget.cellSize,

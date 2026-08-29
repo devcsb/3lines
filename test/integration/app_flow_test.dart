@@ -4,15 +4,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:three_lines/app.dart';
 import 'package:three_lines/core/services/biometric_service.dart';
-import 'package:three_lines/core/services/notification_service.dart';
+import 'package:three_lines/core/services/journal_side_effects.dart';
 import 'package:three_lines/core/services/photo_service.dart';
+import 'package:three_lines/core/services/widget_sync_service.dart';
 import 'package:three_lines/data/database/app_database.dart';
 import 'package:three_lines/data/repositories/entry_repository.dart';
 import 'package:three_lines/data/repositories/settings_repository.dart';
 
 import '../helpers/fake_biometric_service.dart';
-import '../helpers/fake_notification_service.dart';
 import '../helpers/fake_photo_service.dart';
+import '../helpers/fake_widget_sync.dart';
+
+final class NoOpJournalSideEffects implements JournalSideEffects {
+  @override
+  Future<void> onLaunch() async {}
+
+  @override
+  Future<void> onJournalChanged() async {}
+}
 
 /// 풀스택 플로우 테스트: 실제 ThreeLinesApp 위젯 트리를 인메모리 DB + fake로
 /// 구동해 UI→controller→repository→DB 경로를 호스트(flutter test)에서 검증한다.
@@ -34,8 +43,10 @@ void main() {
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
-          notificationServiceProvider
-              .overrideWithValue(FakeNotificationService()),
+          journalSideEffectsProvider.overrideWithValue(
+            NoOpJournalSideEffects(),
+          ),
+          widgetSyncServiceProvider.overrideWithValue(FakeWidgetSync()),
           photoServiceProvider.overrideWithValue(FakePhotoService()),
           biometricServiceProvider.overrideWithValue(FakeBiometricService()),
         ],

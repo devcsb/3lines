@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/services/haptic_service.dart';
 import '../../core/time/app_clock.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../data/models/daily_entry.dart';
 import '../../shared/widgets/staggered_fade_in.dart';
@@ -64,8 +66,8 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
             return Center(
               child: TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0.0, end: 1.0),
-                duration: const Duration(milliseconds: 600),
-                curve: Curves.easeOutCubic,
+                duration: AppMotion.durationFor(context, AppMotion.entrance),
+                curve: AppMotion.standardCurve,
                 builder: (context, value, child) {
                   return Opacity(
                     opacity: value.clamp(0.0, 1.0),
@@ -104,6 +106,11 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    FilledButton.tonal(
+                      onPressed: () => context.go('/'),
+                      child: const Text('오늘 기록하기'),
+                    ),
                   ],
                 ),
               ),
@@ -112,9 +119,11 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
 
           return SafeArea(
             child: RefreshIndicator(
-              onRefresh: () async {
+              onRefresh: () {
                 HapticService.light();
-                ref.invalidate(timelineControllerProvider);
+                return ref
+                    .refresh(timelineControllerProvider.future)
+                    .then<void>((_) {});
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),

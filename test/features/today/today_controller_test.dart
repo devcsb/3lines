@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:three_lines/core/services/notification_service.dart';
+import 'package:three_lines/core/events/journal_changes.dart';
 import 'package:three_lines/core/services/photo_service.dart';
 import 'package:three_lines/core/utils/date_utils.dart' as du;
 import 'package:three_lines/data/database/app_database.dart';
@@ -12,7 +12,6 @@ import 'package:three_lines/data/repositories/entry_repository.dart';
 import 'package:three_lines/data/repositories/settings_repository.dart';
 import 'package:three_lines/features/today/today_controller.dart';
 
-import '../../helpers/fake_notification_service.dart';
 import '../../helpers/fake_photo_service.dart';
 
 void main() {
@@ -20,7 +19,6 @@ void main() {
   late EntryRepository entryRepo;
   late SettingsRepository settingsRepo;
   late FakePhotoService fakePhoto;
-  late FakeNotificationService fakeNotif;
   late ProviderContainer container;
 
   setUp(() {
@@ -28,14 +26,12 @@ void main() {
     entryRepo = EntryRepository(db);
     settingsRepo = SettingsRepository(db);
     fakePhoto = FakePhotoService();
-    fakeNotif = FakeNotificationService();
 
     container = ProviderContainer(
       overrides: [
         entryRepositoryProvider.overrideWithValue(entryRepo),
         settingsRepositoryProvider.overrideWithValue(settingsRepo),
         photoServiceProvider.overrideWithValue(fakePhoto),
-        notificationServiceProvider.overrideWithValue(fakeNotif),
       ],
     );
   });
@@ -72,6 +68,47 @@ void main() {
       expect(state.emotion, 4);
       expect(state.answer1, '좋은 날씨');
     });
+
+    test(
+      'keeps the saved questions when the current prompt settings changed',
+      () async {
+        await settingsRepo.setSetting('prompt_1', '새 질문');
+        await entryRepo.saveEntry(
+          DailyEntry(
+            date: du.getTodayString(),
+            emotion: 4,
+            prompt1: '저장 당시 질문',
+            answer1: '좋은 날씨',
+            prompt2: '저장 당시 질문 2',
+            answer2: '',
+            prompt3: '저장 당시 질문 3',
+            answer3: '',
+          ),
+        );
+
+        final state = await container.read(todayControllerProvider.future);
+
+        expect(state.prompts, ['저장 당시 질문', '저장 당시 질문 2', '저장 당시 질문 3']);
+      },
+    );
+
+    test(
+      'falls back to current questions for entries without saved snapshots',
+      () async {
+        await settingsRepo.setSetting('prompt_1', '현재 질문');
+        await entryRepo.saveEntry(
+          DailyEntry(date: du.getTodayString(), emotion: 4, answer1: '예전 답변'),
+        );
+
+        final state = await container.read(todayControllerProvider.future);
+
+        expect(state.prompts.first, '현재 질문');
+        expect(
+          state.prompts.skip(1).every((prompt) => prompt.isNotEmpty),
+          isTrue,
+        );
+      },
+    );
   });
 
   group('setEmotion', () {
@@ -114,9 +151,12 @@ void main() {
 
       notifier.setEmotion(4);
       notifier.setAnswer(0, '가족과 저녁');
+      final changesBefore = container.read(journalChangesProvider);
 
       final success = await notifier.save();
+
       expect(success, isTrue);
+      expect(container.read(journalChangesProvider), changesBefore + 1);
 
       final state = container.read(todayControllerProvider).value;
       expect(state?.isCompleted, isTrue);

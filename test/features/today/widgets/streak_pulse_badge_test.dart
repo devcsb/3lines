@@ -6,9 +6,7 @@ void main() {
   testWidgets('renders streak text', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: Scaffold(
-          body: StreakPulseBadge(streak: 3, usedGraceDay: true),
-        ),
+        home: Scaffold(body: StreakPulseBadge(streak: 3, usedGraceDay: true)),
       ),
     );
     await tester.pump();
@@ -17,8 +15,9 @@ void main() {
     expect(find.byIcon(Icons.shield_rounded), findsOneWidget);
   });
 
-  testWidgets('reduce-motion stops the infinite pulse so the tree settles',
-      (tester) async {
+  testWidgets('reduce-motion에서는 pulse가 시작되지 않아 tree가 settle된다', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(
@@ -31,8 +30,20 @@ void main() {
         ),
       ),
     );
-    // 무한 repeat 애니메이션이 멈췄을 때만 pumpAndSettle 이 완료된다.
+    // reduced-motion에서는 강조 ticker가 시작되지 않아 pumpAndSettle이 완료된다.
     await tester.pumpAndSettle();
     expect(find.textContaining('5일'), findsOneWidget);
+  });
+
+  testWidgets('정상 모드에서도 진입 펄스는 한 번만 재생된다', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: StreakPulseBadge(streak: 5, usedGraceDay: false)),
+      ),
+    );
+    await tester.pump();
+
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(tester.binding.hasScheduledFrame, isFalse);
   });
 }

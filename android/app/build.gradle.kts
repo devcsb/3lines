@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -5,10 +8,66 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
+}
+
+val releaseSigningKeys = listOf(
+    "keyAlias",
+    "keyPassword",
+    "storeFile",
+    "storePassword",
+)
+val releaseStoreFile = keystoreProperties.getProperty("storeFile")
+    ?.takeIf { it.isNotBlank() }
+    ?.let(rootProject::file)
+val hasReleaseSigning = releaseSigningKeys.all { key ->
+    !keystoreProperties.getProperty(key).isNullOrBlank()
+} && releaseStoreFile?.isFile == true
+if (keystorePropertiesFile.exists() && !hasReleaseSigning) {
+    throw GradleException(
+        "android/keystore.properties must define keyAlias, keyPassword, storeFile, " +
+            "storePassword and point storeFile to an existing keystore",
+    )
+}
+
+val allowUnsignedRelease = providers.gradleProperty("allowUnsignedRelease")
+    .map(String::toBoolean)
+    .orElse(false)
+    .get()
+val isCi = providers.environmentVariable("CI")
+    .map { value ->
+        value.trim().lowercase() in setOf("true", "1", "yes", "on")
+    }
+    .orElse(false)
+    .get()
+if (isCi && allowUnsignedRelease) {
+    throw GradleException(
+        "allowUnsignedRelease=true is forbidden when CI=true; configure Android release signing instead",
+    )
+}
+val releaseSigningError =
+    "Release signing is not configured. Add android/keystore.properties for a distributable build, " +
+        "or pass --android-project-arg=allowUnsignedRelease=true only for local non-distribution builds. " +
+        "CI builds must always provide a keystore."
+
 android {
     namespace = "com.threelines.three_lines"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
@@ -33,15 +92,30 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }
 
+val validateReleaseSigning = tasks.register("validateReleaseSigning") {
+    doLast {
+        if (!hasReleaseSigning && !allowUnsignedRelease) {
+            throw GradleException(releaseSigningError)
+        }
+    }
+}
+
+// Attach validation to the release lifecycle so aggregate `assemble`/`build` tasks
+// cannot produce an unsigned release artifact by omitting "Release" in taskNames.
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(validateReleaseSigning)
+}
+
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    testImplementation("junit:junit:4.13.2")
 }
 
 flutter {

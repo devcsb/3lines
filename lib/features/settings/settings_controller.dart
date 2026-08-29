@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -7,8 +8,8 @@ import '../../app/router.dart';
 import '../../core/constants/default_prompts.dart';
 import '../../core/events/journal_changes.dart';
 import '../../core/services/biometric_service.dart';
-import '../../core/services/notification_service.dart';
 import '../../core/services/photo_service.dart';
+import '../../core/services/reminder_coordinator.dart';
 import '../../core/settings/settings_keys.dart';
 import '../../core/theme/theme_notifier.dart';
 import '../../core/time/app_clock.dart';
@@ -29,7 +30,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
       settingsRepo.getThemeMode(),
       PackageInfo.fromPlatform()
           .then((info) => info.version)
-          .catchError((_) => '1.0.0'),
+          .catchError((_) => 'unknown'),
       settingsRepo.isBiometricLockEnabled(),
     ]);
     final prompts = results[0] as List<String>;
@@ -56,6 +57,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
 
     final repo = ref.read(settingsRepositoryProvider);
     await repo.setSetting(SettingKeys.promptKeys[index], value);
+    ref.read(journalChangesProvider.notifier).markChanged();
     final current = state.value;
     if (current == null) return;
     final newPrompts = List<String>.from(current.prompts);
@@ -73,6 +75,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
         defaultPromptQuestions[i],
       );
     }
+    ref.read(journalChangesProvider.notifier).markChanged();
     final current = state.value;
     if (current == null) return;
     state = AsyncData(
@@ -83,86 +86,30 @@ class SettingsController extends AsyncNotifier<SettingsState> {
 
   /// Enables or disables the daily reminder. Returns false if scheduling fails.
   Future<bool> setReminderEnabled(bool enabled) async {
-    final repo = ref.read(settingsRepositoryProvider);
-    final notifService = ref.read(notificationServiceProvider);
-
-    if (enabled) {
-      final granted = await notifService.requestPermission();
-      if (!granted) return false;
-    }
-
     final current = state.value;
     if (current == null) return false;
-
-    if (enabled) {
-      final entryRepo = ref.read(entryRepositoryProvider);
-      final scheduled = await notifService.scheduleSmartDailyReminder(
-        hour: current.reminderHour,
-        minute: current.reminderMinute,
-        entryExistsToday: () async => await entryRepo.getTodayEntry() != null,
-      );
-      if (!scheduled) return false;
-
-      // Schedule streak-at-risk notification (1hr before) if user has a streak
-      final streak = await entryRepo.getCurrentStreak();
-      if (streak > 0) {
-        await notifService.scheduleStreakAtRiskReminder(
-          reminderHour: current.reminderHour,
-          reminderMinute: current.reminderMinute,
-        );
-      }
-
-      // Schedule Sunday weekly retrospective reminder
-      await notifService.scheduleWeeklyRetrospectiveReminder();
-    } else {
-      await notifService.cancelReminder();
-    }
-
-    await repo.setSetting(SettingKeys.reminderEnabled, enabled.toString());
-    state = AsyncData(current.copyWith(reminderEnabled: enabled));
+    final success = await ref
+        .read(reminderCoordinatorProvider)
+        .setEnabled(enabled);
+    if (!success) return false;
+    final latest = state.value ?? current;
+    state = AsyncData(latest.copyWith(reminderEnabled: enabled));
     return true;
   }
 
   /// Updates the reminder time. Returns false if rescheduling fails.
   Future<bool> setReminderTime(int hour, int minute) async {
-    final repo = ref.read(settingsRepositoryProvider);
-    final notifService = ref.read(notificationServiceProvider);
     final current = state.value;
     if (current == null) return false;
-
-    try {
-      if (current.reminderEnabled) {
-        final entryRepo = ref.read(entryRepositoryProvider);
-        final scheduled = await notifService.scheduleSmartDailyReminder(
-          hour: hour,
-          minute: minute,
-          entryExistsToday: () async => await entryRepo.getTodayEntry() != null,
-        );
-        // 재예약 실패 시 DB/state 를 건드리지 않아 저장값·화면·알림이 일치 유지.
-        if (!scheduled) return false;
-
-        // Reschedule streak-at-risk with new time
-        final streak = await entryRepo.getCurrentStreak();
-        if (streak > 0) {
-          await notifService.scheduleStreakAtRiskReminder(
-            reminderHour: hour,
-            reminderMinute: minute,
-          );
-        } else {
-          await notifService.cancelStreakAtRiskReminder();
-        }
-      }
-
-      // 재예약 성공(또는 알림 비활성) 후에 DB 와 state 를 함께 커밋한다.
-      await repo.setSetting(SettingKeys.reminderHour, hour.toString());
-      await repo.setSetting(SettingKeys.reminderMinute, minute.toString());
-      state = AsyncData(
-        current.copyWith(reminderHour: hour, reminderMinute: minute),
-      );
-      return true;
-    } catch (e) {
-      return false;
-    }
+    final success = await ref
+        .read(reminderCoordinatorProvider)
+        .setTime(hour, minute);
+    if (!success) return false;
+    final latest = state.value ?? current;
+    state = AsyncData(
+      latest.copyWith(reminderHour: hour, reminderMinute: minute),
+    );
+    return true;
   }
 
   /// Enables or disables biometric lock. Returns false if device doesn't support it.
@@ -205,14 +152,34 @@ class SettingsController extends AsyncNotifier<SettingsState> {
   Future<String> exportData() async {
     final entryRepo = ref.read(entryRepositoryProvider);
     final entries = await entryRepo.exportAllEntries();
+    final version = await _readAppVersion();
     final data = {
       'app': '3Lines',
-      'version': '1.0.0',
+      'version': version,
       'exported_at': du.formatWithTimezone(ref.read(appClockProvider).now()),
       'total_entries': entries.length,
       'entries': entries,
     };
     return const JsonEncoder.withIndent('  ').convert(data);
+  }
+
+  Future<String> _readAppVersion() async {
+    try {
+      final version = (await PackageInfo.fromPlatform()).version.trim();
+      if (version.isNotEmpty) return version;
+    } catch (error, stackTrace) {
+      developer.log(
+        'Failed to read app version for export',
+        name: 'settings',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final loadedVersion = state.value?.appVersion.trim();
+    return loadedVersion == null || loadedVersion.isEmpty
+        ? 'unknown'
+        : loadedVersion;
   }
 
   /// Imports entries from a JSON string (exported format). Returns import
@@ -239,8 +206,10 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     final result = await entryRepo.importEntries(entries);
 
     // Refresh dependent screens
-    ref.read(journalChangesProvider.notifier).markChanged();
-    ref.invalidate(todayControllerProvider);
+    if (result.imported > 0) {
+      ref.read(journalChangesProvider.notifier).markChanged();
+      ref.invalidate(todayControllerProvider);
+    }
 
     return (imported: result.imported, skipped: result.skipped + skippedByType);
   }
@@ -250,6 +219,8 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     try {
       final entryRepo = ref.read(entryRepositoryProvider);
       final photoService = ref.read(photoServiceProvider);
+      final totalCount = await entryRepo.getTotalCount();
+      if (totalCount == 0) return true;
 
       // 삭제 전에 모든 사진 파일 경로를 확보한다.
       final photoPaths = await entryRepo.getAllPhotoPaths();
@@ -258,7 +229,16 @@ class SettingsController extends AsyncNotifier<SettingsState> {
 
       // 고아 사진 파일을 디스크에서 정리한다.
       for (final path in photoPaths) {
-        await photoService.deletePhoto(path);
+        try {
+          await photoService.deletePhoto(path);
+        } catch (error, stackTrace) {
+          developer.log(
+            'Failed to delete entry photo after bulk delete',
+            name: 'settings',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       }
 
       ref.read(journalChangesProvider.notifier).markChanged();

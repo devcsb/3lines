@@ -65,6 +65,7 @@
 - **100% 오프라인** — 서버 없음, 계정 없음, 네트워크 권한 없음
 - 모든 데이터는 기기에만 저장
 - 생체인증(Face ID / 지문) 앱 잠금
+- 알림 미리보기에도 저널 답변을 포함하지 않는 중립 문구 사용
 - JSON 내보내기 / 가져오기
 - 월간 리포트 PDF 생성
 
@@ -123,8 +124,19 @@ dart run build_runner build --delete-conflicting-outputs
 flutter run
 
 # 5. APK 빌드
+# 배포 빌드는 CI에서 android/keystore.properties를 주입해야 합니다.
 flutter build apk --release --split-per-abi
+
+# 서명 없는 로컬 컴파일/매니페스트 검증만 필요한 경우
+flutter build apk --release --split-per-abi \
+  --android-project-arg=allowUnsignedRelease=true
 ```
+
+`allowUnsignedRelease=true`로 만든 APK는 배포·업데이트에 사용할 수 없습니다. Play 배포 전에는
+upload keystore와 CI 서명 검사를 반드시 구성하세요.
+
+모바일 릴리스의 버전·서명·CocoaPods·TestFlight 절차는 [릴리스 가이드](docs/RELEASE.md)를 따르세요. 태그 기반
+GitHub Actions는 검증을 통과한 AAB/IPA만 GitHub Release에 첨부하며, 스토어 업로드는 명시적으로 활성화한 경우에만 실행됩니다.
 
 ---
 

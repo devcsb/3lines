@@ -15,11 +15,17 @@
 - `flutter_timezone`은 정확히 `^5.1.0`을 사용한다.
 - 기기 IANA 시간대 확인 실패 시 UTC로 대체 예약하지 않고 실패를 상위 계층에 전달한다.
 - 알림 권한은 사용자가 설정에서 알림을 켜는 명시적 행동 뒤에만 요청한다.
-- 일일 알림은 향후 30일을 관리 ID 30개로 예약한 단발 알림이며, 스트릭 위험 알림은 가장 가까운 단발 1개, 주간 회고만 요일·시간 반복 1개다.
+- 일일 알림과 스트릭 위험 알림은 향후 30일을 관리 ID 30개씩 예약한 단발 알림이며, 주간 회고만 요일·시간 반복 1개다.
+- 예약 후 기기 시간대가 바뀌면 앱의 다음 실행·재개에서 IANA 식별자를 감지해 전체
+  알림 계획을 현지 시각으로 다시 예약한다. 앱이 종료된 동안에는 OS가 기존 예약을
+  자동 변환한다고 가정하지 않는다.
 - 저널 DB 커밋은 알림 또는 위젯 후속 작업 실패로 되돌리지 않는다.
 - 데이터베이스 스키마와 JSON 내보내기 형식은 변경하지 않는다.
 - 네트워크, 분석 SDK, 원격 로깅, 새 사용자 추적을 추가하지 않는다.
-- 루프 2의 전경 성능, 루프 3의 UI/UX·접근성, 루프 4의 릴리스 서명 작업은 이번 계획에 포함하지 않는다.
+- 루프 2의 전경 성능과 루프 3의 UI/UX·접근성은 이번 계획에 포함하지 않는다. 루프
+  4의 릴리스 서명 작업은 별도 운영 작업이지만, 이 계획에서 추가한 Android
+  `validateReleaseSigning` fail-closed 게이트와 CI keystore 주입 검증은 릴리스
+  산출물 우회를 막기 위한 필수 범위로 포함한다.
 - 각 Task는 실패 테스트 확인, 최소 구현, 대상 테스트 통과, 독립 커밋 순서로 수행한다.
 
 ---
@@ -219,6 +225,7 @@ git commit -m "refactor: isolate notification platform boundaries"
 **Interfaces:**
 - Consumes: `NotificationPlatform`, `DeviceTimeZoneResolver`, `timezone` location database.
 - Produces: `ReminderContext`, `ReminderScheduler.requestPermission`, `replaceDailyAndStreak`, `scheduleWeeklyRetrospective`, `cancelAll`, `migrateLegacyReminders`.
+- Compatibility boundary: until Task 5 rewires all existing call sites, retain `NotificationService` as a non-final class with a no-argument constructor and keep `notificationServiceProvider` statically typed as `Provider<NotificationService>`. Deprecated wrappers for the existing Controller/Fake methods may delegate to the new scheduler. Task 5 must remove the wrappers, delete the old Fake, and change the provider to `Provider<ReminderScheduler>`.
 
 - [ ] **Step 1: Recording Fake와 날짜·ID 회귀 테스트를 작성한다**
 
@@ -341,32 +348,32 @@ test('미작성이고 시각 후면 내일부터 30개 단발 일일 알림을 �
   expect(daily.last.scheduledDate, tz.TZDateTime(tz.local, 2026, 9, 5, 18));
 });
 
-test('작성 완료면 내일부터 시작하고 첫 알림만 감사 문구를 쓴다', () async {
+test('작성 완료면 내일부터 시작하고 모든 알림은 중립 문구를 쓴다', () async {
   await service.replaceDailyAndStreak(const ReminderContext(
     hour: 21,
     minute: 0,
     hasEntryToday: true,
     currentStreak: 7,
-    gratitudeAnswer: '저녁의 작은 산책',
   ));
   final daily = platform.scheduled.where((item) => item.id >= 100 && item.id <= 129).toList();
   expect(daily.first.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 7, 21));
-  expect(daily.first.body, '어제의 감사: "저녁의 작은 산책"');
+  expect(daily.first.body, '오늘의 3줄을 기록할 시간이에요');
   expect(daily.skip(1).every((item) => item.body == '오늘의 3줄을 기록할 시간이에요'), isTrue);
   final risk = platform.scheduled.singleWhere((item) => item.id == 200);
   expect(risk.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 7, 20));
 });
 
-test('활성 스트릭은 한 시간 전 가장 가까운 단발 알림 하나를 만든다', () async {
+test('활성 스트릭은 한 시간 전부터 30일치 단발 위험 알림을 만든다', () async {
   await service.replaceDailyAndStreak(const ReminderContext(
     hour: 21,
     minute: 0,
     hasEntryToday: false,
     currentStreak: 3,
   ));
-  final risk = platform.scheduled.singleWhere((item) => item.id == 200);
-  expect(risk.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 6, 20));
-  expect(risk.matchDateTimeComponents, isNull);
+  final risks = platform.scheduled.where((item) => item.id >= 200 && item.id <= 229).toList();
+  expect(risks, hasLength(30));
+  expect(risks.first.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 6, 20));
+  expect(risks.every((item) => item.matchDateTimeComponents == null), isTrue);
 });
 
 test('스트릭이 없으면 위험 ID만 취소한다', () async {
@@ -403,12 +410,19 @@ test('전체 취소는 신규 관리 ID와 기존 0 1 2 ID를 모두 취소한�
   await service.cancelAll();
   expect(
     platform.cancelled.toSet(),
-    {...NotificationService.dailyIds, 200, 300, 0, 1, 2},
+    {
+      ...NotificationService.dailyIds,
+      ...List<int>.generate(30, (i) => 200 + i),
+      300,
+      0,
+      1,
+      2,
+    },
   );
 });
 ```
 
-첫 일일 ID는 100, 마지막은 129, 스트릭 ID는 200, 주간 ID는 300으로 단언한다. 30개 일일 요청의 `matchDateTimeComponents`는 전부 `null`, 주간 요청만 `DateTimeComponents.dayOfWeekAndTime`인지 단언한다.
+첫 일일 ID는 100, 마지막은 129, 스트릭 ID 범위는 200~229, 주간 ID는 300으로 단언한다. 30개 일일·스트릭 요청의 `matchDateTimeComponents`는 전부 `null`, 주간 요청만 `DateTimeComponents.dayOfWeekAndTime`인지 단언한다.
 
 - [ ] **Step 2: 기존 구현에서 새 인터페이스 테스트가 실패하는지 확인한다**
 
@@ -425,14 +439,12 @@ final class ReminderContext {
     required this.minute,
     required this.hasEntryToday,
     required this.currentStreak,
-    this.gratitudeAnswer,
   });
 
   final int hour;
   final int minute;
   final bool hasEntryToday;
   final int currentStreak;
-  final String? gratitudeAnswer;
 }
 
 abstract interface class ReminderScheduler {
@@ -457,7 +469,7 @@ final class NotificationService implements ReminderScheduler {
 
 생성자는 `NotificationPlatform platform`, `DeviceTimeZoneResolver timeZoneResolver`, `tz.TZDateTime Function(tz.Location) now`를 주입받는다. `initialize()`는 하나의 in-flight Future를 공유하고 실패하면 Future 캐시를 비운다. 초기화 순서는 `tz.initializeTimeZones()` → resolver identifier → `tz.getLocation` → `tz.setLocalLocation` → `platform.initialize()`이며 권한 메서드는 호출하지 않는다.
 
-- [ ] **Step 4: 30일 단발 일일 예약과 스트릭 단발 예약을 구현한다**
+- [ ] **Step 4: 30일 단발 일일 예약과 30일 단발 스트릭 위험 예약을 구현한다**
 
 일일 날짜는 DST에서도 달력 날짜가 보존되도록 Duration 누적 대신 생성자 day offset을 사용한다.
 
@@ -488,14 +500,10 @@ final todayAtTime = _dailyDate(
 if (!context.hasEntryToday && !todayAtTime.isAfter(current)) firstOffset = 1;
 
 for (var index = 0; index < dailyIds.length; index++) {
-  final answer = context.gratitudeAnswer?.trim() ?? '';
-  final personalized = index == 0 && context.hasEntryToday && answer.isNotEmpty;
   await _platform.schedule(ScheduledLocalNotification(
     id: dailyIds[index],
     title: '3Lines',
-    body: personalized
-        ? '어제의 감사: "${_truncate(answer, 30)}"'
-        : '오늘의 3줄을 기록할 시간이에요',
+    body: '오늘의 3줄을 기록할 시간이에요',
     scheduledDate: _dailyDate(
       now: current,
       dayOffset: firstOffset + index,
@@ -506,39 +514,29 @@ for (var index = 0; index < dailyIds.length; index++) {
   ));
 }
 
-String _truncate(String value, int maxCharacters) {
-  if (value.length <= maxCharacters) return value;
-  return '${value.substring(0, maxCharacters)}…';
-}
 ```
 
-`replaceDailyAndStreak`는 100~129와 200만 취소한 뒤 일일 30개를 만든다. `currentStreak > 0`이면 첫 일일 알림 날짜의 정확히 한 시간 전을 ID 200 단발 후보로 잡고, 후보가 이미 지났다면 그 다음 달력 날짜의 같은 위험 시각으로 이동한다. 따라서 오늘 작성 완료 뒤에는 위험 알림이 사라지는 대신 다음 날 일일 알림 한 시간 전으로 이동한다. 자정 이전 계산은 `tz.TZDateTime` 생성자의 전날/다음날 정규화를 사용한다. ID 300은 이 메서드에서 취소하거나 예약하지 않는다.
+`replaceDailyAndStreak`는 100~129와 200~229를 취소한 뒤 일일 30개를 만든다. `currentStreak > 0`이면 각 일일 알림 날짜의 정확히 한 시간 전을 200~229 단발 후보로 만들고, 현재 시각 이후인 후보만 예약한다. 따라서 오늘 작성 완료 뒤에도 다음 날부터 30일간의 위험 알림이 유지된다. 자정 이전 계산은 `tz.TZDateTime` 생성자의 전날/다음날 정규화를 사용한다. ID 300은 이 메서드에서 취소하거나 예약하지 않는다.
 
 ```dart
 if (context.currentStreak > 0) {
-  var targetDaily = _dailyDate(
-    now: current,
-    dayOffset: firstOffset,
-    hour: context.hour,
-    minute: context.minute,
-  );
-  var riskDate = targetDaily.subtract(const Duration(hours: 1));
-  if (!riskDate.isAfter(current)) {
-    targetDaily = _dailyDate(
+  for (var index = 0; index < dailyIds.length; index++) {
+    final targetDaily = _dailyDate(
       now: current,
-      dayOffset: firstOffset + 1,
+      dayOffset: firstOffset + index,
       hour: context.hour,
       minute: context.minute,
     );
-    riskDate = targetDaily.subtract(const Duration(hours: 1));
+    final riskDate = targetDaily.subtract(const Duration(hours: 1));
+    if (!riskDate.isAfter(current)) continue;
+    await _platform.schedule(ScheduledLocalNotification(
+      id: streakId + index,
+      title: '3Lines',
+      body: '스트릭이 위험해요! 오늘의 기록을 잊지 마세요 🔥',
+      scheduledDate: riskDate,
+      notificationDetails: _streakDetails,
+    ));
   }
-  await _platform.schedule(ScheduledLocalNotification(
-    id: streakId,
-    title: '3Lines',
-    body: '스트릭이 위험해요! 오늘의 기록을 잊지 마세요 🔥',
-    scheduledDate: riskDate,
-    notificationDetails: _streakDetails,
-  ));
 }
 ```
 
@@ -586,7 +584,7 @@ await _platform.schedule(ScheduledLocalNotification(
 ));
 ```
 
-`scheduleWeeklyRetrospective`는 ID 300만 취소·예약한다. `migrateLegacyReminders`는 0, 1, 2만 취소한다. `cancelAll`은 100~129, 200, 300, 0, 1, 2를 모두 취소하고 한 번이라도 플랫폼 취소가 실패하면 호출자에게 예외를 전달한다. provider의 정적 타입은 `Provider<ReminderScheduler>`이며 Task 1의 두 provider를 주입한다.
+`scheduleWeeklyRetrospective`는 ID 300만 취소·예약한다. `migrateLegacyReminders`는 0, 1, 2만 취소한다. `cancelAll`은 100~129, 200~229, 300, 0, 1, 2를 모두 취소하고 한 번이라도 플랫폼 취소가 실패하면 호출자에게 예외를 전달한다. Task 2 동안 provider의 정적 타입은 기존 호출부를 위한 `Provider<NotificationService>`로 유지하며, Task 5에서 `Provider<ReminderScheduler>`로 전환한다. 두 타입 모두 같은 `NotificationService` 인스턴스를 사용한다.
 
 `nextSundayAt20`은 아래처럼 현지 달력으로 계산한다.
 
@@ -799,21 +797,19 @@ test('저널 변경은 일일과 스트릭만 조정하고 주간은 건드리�
   expect(scheduler.calls, ['replace:21:0']);
 });
 
-test('오늘 기록 answer1을 첫 다음 날 개인화 문구 context로 전달한다', () async {
+test('오늘 기록이 있으면 알림 context에 완료 상태만 전달한다', () async {
   await storeReminder(enabled: true);
   await storeTodayEntry(answer1: '친구의 안부');
   await coordinator.reconcileAfterJournalChange();
   expect(scheduler.contexts.single.hasEntryToday, isTrue);
-  expect(scheduler.contexts.single.gratitudeAnswer, '친구의 안부');
 });
 
-test('오늘 기록 삭제 뒤 hasEntryToday false context를 전달한다', () async {
+test('오늘 기록 삭제 뒤 미완료 상태 context를 전달한다', () async {
   await storeReminder(enabled: true);
   await storeTodayEntry();
   await entries.deleteEntry('2026-08-06');
   await coordinator.reconcileAfterJournalChange();
   expect(scheduler.contexts.single.hasEntryToday, isFalse);
-  expect(scheduler.contexts.single.gratitudeAnswer, isNull);
 });
 
 test('동시 시간 변경은 요청 순서대로 실행되어 마지막 값이 DB에 남는다', () async {
@@ -886,12 +882,11 @@ Future<ReminderContext> _context({int? hour, int? minute}) async {
     minute: minute ?? settings.minute,
     hasEntryToday: entry != null,
     currentStreak: streak,
-    gratitudeAnswer: entry?.answer1,
   );
 }
 ```
 
-`reminderCoordinatorProvider`는 `Provider<ReminderCoordinator>`이고 실제 repositories와 `notificationServiceProvider`를 주입한다.
+`reminderCoordinatorProvider`는 `Provider<ReminderCoordinator>`이고 실제 repositories와 `notificationServiceProvider`를 `ReminderScheduler`로 주입한다. Task 2의 호환 provider가 concrete subtype이므로 Coordinator는 새 scheduler 메서드만 사용하며, Task 5에서 provider의 정적 타입을 interface로 바꾼다.
 
 - [ ] **Step 4: 모든 변경을 하나의 직렬 queue에서 실행한다**
 
@@ -949,7 +944,7 @@ Future<bool> _applyWithCompensation({
 
 Run: `dart format lib/data/repositories/settings_repository.dart lib/core/services/reminder_coordinator.dart test/core/services/reminder_coordinator_test.dart && flutter test test/core/services/reminder_coordinator_test.dart`
 
-Expected: 11 tests PASS.
+Expected: 18 tests PASS.
 
 - [ ] **Step 7: 저장소 기반 정책을 독립 커밋한다**
 
@@ -1388,9 +1383,16 @@ final widgetSync = ref.read(widgetSyncServiceProvider);
 final initial = await widgetSync.initiallyLaunchedUri();
 ```
 
-저널 listener는 `unawaited(ref.read(journalSideEffectsProvider).onJournalChanged())`만 호출한다. `resumed`에서는 저널 알림을 매번 30개 재예약하지 않고 `widgetSyncServiceProvider.sync()`와 pending emotion 적용만 유지한다.
+저널 listener는 `unawaited(ref.read(journalSideEffectsProvider).onJournalChanged())`만 호출한다.
+`resumed`에서는 먼저 `DeviceTimeZoneResolver`로 이전 resume의 IANA 식별자와 비교한다.
+변경이 없으면 `widgetSyncServiceProvider.sync()`와 pending emotion 적용만 수행해
+30개 알림 재예약을 피한다. 시간대가 바뀌었으면 `JournalSideEffects.onLaunch()`를
+호출해 Android/iOS의 일일·스트릭·주간 예약과 위젯을 함께 현지 시간으로 다시 맞춘다.
+앱이 종료된 상태에서 시간대가 바뀐 경우에는 다음 앱 실행 시 `onLaunch()`가 재조정한다.
 
-`widget_bootstrap_test.dart`에는 `RecordingJournalSideEffects`와 initial URI가 `null`인 `RecordingWidgetSync`를 override해 아래 harness와 세 테스트를 작성한다.
+`widget_bootstrap_test.dart`에는 `RecordingJournalSideEffects`, initial URI가 `null`인
+`RecordingWidgetSync`, 가변 식별자를 반환하는 `RecordingTimeZoneResolver`를 override해
+아래 harness와 네 테스트를 작성한다.
 
 ```dart
 final class RecordingWidgetSync implements WidgetSync {
@@ -1463,9 +1465,19 @@ testWidgets('resumed는 위젯만 동기화하고 알림 journal 조정을 호�
   expect(widgetSync.syncCount, 1);
   expect(sideEffects.journalChangedCount, 0);
 });
+
+testWidgets('resumed에서 timezone이 바뀌면 알림과 위젯을 함께 재조정한다', (tester) async {
+  await pumpBootstrap(tester);
+  timeZone.identifier = 'America/Los_Angeles';
+  tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  await tester.pump();
+  await tester.pump();
+  expect(sideEffects.launchCount, 2);
+  expect(widgetSync.syncCount, 0);
+});
 ```
 
-각 테스트는 `ProviderScope` 아래 `WidgetBootstrap(child: SizedBox())`를 pump한다. 두 번째 테스트는 같은 `ProviderContainer`의 `journalChangesProvider.notifier.markChanged()`를 한 번 호출한 뒤 `journalChangedCount == 1`을 단언한다. 세 번째 테스트는 `tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed)` 뒤 `widgetSync.syncCount == 1`, `sideEffects.journalChangedCount == 0`을 단언한다.
+각 테스트는 `ProviderScope` 아래 `WidgetBootstrap(child: SizedBox())`를 pump한다. 두 번째 테스트는 같은 `ProviderContainer`의 `journalChangesProvider.notifier.markChanged()`를 한 번 호출한 뒤 `journalChangedCount == 1`을 단언한다. 세 번째 테스트는 동일한 시간대의 `resumed` 뒤 `widgetSync.syncCount == 1`, `sideEffects.journalChangedCount == 0`을 단언하고, 네 번째 테스트는 식별자를 다른 IANA 시간대로 바꾼 `resumed` 뒤 `sideEffects.launchCount == 2`, `widgetSync.syncCount == 0`을 단언한다.
 
 - [ ] **Step 5: SettingsController를 Coordinator 결과에 연결한다**
 
@@ -1791,9 +1803,11 @@ Run: `cd android && ./gradlew app:testDebugUnitTest`
 
 Expected: `BUILD SUCCESSFUL`.
 
-Run: `flutter build apk --release --target-platform android-arm64 --analyze-size`
+Run (CI, keystore 주입): `flutter build apk --release --target-platform android-arm64 --analyze-size`
 
-Expected: release APK와 size analysis 생성, 빌드 성공. 현재 디버그 서명은 루프 4 범위이므로 이 단계에서 서명 구성을 바꾸지 않는다.
+로컬 서명 없는 검증은 `--android-project-arg=allowUnsignedRelease=true`를 명시한다.
+
+Expected: CI에서는 서명된 release APK와 size analysis가 생성되고, 로컬 override에서는 unsigned APK만 생성된다. unsigned 산출물은 배포하지 않는다.
 
 - [ ] **Step 6: 병합 manifest와 위젯 주기를 검증한다**
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/haptic_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 
 class EmotionPicker extends StatefulWidget {
   final int? selectedEmotion;
@@ -33,6 +34,8 @@ class _EmotionPickerState extends State<EmotionPicker> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final microDuration = AppMotion.durationFor(context, AppMotion.micro);
+    final standardDuration = AppMotion.durationFor(context, AppMotion.standard);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,8 +72,16 @@ class _EmotionPickerState extends State<EmotionPicker> {
                       onTap: widget.enabled
                           ? () {
                               HapticService.selection();
-                              setState(() => _animatingIndex = value);
+                              final reduceMotion = AppMotion.reduceMotion(
+                                context,
+                              );
+                              setState(
+                                () => _animatingIndex = reduceMotion
+                                    ? null
+                                    : value,
+                              );
                               widget.onSelected(value);
+                              if (reduceMotion) return;
                               Future.delayed(
                                 const Duration(milliseconds: 250),
                                 () {
@@ -90,18 +101,18 @@ class _EmotionPickerState extends State<EmotionPicker> {
                           padding: const EdgeInsets.symmetric(vertical: 6),
                           child: AnimatedOpacity(
                             opacity: widget.enabled ? 1.0 : 0.55,
-                            duration: const Duration(milliseconds: 180),
+                            duration: microDuration,
                             child: AnimatedScale(
                               scale: isAnimating ? 1.12 : 1.0,
-                              duration: const Duration(milliseconds: 200),
-                              curve: Curves.easeOut,
+                              duration: microDuration,
+                              curve: AppMotion.standardCurve,
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   AnimatedContainer(
-                                    duration: const Duration(milliseconds: 250),
-                                    curve: Curves.easeInOut,
+                                    duration: standardDuration,
+                                    curve: AppMotion.standardCurve,
                                     width: isSelected ? 48 : 40,
                                     height: isSelected ? 48 : 40,
                                     decoration: BoxDecoration(
@@ -139,7 +150,7 @@ class _EmotionPickerState extends State<EmotionPicker> {
                                   ),
                                   const SizedBox(height: 6),
                                   AnimatedDefaultTextStyle(
-                                    duration: const Duration(milliseconds: 200),
+                                    duration: microDuration,
                                     style: theme.textTheme.labelSmall!.copyWith(
                                       color: isSelected
                                           ? color

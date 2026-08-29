@@ -41,18 +41,11 @@ class ThreeLinesApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       builder: (context, child) {
-        // 큰 글자 접근성 설정에서 고정 높이 위젯이 오버플로하지 않도록
-        // 텍스트 배율 상한을 1.3으로 제한한다(접근성과 레이아웃 안정의 절충).
-        final mq = MediaQuery.of(context);
-        return MediaQuery(
-          data: mq.copyWith(
-            textScaler: mq.textScaler.clamp(maxScaleFactor: 1.3),
-          ),
-          child: WidgetBootstrap(
-            child: AppLifecycleLock(
-              child: child ?? const SizedBox.shrink(),
-            ),
-          ),
+        // 플랫폼이 제공하는 텍스트 배율을 그대로 전달한다. 큰 글자에서
+        // 오버플로가 생기는 화면은 각 화면의 스크롤·가변 레이아웃으로
+        // 처리해야 하며, 시스템 접근성 설정을 루트에서 잘라서는 안 된다.
+        return WidgetBootstrap(
+          child: AppLifecycleLock(child: child ?? const SizedBox.shrink()),
         );
       },
     );

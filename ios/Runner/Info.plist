@@ -49,6 +49,8 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>오늘의 사진을 기록에 첨부하기 위해 카메라 접근이 필요합니다.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>저널을 안전하게 보호하기 위해 Face ID를 사용합니다.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>갤러리에서 사진을 선택하여 기록에 첨부하기 위해 접근이 필요합니다.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

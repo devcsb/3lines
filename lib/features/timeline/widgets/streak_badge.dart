@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_motion.dart';
+
 class StreakBadge extends StatefulWidget {
   final int currentStreak;
   final int longestStreak;
@@ -19,33 +21,36 @@ class _StreakBadgeState extends State<StreakBadge>
   late AnimationController _controller;
   late Animation<int> _streakAnimation;
   late Animation<int> _longestAnimation;
+  var _reduceMotion = false;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: AppMotion.entrance,
       vsync: this,
     );
     _setupAnimations();
     _controller.forward();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = AppMotion.reduceMotion(context);
+    if (_reduceMotion) {
+      _controller.stop();
+      _controller.value = 1.0;
+    }
+  }
+
   void _setupAnimations() {
-    _streakAnimation = IntTween(
-      begin: 0,
-      end: widget.currentStreak,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.decelerate,
-    ));
-    _longestAnimation = IntTween(
-      begin: 0,
-      end: widget.longestStreak,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.decelerate,
-    ));
+    _streakAnimation = IntTween(begin: 0, end: widget.currentStreak).animate(
+      CurvedAnimation(parent: _controller, curve: AppMotion.standardCurve),
+    );
+    _longestAnimation = IntTween(begin: 0, end: widget.longestStreak).animate(
+      CurvedAnimation(parent: _controller, curve: AppMotion.standardCurve),
+    );
   }
 
   @override
@@ -54,7 +59,11 @@ class _StreakBadgeState extends State<StreakBadge>
     if (oldWidget.currentStreak != widget.currentStreak ||
         oldWidget.longestStreak != widget.longestStreak) {
       _setupAnimations();
-      _controller.forward(from: 0);
+      if (_reduceMotion) {
+        _controller.value = 1.0;
+      } else {
+        _controller.forward(from: 0);
+      }
     }
   }
 
@@ -97,8 +106,9 @@ class _StreakBadgeState extends State<StreakBadge>
                     Text(
                       '현재 연속',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.5),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.5,
+                        ),
                       ),
                     ),
                   ],
@@ -127,8 +137,9 @@ class _StreakBadgeState extends State<StreakBadge>
                       Text(
                         '최장 기록',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.5),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.5,
+                          ),
                         ),
                       ),
                     ],

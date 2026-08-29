@@ -23,7 +23,9 @@ void main() {
   });
 
   testWidgets('displays icon', (tester) async {
-    await tester.pumpWidget(buildApp(icon: Icons.local_fire_department_rounded));
+    await tester.pumpWidget(
+      buildApp(icon: Icons.local_fire_department_rounded),
+    );
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.local_fire_department_rounded), findsOneWidget);
   });
@@ -32,5 +34,16 @@ void main() {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
     expect(find.byType(Container), findsWidgets);
+  });
+
+  testWidgets('reduce-motion에서는 숫자가 즉시 최종 값으로 표시된다', (tester) async {
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: buildApp(title: '현재 스트릭', value: '12일'),
+      ),
+    );
+
+    expect(find.text('12일'), findsOneWidget);
   });
 }

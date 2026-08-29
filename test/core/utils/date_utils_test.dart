@@ -13,6 +13,19 @@ void main() {
     });
   });
 
+  group('daysSinceEpoch', () {
+    test('uses the local calendar date at midnight, not the UTC instant', () {
+      final localJustAfterMidnight = DateTime(2026, 8, 28, 0, 30);
+      final expected = DateTime.utc(
+        2026,
+        8,
+        28,
+      ).difference(DateTime.utc(2024, 1, 1)).inDays;
+
+      expect(daysSinceEpoch(localJustAfterMidnight), expected);
+    });
+  });
+
   group('isSameDay', () {
     test('returns true for same day', () {
       final a = DateTime(2026, 3, 14, 10, 30);
@@ -105,10 +118,13 @@ void main() {
       expect(result, DateTime(2028, 2, 29));
     });
 
-    test('crosses year boundary: Jan 15 minus 1 month = Dec 15 previous year', () {
-      final result = subtractMonths(DateTime(2026, 1, 15), 1);
-      expect(result, DateTime(2025, 12, 15));
-    });
+    test(
+      'crosses year boundary: Jan 15 minus 1 month = Dec 15 previous year',
+      () {
+        final result = subtractMonths(DateTime(2026, 1, 15), 1);
+        expect(result, DateTime(2025, 12, 15));
+      },
+    );
 
     test('6 months back: Sept 30 minus 6 months = March 30', () {
       final result = subtractMonths(DateTime(2026, 9, 30), 6);

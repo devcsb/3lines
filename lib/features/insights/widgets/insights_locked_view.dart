@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_motion.dart';
+
 /// Locked view with animated progress ring and fade-in entrance.
 class InsightsLockedView extends StatefulWidget {
   final int totalCount;
@@ -28,30 +30,37 @@ class _InsightsLockedViewState extends State<InsightsLockedView>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: AppMotion.entrance,
       vsync: this,
     );
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0, 0.5, curve: Curves.easeOut),
+        curve: const Interval(0, 0.5, curve: AppMotion.standardCurve),
       ),
     );
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0, 0.5, curve: Curves.easeOutCubic),
+        curve: const Interval(0, 0.5, curve: AppMotion.standardCurve),
       ),
     );
-    final progress =
-        (widget.totalCount / widget.requiredCount).clamp(0.0, 1.0);
+    final progress = (widget.totalCount / widget.requiredCount).clamp(0.0, 1.0);
     _progressAnimation = Tween<double>(begin: 0, end: progress).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.3, 1.0, curve: Curves.easeOutCubic),
+        curve: const Interval(0.3, 1.0, curve: AppMotion.standardCurve),
       ),
     );
     _controller.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (AppMotion.reduceMotion(context)) {
+      _controller.value = 1.0;
+    }
   }
 
   @override
@@ -70,10 +79,7 @@ class _InsightsLockedViewState extends State<InsightsLockedView>
         builder: (context, child) {
           return Opacity(
             opacity: _fadeAnimation.value.clamp(0.0, 1.0),
-            child: Transform.scale(
-              scale: _scaleAnimation.value,
-              child: child,
-            ),
+            child: Transform.scale(scale: _scaleAnimation.value, child: child),
           );
         },
         child: Padding(
@@ -102,8 +108,7 @@ class _InsightsLockedViewState extends State<InsightsLockedView>
                     child: Icon(
                       Icons.auto_graph_rounded,
                       size: 36,
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                     ),
                   ),
                 ),
@@ -113,8 +118,7 @@ class _InsightsLockedViewState extends State<InsightsLockedView>
                 '${widget.requiredCount}일 이상 기록하면\n인사이트가 열려요',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   height: 1.5,
                 ),
               ),
@@ -124,9 +128,12 @@ class _InsightsLockedViewState extends State<InsightsLockedView>
                 animation: _progressAnimation,
                 builder: (context, _) {
                   final animatedCount =
-                      (widget.totalCount * _progressAnimation.value /
-                              (widget.totalCount / widget.requiredCount)
-                                  .clamp(0.01, 1.0))
+                      (widget.totalCount *
+                              _progressAnimation.value /
+                              (widget.totalCount / widget.requiredCount).clamp(
+                                0.01,
+                                1.0,
+                              ))
                           .clamp(0, widget.totalCount)
                           .round();
                   return Text(

@@ -1,20 +1,77 @@
 package com.threelines.three_lines
 
 import android.app.PendingIntent
+import android.app.AlarmManager
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
 import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetPlugin
+import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Home screen widget: streak + status + optional prompt/emotion chips.
  */
 class ThreeLinesWidgetProvider : AppWidgetProvider() {
+    companion object {
+        internal const val ACTION_MIDNIGHT_REFRESH =
+            "com.threelines.three_lines.action.MIDNIGHT_REFRESH"
+        private const val MIDNIGHT_REQUEST_CODE = 301
+
+        internal fun nextMidnightTrigger(now: Calendar): Long {
+            val next = (now.clone() as Calendar).apply {
+                add(Calendar.DAY_OF_YEAR, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            return next.timeInMillis + 5_000L
+        }
+
+        internal fun shouldRescheduleForSystemChange(action: String?): Boolean {
+            return action == Intent.ACTION_BOOT_COMPLETED ||
+                action == Intent.ACTION_TIMEZONE_CHANGED ||
+                action == Intent.ACTION_TIME_CHANGED
+        }
+    }
+
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        scheduleNextMidnight(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        cancelNextMidnight(context)
+        super.onDisabled(context)
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_MIDNIGHT_REFRESH) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val component = ComponentName(context, ThreeLinesWidgetProvider::class.java)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(component)
+            if (appWidgetIds.isNotEmpty()) {
+                onUpdate(context, appWidgetManager, appWidgetIds)
+            }
+            return
+        }
+        val shouldReschedule = shouldRescheduleForSystemChange(intent.action)
+        super.onReceive(context, intent)
+        if (shouldReschedule) {
+            scheduleNextMidnight(context)
+        }
+    }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -33,6 +90,7 @@ class ThreeLinesWidgetProvider : AppWidgetProvider() {
             bindCommon(context, views, data, useMedium)
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
+        scheduleNextMidnight(context)
     }
 
     override fun onAppWidgetOptionsChanged(
@@ -50,15 +108,21 @@ class ThreeLinesWidgetProvider : AppWidgetProvider() {
         data: SharedPreferences,
         medium: Boolean,
     ) {
-        val streakLabel = data.getString("streak_label", null) ?: "시작해볼까요"
-        val status = data.getString("status_message", null) ?: "앱을 열어 오늘을 기록해보세요"
-        val prompt = data.getString("prompt", null) ?: "오늘 감사한 작은 것 하나는?"
-        val isCompleted = data.getString("is_completed", "false") == "true"
-        val emotionRaw = data.getString("emotion", "") ?: ""
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val state = resolveThreeLinesWidgetState(
+            storedDate = data.getString("date", null),
+            today = today,
+            streakLabel = data.getString("streak_label", null) ?: "시작해볼까요",
+            statusMessage = data.getString("status_message", null)
+                ?: "앱을 열어 오늘을 기록해보세요",
+            prompt = data.getString("prompt", null) ?: "오늘 감사한 작은 것 하나는?",
+            isCompleted = data.getString("is_completed", "false") == "true",
+            emotionRaw = data.getString("emotion", "") ?: "",
+        )
 
         views.setTextViewText(R.id.widget_title, "3Lines")
-        views.setTextViewText(R.id.widget_streak, streakLabel)
-        views.setTextViewText(R.id.widget_status, status)
+        views.setTextViewText(R.id.widget_streak, state.streakLabel)
+        views.setTextViewText(R.id.widget_status, state.statusMessage)
 
         val openToday =
             HomeWidgetLaunchIntent.getActivity(
@@ -69,12 +133,12 @@ class ThreeLinesWidgetProvider : AppWidgetProvider() {
         views.setOnClickPendingIntent(R.id.widget_root, openToday)
 
         if (medium) {
-            views.setTextViewText(R.id.widget_prompt, prompt)
-            if (isCompleted) {
+            views.setTextViewText(R.id.widget_prompt, state.prompt)
+            if (state.isCompleted) {
                 views.setViewVisibility(R.id.widget_emotion_row, View.GONE)
                 views.setViewVisibility(R.id.widget_completed_hint, View.VISIBLE)
                 val hint =
-                    if (emotionRaw.isNotEmpty()) {
+                    if (state.emotionRaw.isNotEmpty()) {
                         "기록 완료 · 탭해서 보기"
                     } else {
                         "오늘 기록 완료"
@@ -90,6 +154,40 @@ class ThreeLinesWidgetProvider : AppWidgetProvider() {
                 bindEmotion(context, views, R.id.emotion_5, 5)
             }
         }
+    }
+
+    private fun scheduleNextMidnight(context: Context) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val component = ComponentName(context, ThreeLinesWidgetProvider::class.java)
+        if (appWidgetManager.getAppWidgetIds(component).isEmpty()) {
+            alarmManager.cancel(midnightPendingIntent(context))
+            return
+        }
+        val pendingIntent = midnightPendingIntent(context)
+        alarmManager.setWindow(
+            AlarmManager.RTC_WAKEUP,
+            nextMidnightTrigger(Calendar.getInstance()),
+            15 * 60 * 1000L,
+            pendingIntent,
+        )
+    }
+
+    private fun cancelNextMidnight(context: Context) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+        alarmManager.cancel(midnightPendingIntent(context))
+    }
+
+    private fun midnightPendingIntent(context: Context): PendingIntent {
+        val intent = Intent(context, ThreeLinesWidgetProvider::class.java).apply {
+            action = ACTION_MIDNIGHT_REFRESH
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            MIDNIGHT_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     private fun bindEmotion(

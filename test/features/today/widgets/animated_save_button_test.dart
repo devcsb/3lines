@@ -79,4 +79,23 @@ void main() {
       isNull,
     );
   });
+
+  testWidgets('reduce-motion에서는 진행 링과 카운터가 즉시 갱신된다', (tester) async {
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: buildApp(filledCount: 2, canSave: true, emotionSelected: true),
+      ),
+    );
+
+    final switcher = tester.widget<AnimatedSwitcher>(
+      find.byType(AnimatedSwitcher),
+    );
+    expect(switcher.duration, Duration.zero);
+
+    final progress = tester.widget<TweenAnimationBuilder<double>>(
+      find.byType(TweenAnimationBuilder<double>),
+    );
+    expect(progress.duration, Duration.zero);
+  });
 }

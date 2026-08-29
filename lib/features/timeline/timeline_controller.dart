@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/events/journal_changes.dart';
@@ -74,12 +76,22 @@ class TimelineController extends AsyncNotifier<TimelineState> {
 
     // 삭제 전에 해당 기록의 사진 파일 경로를 확보한다.
     final entry = await repo.getEntryByDate(date);
+    if (entry == null) return;
     await repo.deleteEntry(date);
 
     // 첨부 사진 파일이 있으면 디스크에서도 삭제한다.
-    if (entry?.photoPath != null) {
+    if (entry.photoPath != null) {
       final photoService = ref.read(photoServiceProvider);
-      await photoService.deletePhoto(entry!.photoPath!);
+      try {
+        await photoService.deletePhoto(entry.photoPath!);
+      } catch (error, stackTrace) {
+        developer.log(
+          'Failed to delete entry photo after commit',
+          name: 'timeline',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
     }
 
     final period = state.value?.period ?? TimelinePeriod.weeks12;

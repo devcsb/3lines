@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/events/journal_changes.dart';
+import '../core/services/device_time_zone_resolver.dart';
+import '../core/services/journal_side_effects.dart';
 import '../core/services/widget_sync_service.dart';
 import '../features/lock/lock_screen.dart';
 import '../features/today/today_controller.dart';
@@ -23,6 +27,8 @@ class _WidgetBootstrapState extends ConsumerState<WidgetBootstrap>
     with WidgetsBindingObserver {
   StreamSubscription<Uri?>? _clickSub;
   ProviderSubscription<int>? _journalSub;
+  String? _lastTimeZoneIdentifier;
+  Future<void> _resumeTail = Future<void>.value();
 
   @override
   void initState() {
@@ -35,20 +41,22 @@ class _WidgetBootstrapState extends ConsumerState<WidgetBootstrap>
 
   Future<void> _bootstrap() async {
     if (!mounted) return;
-    final service = ref.read(widgetSyncServiceProvider);
-    await service.sync();
+    final widgetSync = ref.read(widgetSyncServiceProvider);
+    _journalSub = ref.listenManual(journalChangesProvider, (_, _) {
+      unawaited(ref.read(journalSideEffectsProvider).onJournalChanged());
+    });
+    _clickSub = widgetSync.listenWidgetClicks(_handleUri);
+
+    await ref.read(journalSideEffectsProvider).onLaunch();
+    if (!mounted) return;
+    await _captureTimeZone();
     if (!mounted) return;
 
-    final initial = await service.initiallyLaunchedUri();
+    final initial = await widgetSync.initiallyLaunchedUri();
     if (!mounted) return;
     if (initial != null) {
       _handleUri(initial);
     }
-
-    _clickSub = service.listenWidgetClicks(_handleUri);
-    _journalSub = ref.listenManual(journalChangesProvider, (_, _) {
-      unawaited(ref.read(widgetSyncServiceProvider).sync());
-    });
   }
 
   void _handleUri(Uri uri) {
@@ -82,8 +90,68 @@ class _WidgetBootstrapState extends ConsumerState<WidgetBootstrap>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(ref.read(widgetSyncServiceProvider).sync());
-      _tryApplyPendingEmotion();
+      _resumeTail = _resumeTail.then((_) => _handleResume());
+    }
+  }
+
+  Future<void> _handleResume() async {
+    if (!mounted) return;
+    final timeZoneChanged = await _hasTimeZoneChanged();
+    if (!mounted) return;
+
+    try {
+      if (timeZoneChanged) {
+        // Notification triggers retain the timezone captured when scheduled.
+        // Reconcile the full plan only when the device timezone actually changed;
+        // ordinary resumes keep the low-cost widget-only sync path.
+        await ref.read(journalSideEffectsProvider).onLaunch();
+      } else {
+        await ref.read(widgetSyncServiceProvider).sync();
+      }
+    } catch (error, stackTrace) {
+      developer.log(
+        'Failed app resume side effect',
+        name: 'widget_bootstrap',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+    if (mounted) _tryApplyPendingEmotion();
+  }
+
+  Future<void> _captureTimeZone() async {
+    if (kIsWeb) return;
+    try {
+      _lastTimeZoneIdentifier = await ref
+          .read(deviceTimeZoneResolverProvider)
+          .getIdentifier();
+    } catch (error, stackTrace) {
+      developer.log(
+        'Failed to capture device timezone',
+        name: 'widget_bootstrap',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<bool> _hasTimeZoneChanged() async {
+    if (kIsWeb) return false;
+    try {
+      final current = await ref
+          .read(deviceTimeZoneResolverProvider)
+          .getIdentifier();
+      final previous = _lastTimeZoneIdentifier;
+      _lastTimeZoneIdentifier = current;
+      return previous != null && previous != current;
+    } catch (error, stackTrace) {
+      developer.log(
+        'Failed to detect device timezone change',
+        name: 'widget_bootstrap',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 

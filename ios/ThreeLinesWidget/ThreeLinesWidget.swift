@@ -45,19 +45,33 @@ struct ThreeLinesProvider: TimelineProvider {
 
   private func loadEntry(family: WidgetFamily) -> ThreeLinesEntry {
     let defaults = UserDefaults(suiteName: appGroupId)
+    let today = ThreeLinesWidgetState.localGregorianDateString(
+      Date(),
+      timeZone: TimeZone.current
+    )
+    let storedDate = defaults?.string(forKey: "date")
     let streakLabel = defaults?.string(forKey: "streak_label") ?? "시작해볼까요"
     let status = defaults?.string(forKey: "status_message") ?? "앱을 열어 오늘을 기록해보세요"
     let prompt = defaults?.string(forKey: "prompt") ?? "오늘 감사한 작은 것 하나는?"
     let isCompleted = (defaults?.string(forKey: "is_completed") ?? "false") == "true"
     let emotionRaw = defaults?.string(forKey: "emotion") ?? ""
-    let emotionLabel = Self.label(for: emotionRaw)
-
-    return ThreeLinesEntry(
-      date: Date(),
+    let state = ThreeLinesWidgetState.resolve(
+      storedDate: storedDate,
+      today: today,
       streakLabel: streakLabel,
       statusMessage: status,
       prompt: prompt,
       isCompleted: isCompleted,
+      emotionRaw: emotionRaw
+    )
+    let emotionLabel = Self.label(for: state.emotionRaw)
+
+    return ThreeLinesEntry(
+      date: Date(),
+      streakLabel: state.streakLabel,
+      statusMessage: state.statusMessage,
+      prompt: state.prompt,
+      isCompleted: state.isCompleted,
       emotionLabel: emotionLabel,
       family: family
     )

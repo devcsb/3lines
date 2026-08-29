@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A10000000000000000000011 /* ThreeLinesWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* ThreeLinesWidget.swift */; };
 		A10000000000000000000012 /* ThreeLinesWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* ThreeLinesWidgetBundle.swift */; };
+		A10000000000000000000016 /* ThreeLinesWidgetState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* ThreeLinesWidgetState.swift */; };
 		A10000000000000000000010 /* ThreeLinesWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* ThreeLinesWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
@@ -66,6 +67,7 @@
 /* Begin PBXFileReference section */
 		A10000000000000000000001 /* ThreeLinesWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreeLinesWidget.swift; sourceTree = "<group>"; };
 		A10000000000000000000002 /* ThreeLinesWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreeLinesWidgetBundle.swift; sourceTree = "<group>"; };
+		A10000000000000000000015 /* ThreeLinesWidgetState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreeLinesWidgetState.swift; sourceTree = "<group>"; };
 		A10000000000000000000003 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000004 /* ThreeLinesWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ThreeLinesWidget.entitlements; sourceTree = "<group>"; };
 		A10000000000000000000006 /* ThreeLinesWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ThreeLinesWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -127,6 +129,7 @@
 			children = (
 				A10000000000000000000001 /* ThreeLinesWidget.swift */,
 				A10000000000000000000002 /* ThreeLinesWidgetBundle.swift */,
+				A10000000000000000000015 /* ThreeLinesWidgetState.swift */,
 				A10000000000000000000003 /* Info.plist */,
 				A10000000000000000000004 /* ThreeLinesWidget.entitlements */,
 			);
@@ -465,6 +468,7 @@
 			files = (
 				A10000000000000000000011 /* ThreeLinesWidget.swift in Sources */,
 				A10000000000000000000012 /* ThreeLinesWidgetBundle.swift in Sources */,
+				A10000000000000000000016 /* ThreeLinesWidgetState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -532,7 +536,7 @@
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "$(IOS_SIGNING_IDENTITY)";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -570,6 +574,9 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.threelines.threeLines;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
+				DEVELOPMENT_TEAM = "$(IOS_DEVELOPMENT_TEAM)";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "$(IOS_SIGNING_IDENTITY)";
+				PROVISIONING_PROFILE_SPECIFIER = "$(IOS_RUNNER_PROVISIONING_PROFILE_SPECIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
@@ -713,7 +720,7 @@
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "$(IOS_SIGNING_IDENTITY)";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -776,6 +783,9 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.threelines.threeLines;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
+				DEVELOPMENT_TEAM = "$(IOS_DEVELOPMENT_TEAM)";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "$(IOS_SIGNING_IDENTITY)";
+				PROVISIONING_PROFILE_SPECIFIER = "$(IOS_RUNNER_PROVISIONING_PROFILE_SPECIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
@@ -831,6 +841,9 @@
 				);
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.threelines.threeLines.ThreeLinesWidget;
+				DEVELOPMENT_TEAM = "$(IOS_DEVELOPMENT_TEAM)";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "$(IOS_SIGNING_IDENTITY)";
+				PROVISIONING_PROFILE_SPECIFIER = "$(IOS_WIDGET_PROVISIONING_PROFILE_SPECIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -859,6 +872,9 @@
 				);
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.threelines.threeLines.ThreeLinesWidget;
+				DEVELOPMENT_TEAM = "$(IOS_DEVELOPMENT_TEAM)";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "$(IOS_SIGNING_IDENTITY)";
+				PROVISIONING_PROFILE_SPECIFIER = "$(IOS_WIDGET_PROVISIONING_PROFILE_SPECIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;

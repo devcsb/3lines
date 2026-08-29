@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/services/haptic_service.dart';
 import '../../core/services/pdf_report_service.dart';
+import '../../core/theme/app_motion.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../shared/widgets/staggered_fade_in.dart';
 import 'insights_controller.dart';
@@ -56,9 +57,11 @@ class InsightsScreen extends ConsumerWidget {
 
           return SafeArea(
             child: RefreshIndicator(
-              onRefresh: () async {
+              onRefresh: () {
                 HapticService.light();
-                ref.invalidate(insightsControllerProvider);
+                return ref
+                    .refresh(insightsControllerProvider.future)
+                    .then<void>((_) {});
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -272,24 +275,33 @@ class _CongratsBannerState extends State<_CongratsBanner>
   late AnimationController _controller;
   late Animation<double> _slideAnimation;
   late Animation<double> _fadeAnimation;
+  var _reduceMotion = false;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: AppMotion.celebration,
       vsync: this,
     );
-    _slideAnimation = Tween<double>(
-      begin: -20,
-      end: 0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-    _fadeAnimation = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _slideAnimation = Tween<double>(begin: -20, end: 0).animate(
+      CurvedAnimation(parent: _controller, curve: AppMotion.standardCurve),
+    );
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: AppMotion.standardCurve),
+    );
     _controller.forward();
     HapticService.medium();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = AppMotion.reduceMotion(context);
+    if (_reduceMotion) {
+      _controller.stop();
+      _controller.value = 1.0;
+    }
   }
 
   @override
@@ -355,7 +367,9 @@ class _PeriodSelector extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Semantics(
       label: '인사이트 기간 선택',
-      child: Row(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
         children: [
           _PeriodChip(
             label: '1주',
@@ -364,7 +378,6 @@ class _PeriodSelector extends ConsumerWidget {
                 .read(insightsControllerProvider.notifier)
                 .setPeriod(InsightsPeriod.week1),
           ),
-          const SizedBox(width: 8),
           _PeriodChip(
             label: '1개월',
             selected: period == InsightsPeriod.month1,
@@ -372,7 +385,6 @@ class _PeriodSelector extends ConsumerWidget {
                 .read(insightsControllerProvider.notifier)
                 .setPeriod(InsightsPeriod.month1),
           ),
-          const SizedBox(width: 8),
           _PeriodChip(
             label: '3개월',
             selected: period == InsightsPeriod.month3,
@@ -402,27 +414,44 @@ class _PeriodChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ts = Theme.of(context).textTheme;
+    final duration = AppMotion.durationFor(context, AppMotion.micro);
 
-    return GestureDetector(
-      onTap: () {
-        HapticService.selection();
-        onTap();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? cs.primary : Colors.transparent,
+    return Semantics(
+      container: true,
+      button: true,
+      selected: selected,
+      label: '인사이트 기간: $label${selected ? ', 선택됨' : ''}',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? cs.primary : cs.outlineVariant),
-        ),
-        child: Text(
-          label,
-          style: ts.labelMedium?.copyWith(
-            color: selected
-                ? cs.onPrimary
-                : cs.onSurface.withValues(alpha: 0.6),
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+          onTap: () {
+            HapticService.selection();
+            onTap();
+          },
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: AnimatedContainer(
+              duration: duration,
+              curve: AppMotion.standardCurve,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: selected ? cs.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: selected ? cs.primary : cs.outlineVariant,
+                ),
+              ),
+              child: Text(
+                label,
+                style: ts.labelMedium?.copyWith(
+                  color: selected
+                      ? cs.onPrimary
+                      : cs.onSurface.withValues(alpha: 0.6),
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ),
           ),
         ),
       ),

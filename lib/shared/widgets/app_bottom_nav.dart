@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/services/haptic_service.dart';
+import 'branch_fade_through.dart';
 
 class ScaffoldWithNavBar extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -14,9 +15,12 @@ class ScaffoldWithNavBar extends StatelessWidget {
 
     return Scaffold(
       // StatefulNavigationShell 은 내부 IndexedStack 으로 브랜치 상태를 보존한다.
-      // AnimatedSwitcher 로 감싸면 탭 전환 200ms 동안 shell 의 GlobalKey 가
-      // 트리에 두 번 존재해 "Duplicate GlobalKey" 예외가 발생하므로 직접 배치한다.
-      body: navigationShell,
+      // shell 은 한 번만 트리에 두고, wrapper 의 opacity/offset 만 애니메이션한다.
+      // AnimatedSwitcher 로 shell 을 교체하면 GlobalKey 가 중복 마운트될 수 있다.
+      body: BranchFadeThrough(
+        transitionKey: navigationShell.currentIndex,
+        child: navigationShell,
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(

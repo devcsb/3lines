@@ -4,16 +4,13 @@ import 'dart:developer' as developer;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/events/journal_changes.dart';
-import '../../core/services/notification_service.dart';
 import '../../core/services/photo_service.dart';
-import '../../core/services/widget_sync_service.dart';
 import '../../core/theme/theme_notifier.dart';
 import '../../core/time/app_clock.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../data/models/daily_entry.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/settings_repository.dart';
-import '../settings/settings_controller.dart';
 import 'today_state.dart';
 
 class TodayController extends AsyncNotifier<TodayState> {
@@ -59,7 +56,21 @@ class TodayController extends AsyncNotifier<TodayState> {
         answer1: todayEntry.answer1,
         answer2: todayEntry.answer2,
         answer3: todayEntry.answer3,
-        prompts: prompts,
+        // A saved entry keeps the questions that were shown when it was
+        // written.  Settings changes apply to future entries; replacing these
+        // snapshots would make an existing answer appear under a different
+        // question when the user revisits Today.
+        prompts: [
+          todayEntry.prompt1.trim().isNotEmpty
+              ? todayEntry.prompt1
+              : prompts[0],
+          todayEntry.prompt2.trim().isNotEmpty
+              ? todayEntry.prompt2
+              : prompts[1],
+          todayEntry.prompt3.trim().isNotEmpty
+              ? todayEntry.prompt3
+              : prompts[2],
+        ],
         isCompleted: true,
         currentStreak: streakResult.count,
         usedGraceDay: streakResult.usedGraceDay,
@@ -212,34 +223,7 @@ class TodayController extends AsyncNotifier<TodayState> {
       ),
     );
 
-    // Reschedule reminder: cancel today's and ensure tomorrow's fires.
-    try {
-      final settings = ref.read(settingsControllerProvider).value;
-      if (settings != null && settings.reminderEnabled) {
-        final notifService = ref.read(notificationServiceProvider);
-        // Personalize tomorrow's notification with today's gratitude answer
-        final todayAnswer = entry.answer1.trim();
-        final notifBody = todayAnswer.isNotEmpty
-            ? '어제의 감사: "${todayAnswer.length > 30 ? '${todayAnswer.substring(0, 30)}…' : todayAnswer}"'
-            : null;
-        await notifService.scheduleDailyReminder(
-          hour: settings.reminderHour,
-          minute: settings.reminderMinute,
-          body: notifBody,
-        );
-        // Streak is safe now — cancel today's at-risk notification
-        await notifService.cancelStreakAtRiskReminder();
-      }
-    } catch (e, stack) {
-      developer.log(
-        'Failed to update reminders after save',
-        error: e,
-        stackTrace: stack,
-      );
-    }
-
     ref.read(journalChangesProvider.notifier).markChanged();
-    unawaited(ref.read(widgetSyncServiceProvider).sync());
     return true;
   }
 

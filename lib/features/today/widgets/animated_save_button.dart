@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../../core/services/haptic_service.dart';
+import '../../../core/theme/app_motion.dart';
 
 /// Save button with a circular progress ring showing writing completion (0/3 → 3/3).
 class AnimatedSaveButton extends StatelessWidget {
@@ -115,6 +116,8 @@ class _ProgressRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final progressDuration = AppMotion.durationFor(context, AppMotion.standard);
+    final countDuration = AppMotion.durationFor(context, AppMotion.micro);
 
     return SizedBox(
       width: 44,
@@ -125,8 +128,8 @@ class _ProgressRing extends StatelessWidget {
           // Ring
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: progress),
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOut,
+            duration: progressDuration,
+            curve: AppMotion.standardCurve,
             builder: (context, value, _) => CustomPaint(
               size: const Size(44, 44),
               painter: _RingPainter(
@@ -141,7 +144,7 @@ class _ProgressRing extends StatelessWidget {
 
           // Count text
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
+            duration: countDuration,
             child: Text(
               '$filledCount/3',
               key: ValueKey(filledCount),
