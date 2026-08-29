@@ -19,6 +19,52 @@ env:
   FLUTTER_VERSION: '3.47.1'
 
 jobs:
+  preflight:
+    name: Detect available signing material
+    runs-on: ubuntu-latest
+    outputs:
+      ios_enabled: ${{ steps.detect.outputs.ios_enabled }}
+    steps:
+      - name: Detect iOS signing secrets
+        id: detect
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          IOS_WIDGET_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_WIDGET_PROVISIONING_PROFILE_BASE64 }}
+          IOS_DEVELOPMENT_TEAM: ${{ secrets.IOS_DEVELOPMENT_TEAM }}
+        run: |
+          set -euo pipefail
+          required=(
+            IOS_CERTIFICATE_BASE64
+            IOS_CERTIFICATE_PASSWORD
+            IOS_PROVISIONING_PROFILE_BASE64
+            IOS_WIDGET_PROVISIONING_PROFILE_BASE64
+            IOS_DEVELOPMENT_TEAM
+          )
+          present=0
+          missing=()
+          for variable in "${required[@]}"; do
+            if [[ -n "${!variable:-}" ]]; then
+              present=$((present + 1))
+            else
+              missing+=("$variable")
+            fi
+          done
+          if (( present == ${#required[@]} )); then
+            echo "ios_enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Apple signing material is complete; the iOS job will run." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if (( present > 0 )); then
+            # Fail closed on a half-configured Apple setup: a partially filled secret set
+            # is a mistake, not a deliberate Android-only release.
+            echo "Incomplete Apple signing secrets: ${missing[*]}" >&2
+            exit 2
+          fi
+          echo "ios_enabled=false" >> "$GITHUB_OUTPUT"
+          echo "No Apple signing material is configured; releasing Android only." >> "$GITHUB_STEP_SUMMARY"
+
   validate:
     name: Validate release contract
     runs-on: ubuntu-latest
@@ -97,7 +143,8 @@ jobs:
 
   ios:
     name: Build signed iOS archive
-    needs: validate
+    needs: [preflight, validate]
+    if: needs.preflight.outputs.ios_enabled == 'true'
     runs-on: macos-latest
     env:
       IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
@@ -159,8 +206,14 @@ jobs:
 
   github-release:
     name: Publish GitHub release assets
-    needs: [android, ios]
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [preflight, android, ios]
+    # `always()` is required so a deliberately skipped iOS job still lets the release run,
+    # while a failed one keeps blocking it.
+    if: |
+      always()
+      && startsWith(github.ref, 'refs/tags/v')
+      && needs.android.result == 'success'
+      && (needs.ios.result == 'success' || needs.ios.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Download Android bundle
@@ -169,10 +222,16 @@ jobs:
           name: 3lines-android-${{ github.ref_name }}
           path: release-assets
       - name: Download iOS package
+        if: needs.ios.result == 'success'
         uses: actions/download-artifact@v4
         with:
           name: 3lines-ios-${{ github.ref_name }}
           path: release-assets
+      - name: Note missing iOS package
+        if: needs.ios.result == 'skipped'
+        run: |
+          echo "This release contains the Android bundle only; Apple signing material is not configured." \
+            >> "$GITHUB_STEP_SUMMARY"
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
