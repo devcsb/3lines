@@ -51,7 +51,7 @@
 
 ## 작업 5 — 종합 검증 및 push/release
 
-- [ ] **파일:** 위 변경 전체
-- [ ] **검증:** `flutter analyze`, 전체 `flutter test`, Android unit test, version gate, shellcheck 가능한 스크립트 검사, git diff/status를 새 프로세스에서 실행한다.
-- [ ] **통합:** 브랜치를 `origin/codex/runtime-correctness-energy`로 push하고, 자격 증명이 준비된 경우에만 태그 기반 GitHub Actions 릴리스를 실행한다. 자격 증명이 없으면 workflow가 fail-closed하도록 보고한다.
-- [ ] **커밋/태그:** 모든 검증 통과 후 최종 커밋을 push하고 `v1.2.3` 태그를 원격에 생성한다.
+- [x] **파일:** 위 변경 전체
+- [x] **검증:** `flutter analyze`, 전체 `flutter test`, Android unit test, version gate, shellcheck 가능한 스크립트 검사, git diff/status를 새 프로세스에서 실행한다.
+- [x] **통합:** 브랜치를 `origin/codex/runtime-correctness-energy`로 push했고, PR #18의 최신 CI 두 job이 모두 통과했다. 자격 증명이 없으므로 태그 릴리스는 fail-closed 조건으로 보류했다.
+- [x] **커밋/태그:** 최종 커밋까지 원격에 push했다. `v1.2.3` 태그는 GitHub Secrets 등록 후 생성하도록 보류했다.
