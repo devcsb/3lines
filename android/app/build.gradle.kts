@@ -20,12 +20,16 @@ val releaseSigningKeys = listOf(
     "storeFile",
     "storePassword",
 )
+val releaseStoreFile = keystoreProperties.getProperty("storeFile")
+    ?.takeIf { it.isNotBlank() }
+    ?.let(rootProject::file)
 val hasReleaseSigning = releaseSigningKeys.all { key ->
     !keystoreProperties.getProperty(key).isNullOrBlank()
-}
+} && releaseStoreFile?.isFile == true
 if (keystorePropertiesFile.exists() && !hasReleaseSigning) {
     throw GradleException(
-        "android/keystore.properties must define keyAlias, keyPassword, storeFile, and storePassword",
+        "android/keystore.properties must define keyAlias, keyPassword, storeFile, " +
+            "storePassword and point storeFile to an existing keystore",
     )
 }
 
@@ -33,9 +37,21 @@ val allowUnsignedRelease = providers.gradleProperty("allowUnsignedRelease")
     .map(String::toBoolean)
     .orElse(false)
     .get()
+val isCi = providers.environmentVariable("CI")
+    .map { value ->
+        value.trim().lowercase() in setOf("true", "1", "yes", "on")
+    }
+    .orElse(false)
+    .get()
+if (isCi && allowUnsignedRelease) {
+    throw GradleException(
+        "allowUnsignedRelease=true is forbidden when CI=true; configure Android release signing instead",
+    )
+}
 val releaseSigningError =
     "Release signing is not configured. Add android/keystore.properties for a distributable build, " +
-        "or pass --android-project-arg=allowUnsignedRelease=true only for local non-distribution builds."
+        "or pass --android-project-arg=allowUnsignedRelease=true only for local non-distribution builds. " +
+        "CI builds must always provide a keystore."
 
 android {
     namespace = "com.threelines.three_lines"
