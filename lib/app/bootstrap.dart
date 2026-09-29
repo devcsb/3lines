@@ -33,13 +33,17 @@ Future<void> bootstrapAndRun() async {
     settingsRepo.isOnboardingDone(),
   ).wait;
 
-  unawaited(_cleanupOrphanedPhotos(db));
+  final photoService = PhotoService();
+  unawaited(
+    cleanupStartupPhotos(photoService, EntryRepository(db).getAllPhotoPaths),
+  );
 
   runApp(
     ProviderScope(
       observers: const [AppProviderObserver()],
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
+        photoServiceProvider.overrideWithValue(photoService),
         biometricLockStateProvider.overrideWith((ref) => biometricEnabled),
         initialBiometricEnabledProvider.overrideWithValue(biometricEnabled),
         initialOnboardingDoneProvider.overrideWithValue(onboardingDone),
@@ -107,8 +111,17 @@ final class AppProviderObserver extends ProviderObserver {
   }
 }
 
-Future<void> _cleanupOrphanedPhotos(AppDatabase db) async {
-  final entryRepo = EntryRepository(db);
-  final validPaths = (await entryRepo.getAllPhotoPaths()).toSet();
-  await PhotoService().cleanupOrphanedPhotos(validPaths);
+Future<void> cleanupStartupPhotos(
+  PhotoService photoService,
+  Future<List<String>> Function() readPhotoPaths,
+) async {
+  photoService.beginStartupCleanupProtection();
+  try {
+    final validPaths = (await readPhotoPaths()).toSet();
+    await photoService.cleanupOrphanedPhotos(validPaths);
+  } catch (_) {
+    developer.log('Startup photo cleanup skipped', name: appLogName);
+  } finally {
+    photoService.endStartupCleanupProtection();
+  }
 }

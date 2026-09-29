@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:three_lines/core/services/photo_service.dart';
 
@@ -21,6 +22,96 @@ void main() {
 
   tearDown(() async {
     await temp.delete(recursive: true);
+  });
+
+  test('gallery와 camera는 기존 picker 옵션으로 실제 파일을 복사한다', () async {
+    final source = await File(
+      p.join(temp.path, 'source.JPG'),
+    ).writeAsString('image');
+    for (final imageSource in ImageSource.values) {
+      final picker = _Picker(XFile(source.path));
+      final pickingService = PhotoService(
+        documentsDirectoryProvider: () async => docs,
+        picker: picker,
+      );
+      final saved = imageSource == ImageSource.gallery
+          ? await pickingService.pickFromGallery()
+          : await pickingService.pickFromCamera();
+      expect(saved, isNotNull);
+      expect(await File(saved!).readAsString(), 'image');
+      expect(picker.source, imageSource);
+      expect(picker.maxWidth, 1024);
+      expect(picker.imageQuality, 85);
+    }
+  });
+
+  test('사진 폴더가 없으면 생성하고 Documents 별칭은 real 경로에 복사한다', () async {
+    await photos.delete();
+    final source = await File(
+      p.join(temp.path, 'source.jpg'),
+    ).writeAsString('image');
+    final alias = await Link(p.join(temp.path, 'docs_alias')).create(docs.path);
+    final pickingService = PhotoService(
+      documentsDirectoryProvider: () async => Directory(alias.path),
+      picker: _Picker(XFile(source.path)),
+    );
+    final saved = await pickingService.pickFromGallery();
+    expect(saved, isNotNull);
+    expect(
+      p.dirname(saved!),
+      p.join(await docs.resolveSymbolicLinks(), 'photos'),
+    );
+    expect(await File(saved).readAsString(), 'image');
+  });
+
+  test('photos root symlink이면 picker 원본을 외부 폴더로 복사하지 않는다', () async {
+    final source = await File(
+      p.join(temp.path, 'source.jpg'),
+    ).writeAsString('image');
+    final outside = await Directory(
+      p.join(temp.path, 'outside_photos'),
+    ).create();
+    await photos.delete();
+    final link = await Link(photos.path).create(outside.path);
+    final pickingService = PhotoService(
+      documentsDirectoryProvider: () async => docs,
+      picker: _Picker(XFile(source.path)),
+    );
+    expect(await pickingService.pickFromGallery(), isNull);
+    expect(await outside.list().toList(), isEmpty);
+    expect(await link.exists(), isTrue);
+    expect(await source.readAsString(), 'image');
+  });
+
+  test('시작 보호가 겹치면 거부하고 종료 뒤 새 보호를 시작할 수 있다', () {
+    service.beginStartupCleanupProtection();
+    expect(service.beginStartupCleanupProtection, throwsStateError);
+    service.endStartupCleanupProtection();
+    expect(service.beginStartupCleanupProtection, returnsNormally);
+    service.endStartupCleanupProtection();
+  });
+
+  test('복사 실패의 부분 파일도 시작 정리가 끝날 때까지 보호한다', () async {
+    final source = await File(
+      p.join(temp.path, 'source.jpg'),
+    ).writeAsString('image');
+    String? partialPath;
+    final pickingService = PhotoService(
+      documentsDirectoryProvider: () async => docs,
+      picker: _Picker(XFile(source.path)),
+      photoCopier: (sourcePath, savedPath) async {
+        partialPath = savedPath;
+        await File(savedPath).writeAsString('partial');
+        throw const FileSystemException('sensitive copy error');
+      },
+    );
+    pickingService.beginStartupCleanupProtection();
+    expect(await pickingService.pickFromGallery(), isNull);
+    expect(await pickingService.cleanupOrphanedPhotos({}), 0);
+    expect(await File(partialPath!).readAsString(), 'partial');
+    pickingService.endStartupCleanupProtection();
+    expect(await pickingService.cleanupOrphanedPhotos({}), 1);
+    expect(await File(partialPath!).exists(), isFalse);
   });
 
   test('앱 문서 폴더 밖의 파일은 삭제하지 않는다', () async {
@@ -386,5 +477,28 @@ class _FailingDeletionPhotoService extends PhotoService {
   @override
   Future<void> deletePhoto(String path) async {
     throw const FileSystemException('sensitive deletion error');
+  }
+}
+
+class _Picker extends ImagePicker {
+  _Picker(this.file);
+  final XFile file;
+  ImageSource? source;
+  double? maxWidth;
+  int? imageQuality;
+
+  @override
+  Future<XFile?> pickImage({
+    required ImageSource source,
+    double? maxWidth,
+    double? maxHeight,
+    int? imageQuality,
+    CameraDevice preferredCameraDevice = CameraDevice.rear,
+    bool requestFullMetadata = true,
+  }) async {
+    this.source = source;
+    this.maxWidth = maxWidth;
+    this.imageQuality = imageQuality;
+    return file;
   }
 }

@@ -11,12 +11,32 @@ class PhotoService {
   PhotoService({
     Future<Directory> Function()? documentsDirectoryProvider,
     ImagePicker? picker,
+    Future<void> Function(String sourcePath, String savedPath)? photoCopier,
   }) : _documentsDirectoryProvider =
            documentsDirectoryProvider ?? getApplicationDocumentsDirectory,
-       _picker = picker ?? ImagePicker();
+       _picker = picker ?? ImagePicker(),
+       _photoCopier = photoCopier ?? _copyPhoto;
 
   final Future<Directory> Function() _documentsDirectoryProvider;
   final ImagePicker _picker;
+  final Future<void> Function(String sourcePath, String savedPath) _photoCopier;
+  // 시작 정리 한 번 동안 새 복사만 보호한다. 다중 프로세스 정리는 별도 동기화가 필요하다.
+  bool _startupCleanupActive = false;
+  final _startupProtected = <String>{};
+
+  void beginStartupCleanupProtection() {
+    if (_startupCleanupActive) throw StateError('사진 정리 중복 시작');
+    _startupCleanupActive = true;
+  }
+
+  void endStartupCleanupProtection() {
+    _startupCleanupActive = false;
+    _startupProtected.clear();
+  }
+
+  static Future<void> _copyPhoto(String sourcePath, String savedPath) async {
+    await File(sourcePath).copy(savedPath);
+  }
 
   static final _ownedPhotoName = RegExp(
     r'^photo_\d+\.(jpg|jpeg|png|heic|heif|webp|gif|bmp|avif)$',
@@ -154,7 +174,11 @@ class PhotoService {
       await for (final entity in dir.list(followLinks: false)) {
         if (entity is! File) continue;
         final canonical = await canonicalPhotoPath(entity.path);
-        if (canonical == null || protected.contains(canonical)) continue;
+        if (canonical == null ||
+            protected.contains(canonical) ||
+            _startupProtected.contains(canonical)) {
+          continue;
+        }
         await deletePhoto(canonical);
         if (await FileSystemEntity.type(canonical, followLinks: false) ==
             FileSystemEntityType.notFound) {
@@ -184,8 +208,13 @@ class PhotoService {
       if (picked == null) return null;
 
       final photosDir = await _photosDir();
-      if (!await photosDir.exists()) {
+      if (await FileSystemEntity.type(photosDir.path, followLinks: false) ==
+          FileSystemEntityType.notFound) {
         await photosDir.create(recursive: true);
+      }
+      if (await FileSystemEntity.type(photosDir.path, followLinks: false) !=
+          FileSystemEntityType.directory) {
+        return null;
       }
 
       final ext = p.extension(picked.path).isNotEmpty
@@ -193,9 +222,13 @@ class PhotoService {
           : '.jpg';
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'photo_$timestamp$ext';
-      final savedPath = p.join(photosDir.path, fileName);
+      final savedPath = await canonicalPhotoPath(
+        p.join(photosDir.path, fileName),
+      );
+      if (savedPath == null) return null;
 
-      await File(picked.path).copy(savedPath);
+      if (_startupCleanupActive) _startupProtected.add(savedPath);
+      await _photoCopier(picked.path, savedPath);
       return savedPath;
     } catch (_) {
       developer.log('Failed to pick photo', name: 'PhotoService');
