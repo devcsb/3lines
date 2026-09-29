@@ -8,7 +8,7 @@
 
 **Tech Stack:** Flutter, Dart SDK `^3.9.0`, Riverpod `^3.0.0`, Drift `^2.34.0`, `path ^1.9.0`, `path_provider ^2.1.5`, `file_picker ^11.0.0`, `image_picker ^1.2.2`, flutter_test, NativeDatabase.memory(). 새 패키지는 추가하지 않는다.
 
-**Spec:** `docs/superpowers/specs/2026-09-30-data-safety-import-design.md`. 2026-09-30 사용자가 명세를 승인했고, 이 계획은 사용자 검토 전이다. 이 문서를 쓰는 단계에는 제품 구현 권한이 없다.
+**Spec:** `docs/superpowers/specs/2026-09-30-data-safety-import-design.md`. 2026-09-30 사용자가 명세와 이 계획을 승인하고 실행을 지시했다. 격리 브랜치 `codex/data-safety-import-implementation`에서 구현한다. 실행 중 계약 조정과 검증은 `docs/superpowers/sdd/2026-09-30-data-safety-import/progress.md`에 기록한다.
 
 ## Global Constraints
 

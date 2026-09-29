@@ -3,13 +3,16 @@
 ## 현재 상태
 
 - 기준 저장소 `/Users/ubermensch/side-project/3lines`
-- 작업 브랜치 `codex/data-safety-import`
+- 원본 계획 브랜치 `codex/data-safety-import`
+- 구현 경로 `/Users/ubermensch/.codex/worktrees/data-safety-import/3lines`
+- 구현 브랜치 `codex/data-safety-import-implementation`, 시작 `4696df1`
 - 조사 기준 커밋 `a12d554ac9009823d44130e1ac88e4b36f3df709`
 - 2026-09-30 사용자 승인: 감사 결과의 개선 순서와 작성된 첫 작업 명세.
-- 단계: `writing-plans` 구현 계획 작성과 메인의 명세 대조 완료. 작성된 계획의 사용자 검토를 기다린다.
+- 2026-09-30 사용자 계획 승인과 실행 지시 완료.
+- 단계: `subagent-driven-development` 실행 중. Task 1과 Task 4를 파일 소유권을 나눠 병렬 구현한다.
 - 명세: `docs/superpowers/specs/2026-09-30-data-safety-import-design.md`
 - 계획: `docs/superpowers/plans/2026-09-30-data-safety-import.md`
-- 제품 코드, 의존성, 릴리스와 계정 설정은 변경하지 않았다.
+- Flutter 3.47.1 의존성/플러그인 등록 동기화를 `96962ff`에 commit했다. 릴리스와 계정 설정은 변경하지 않았다.
 
 ## 목적과 결정
 
@@ -31,7 +34,7 @@
 
 | 순서 | 작업 | 상태 |
 |---|---|---|
-| 1 | 가져오기 확인, 충돌 보존, 입력 검증, 사진 삭제 경계 | 명세 승인, 구현 계획 검토 대기 |
+| 1 | 가져오기 확인, 충돌 보존, 입력 검증, 사진 삭제 경계 | 명세/계획 승인, 구현 중 |
 | 2 | 초안 보존, 자정 저장 경합, 과거 기록 조회와 검색 | 감사 완료, 구현 전 |
 | 3 | 기간 경계, 유예일과 최장 스트릭, 화면 데이터 정합성 | 감사 완료, 구현 전 |
 | 4 | 서명 APK 빌드와 GitHub Release 설치 안내 | 감사 완료, 구현 전 |
@@ -81,12 +84,16 @@
 
 ## 이어서 할 일
 
-1. 작성된 구현 계획의 사용자 검토를 기다린다. 명세 승인만으로 제품 구현을 시작하지 않는다.
-2. 계획 승인 뒤 기존 또는 새 격리 작업 공간을 확인하고 그 경로를 여기에 기록한다.
-3. 이미 요청받은 독립 subagent 방식으로 여섯 작업을 구현한다. 모델/검증과 사진 경계는 병렬 가능하며 겹치는 저장소, 컨트롤러와 시험 편집은 직렬화한다.
+1. 승인된 계획의 Task 1과 Task 4를 각각 Luna high와 6.1-sol high 실행자가 구현한다.
+2. 작업별 target RED/GREEN 뒤 root가 소유 파일을 직렬 commit하고 fresh-context 검토자에게 범위 diff를 전달한다.
+3. 이어서 여섯 작업을 구현한다. 모델/검증과 사진 경계는 병렬 가능하며 겹치는 저장소, 컨트롤러와 시험 편집은 직렬화한다.
    작성 파일 소유권을 나누고 다른 작업자의 편집을 되돌리지 않는다.
-4. 구현 단계에서 로컬 의존성 구성을 먼저 정상화하고, 범위에 맞는 회귀 테스트와
-   최종 전체 검증을 실행한다. 실기기 검증이 없으면 이를 완료로 표시하지 않는다.
+4. 로컬 의존성 복구는 완료했다. 작업별 회귀 시험과 최종 전체 검증을 실행한다. 실기기 검증이 없으면 이를 완료로 표시하지 않는다.
+
+실행 판정은 공통 사진 삭제 helper를 PhotoService에 두어 세 controller의 복제를
+피하고, 시작 정리 시험의 전용 hook 대신 실제 파일 copy I/O 주입을 사용한다.
+전체 게이트는 마지막 root 실행으로 대조한다. 세부 판정, 오판 비용과 task별
+dispatch/review commit은 구현 경로의 `.superpowers/sdd/2026-09-30-data-safety-import/progress.md`에 남긴다.
 
 계획 대조에서 일반 saveEntry가 createdAt을 바꾸지 않는다는 점을 반영해 timestamp
 변경 반례는 실제 DB column update로 고정했다. 완료된 Today 표시와 작성/수정
