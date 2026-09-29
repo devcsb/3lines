@@ -1,4 +1,4 @@
-import '../../lib/core/time/app_clock.dart';
+import 'package:three_lines/core/time/app_clock.dart';
 
 Map<String, Object?> importRecord(
   String date, {

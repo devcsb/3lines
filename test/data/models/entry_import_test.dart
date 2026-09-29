@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:three_lines/core/time/app_clock.dart';
 
 import '../../../lib/data/models/daily_entry.dart';
 import '../../../lib/data/models/entry_import.dart';
@@ -103,6 +104,18 @@ void main() {
         throwsUnsupportedError,
       );
     });
+  });
+
+  test('MutableImportClock은 앱 AppClock 계약으로 주입되어 읽기를 기록한다', () {
+    final expected = DateTime(2026, 9, 30, 12, 34);
+    final mutable = MutableImportClock(expected);
+    final AppClock clock = mutable;
+
+    expect(clock.now(), expected);
+    expect(mutable.reads, 1);
+    mutable.value = DateTime(2026, 10, 1);
+    expect(clock.now(), DateTime(2026, 10, 1));
+    expect(mutable.reads, 2);
   });
 
   test('ParsedImport 생성자는 입력 컬렉션 별칭을 끊고 재귀 불변화한다', () {
