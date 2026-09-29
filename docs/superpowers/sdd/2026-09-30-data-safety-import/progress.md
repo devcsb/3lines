@@ -9,10 +9,10 @@
 - 조사 기준 커밋 `a12d554ac9009823d44130e1ac88e4b36f3df709`
 - 2026-09-30 사용자 승인: 감사 결과의 개선 순서와 작성된 첫 작업 명세.
 - 2026-09-30 사용자 계획 승인과 실행 지시 완료.
-- 단계: `subagent-driven-development` 실행 중. Task 1과 Task 4를 파일 소유권을 나눠 병렬 구현한다.
+- 단계: `subagent-driven-development` 실행 중. Task 1/4/5 구현과 독립 검토 승인. Task 2의 저장소/확인 UI 연결을 구현한다.
 - 명세: `docs/superpowers/specs/2026-09-30-data-safety-import-design.md`
 - 계획: `docs/superpowers/plans/2026-09-30-data-safety-import.md`
-- Flutter 3.47.1 의존성/플러그인 등록 동기화를 `96962ff`에 commit했다. 릴리스와 계정 설정은 변경하지 않았다.
+- Flutter 3.47.1 의존성/플러그인 등록 동기화를 `96962ff`에 commit했다. 현재 구현 head는 `17f7f80`이다. 릴리스와 계정 설정은 변경하지 않았다.
 
 ## 목적과 결정
 
@@ -94,6 +94,38 @@
 피하고, 시작 정리 시험의 전용 hook 대신 실제 파일 copy I/O 주입을 사용한다.
 전체 게이트는 마지막 root 실행으로 대조한다. 세부 판정, 오판 비용과 task별
 dispatch/review commit은 구현 경로의 `.superpowers/sdd/2026-09-30-data-safety-import/progress.md`에 남긴다.
+
+## 현재 구현 검증
+
+| 작업 | 실제 target 결과 | 독립 검토 | 커밋 |
+|---|---|---|---|
+| 1 입력 모델 | API/정책/alias/clock RED 뒤 최종 +7, exit 0 | 공개 constructor deep freeze와 fixture URI 누락 수정 후 Approved | 3f42dc2, d7dd13b, 17f7f80 |
+| 4 사진 소유 경계 | 외부 파일 삭제 행동 RED 뒤 +28, exit 0 | spec/quality Approved | 3c46736 |
+| 5 시작 정리 경합 | 실제 파일/DB RED +33/-5 뒤 +38, exit 0 | spec/quality Approved | 8a431df |
+| 2 가져오기 수직 흐름 | 구현 중 | 대기 | 미완료 |
+| 3 텍스트 내보내기 | 2 뒤 시작 | 대기 | 미완료 |
+| 6 호출자 참조 보호 | 2/3 뒤 시작 | 대기 | 미완료 |
+
+위 결과는 실행자의 target 출력과 독립 source review를 대조한 기록이다. 전체
+analyze/test, 플랫폼 빌드와 실기기 검증은 아직 실행하지 않았다.
+
+## 실행 판정과 오판 비용
+
+1. 겹치지 않는 편집은 사용자 지시대로 병렬 수행하고 Git은 root가 직렬 처리한다.
+   dispatch base와 review base를 분리한다. 오판 시 소유권/Git 범위 재대조가 필요하다.
+2. CI와 같은 Flutter 3.47.1의 7개 SDK 의존성 pin과 generated timezone 등록을 유지한다.
+   새 패키지는 없다. 오판 시 플랫폼 빌드 회귀 비용이 든다.
+3. 전체 게이트는 root 최종 실행으로 대조하고 작업별 RED/GREEN만 중간에 수행한다.
+   오판 시 기존 오류를 뒤늦게 발견할 수 있어 최종 실패를 그대로 보고한다.
+4. API 부재 컴파일 RED와 실제 정책 assertion RED를 구분한다. 조금 더 많은 RED
+   단계가 들지만 컴파일 실패를 동작 검증으로 사용하지 않는다.
+5. Task 6의 동일 삭제 helper 세 복제 대신 PhotoService의 좁은 공통 실제 동작을
+   사용한다. 오판 시 계층 경계 재정리 비용이 든다.
+6. 시작 정리의 순수 테스트 hook 두 개 대신 실제 copy I/O 주입과 DB loader gate를
+   쓴다. 오판 시 경합 시험 seam 재조정이 필요하다.
+7. 수동 provider identity assertion을 실제 bootstrap 증거로 세지 않는다. 실제
+   helper FS 시험과 production override wiring을 검토한다. 실기기 연결 문제는
+   놓칠 수 있으므로 실기기 미검증을 유지한다.
 
 계획 대조에서 일반 saveEntry가 createdAt을 바꾸지 않는다는 점을 반영해 timestamp
 변경 반례는 실제 DB column update로 고정했다. 완료된 Today 표시와 작성/수정
