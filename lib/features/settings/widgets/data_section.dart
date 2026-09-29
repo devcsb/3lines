@@ -38,9 +38,10 @@ class _DataSectionState extends ConsumerState<DataSection> {
         ),
         const Divider(),
         Semantics(
-          label: '데이터를 JSON 파일로 내보내기',
+          label: '텍스트 기록 내보내기 (JSON), 사진 파일은 백업에 포함되지 않아요',
           child: ListTile(
-            title: const Text('데이터 내보내기 (JSON)'),
+            title: const Text('텍스트 기록 내보내기 (JSON)'),
+            subtitle: const Text('사진 파일은 백업에 포함되지 않아요'),
             leading: const Icon(Icons.file_download),
             onTap: () => _exportData(context, ref),
           ),

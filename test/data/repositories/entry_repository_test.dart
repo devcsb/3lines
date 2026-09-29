@@ -443,6 +443,28 @@ void main() {
       expect(result[0]['date'], '2026-03-01');
       expect(result[2]['date'], '2026-03-03');
     });
+
+    test('export는 경로만 null로 만들고 DB의 로컬 사진은 보존한다', () async {
+      final entry = DailyEntry(
+        date: '2026-09-29',
+        emotion: 3,
+        answer1: '사진 기록',
+        photoPath: '/local/photos/photo_123.jpg',
+        createdAt: DateTime(2026, 9, 29, 8),
+        updatedAt: DateTime(2026, 9, 29, 9),
+      );
+      await repo.saveEntry(entry, preserveTimestamps: true);
+
+      final exported = await repo.exportAllEntries();
+
+      expect(exported.single.containsKey('photo_path'), isTrue);
+      expect(exported.single['photo_path'], isNull);
+      final saved = (await repo.getEntryByDate('2026-09-29'))!;
+      expect(saved.photoPath, '/local/photos/photo_123.jpg');
+      expect(saved.createdAt, entry.createdAt);
+      expect(saved.updatedAt, entry.updatedAt);
+      expect(saved.answer1, '사진 기록');
+    });
   });
 
   group('previewImport/applyImport', () {
@@ -503,6 +525,43 @@ void main() {
   });
 
   group('export/import round-trip', () {
+    test('사진 경로를 제외해 새 DB로 가져와도 원본 사진과 기록은 보존한다', () async {
+      final original = DailyEntry(
+        date: '2026-09-29',
+        emotion: 4,
+        prompt1: '감사한 것은?',
+        answer1: '가족과 저녁',
+        prompt2: '수용할 것은?',
+        answer2: '실수를 인정',
+        prompt3: '내일의 의도는?',
+        answer3: '일찍 일어나기',
+        photoPath: '/local/photos/photo_123.jpg',
+        createdAt: DateTime(2026, 9, 29, 8),
+        updatedAt: DateTime(2026, 9, 29, 9),
+      );
+      await repo.saveEntry(original, preserveTimestamps: true);
+
+      final exported = await repo.exportAllEntries();
+      final restoredDb = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(restoredDb.close);
+      final restoredRepo = EntryRepository(restoredDb);
+      final preview = await restoredRepo.previewImport(jsonEncode(exported));
+      final result = await restoredRepo.applyImport(preview);
+
+      expect(result.inserted, 1);
+      final restored = (await restoredRepo.getEntryByDate('2026-09-29'))!;
+      final stillOriginal = (await repo.getEntryByDate('2026-09-29'))!;
+      expect(restored.photoPath, isNull);
+      expect(restored.createdAt, original.createdAt);
+      expect(restored.updatedAt, original.updatedAt);
+      expect(restored.answer1, original.answer1);
+      expect(restored.prompt1, original.prompt1);
+      expect(stillOriginal.photoPath, original.photoPath);
+      expect(stillOriginal.createdAt, original.createdAt);
+      expect(stillOriginal.updatedAt, original.updatedAt);
+      expect(stillOriginal.answer1, original.answer1);
+    });
+
     test('exported data can be re-imported faithfully', () async {
       await repo.saveEntry(
         DailyEntry(

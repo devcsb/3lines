@@ -535,7 +535,14 @@ class EntryRepository {
     final allEntries = await (_db.select(
       _db.entries,
     )..orderBy([(t) => OrderingTerm.asc(t.date)])).get();
-    return allEntries.map((e) => _fromEntry(e).toJson()).toList();
+    return allEntries
+        .map(
+          (e) => <String, dynamic>{
+            ..._fromEntry(e).toJson(),
+            'photo_path': null,
+          },
+        )
+        .toList();
   }
 
   Future<ImportPreview> previewImport(String jsonStr) async {

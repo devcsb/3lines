@@ -505,6 +505,31 @@ void main() {
       expect(gratitudePrompt, isNotEmpty);
     });
 
+    test('controller export envelope도 photo_path null을 반환한다', () async {
+      final entry = DailyEntry(
+        date: '2026-09-29',
+        emotion: 3,
+        answer1: '기록',
+        photoPath: '/local/photos/photo_123.jpg',
+        createdAt: DateTime(2026, 9, 29, 8),
+        updatedAt: DateTime(2026, 9, 29, 9),
+      );
+      await entryRepo.saveEntry(entry, preserveTimestamps: true);
+      await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+
+      final decoded = json.decode(await notifier.exportData()) as Map;
+
+      expect(decoded['app'], '3Lines');
+      expect(decoded['version'], isA<String>());
+      expect((decoded['entries'] as List).single['photo_path'], isNull);
+      final saved = (await entryRepo.getEntryByDate(entry.date))!;
+      expect(saved.photoPath, entry.photoPath);
+      expect(saved.createdAt, entry.createdAt);
+      expect(saved.updatedAt, entry.updatedAt);
+      expect(saved.answer1, entry.answer1);
+    });
+
     test('exported JSON can be re-imported with correct counts', () async {
       await entryRepo.saveEntry(
         DailyEntry(

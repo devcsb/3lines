@@ -102,6 +102,13 @@ void main() {
   Future<int> count(WidgetTester tester) async =>
       (await tester.runAsync(repo.getTotalCount))!;
 
+  testWidgets('내보내기는 텍스트 기록이며 사진 미포함을 안내한다', (tester) async {
+    await mount(tester, () async => null);
+
+    expect(find.text('텍스트 기록 내보내기 (JSON)'), findsOneWidget);
+    expect(find.text('사진 파일은 백업에 포함되지 않아요'), findsOneWidget);
+  });
+
   testWidgets('파일 선택 재탭과 미리보기 취소는 DB 및 이벤트를 바꾸지 않는다', (tester) async {
     final gate = Completer<Uint8List?>();
     var picks = 0;
