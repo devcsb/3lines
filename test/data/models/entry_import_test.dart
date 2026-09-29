@@ -2,9 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:three_lines/core/time/app_clock.dart';
-
-import '../../../lib/data/models/daily_entry.dart';
-import '../../../lib/data/models/entry_import.dart';
+import 'package:three_lines/data/models/daily_entry.dart';
+import 'package:three_lines/data/models/entry_import.dart';
 import '../../helpers/import_fixtures.dart';
 
 void main() {

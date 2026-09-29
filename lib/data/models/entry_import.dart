@@ -162,8 +162,9 @@ ImportCandidate? _candidate(Object? value, DateTime now) {
       ),
     );
   }
-  if (parsedPrompts.every((prompt) => prompt.answer.trim().isEmpty))
+  if (parsedPrompts.every((prompt) => prompt.answer.trim().isEmpty)) {
     return null;
+  }
   try {
     return ImportCandidate(
       date: date,

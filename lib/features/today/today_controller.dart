@@ -309,7 +309,7 @@ class TodayController extends AsyncNotifier<TodayState> {
           .deleteUnreferencedPhoto(
             current.photoPath!,
             readReferences: ref.read(entryRepositoryProvider).getAllPhotoPaths,
-            retainedPaths: [if (savedPath != null) savedPath],
+            retainedPaths: [?savedPath],
           );
     }
   }
@@ -323,10 +323,7 @@ class TodayController extends AsyncNotifier<TodayState> {
         .deleteUnreferencedPhoto(
           path,
           readReferences: ref.read(entryRepositoryProvider).getAllPhotoPaths,
-          retainedPaths: [
-            if (currentPath != null) currentPath,
-            if (savedPath != null) savedPath,
-          ],
+          retainedPaths: [?currentPath, ?savedPath],
         );
   }
 

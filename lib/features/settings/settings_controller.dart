@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
@@ -204,7 +205,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
       }
       return result;
     } catch (_) {
-      _applications.remove(preview);
+      unawaited(_applications.remove(preview));
       rethrow;
     } finally {
       retain.close();

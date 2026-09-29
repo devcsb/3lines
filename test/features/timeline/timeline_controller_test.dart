@@ -148,8 +148,9 @@ void main() {
           makeEntry('2026-01-01', photoPath: '/photo.jpg'),
         );
         await container.read(timelineControllerProvider.future);
-        if (failure == 'query')
+        if (failure == 'query') {
           (entryRepo as _PhotoReferenceRepository).referenceReadFails = true;
+        }
         if (failure == 'unknown') fakePhoto.referenceCheckFails = true;
         final before = container.read(journalChangesProvider);
         await container

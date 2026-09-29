@@ -152,8 +152,9 @@ void main() {
           );
           fakePhoto.canonicalAliases['/alias.jpg'] = '/old.jpg';
         }
-        if (failure == 'alias')
+        if (failure == 'alias') {
           fakePhoto.canonicalAliases['/new.jpg'] = '/old.jpg';
+        }
         await container.read(todayControllerProvider.future);
         final notifier = container.read(todayControllerProvider.notifier);
         notifier.toggleEdit();

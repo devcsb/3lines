@@ -545,7 +545,9 @@ void main() {
 
       expect(decoded['app'], '3Lines');
       expect(decoded['version'], isA<String>());
-      expect((decoded['entries'] as List).single['photo_path'], isNull);
+      final exportedEntry =
+          (decoded['entries'] as List<Object?>).single as Map<String, Object?>;
+      expect(exportedEntry['photo_path'], isNull);
       final saved = (await entryRepo.getEntryByDate(entry.date))!;
       expect(saved.photoPath, entry.photoPath);
       expect(saved.createdAt, entry.createdAt);
@@ -736,8 +738,9 @@ void main() {
           ),
         );
         await container.read(settingsControllerProvider.future);
-        if (failure == 'postcommit-query')
+        if (failure == 'postcommit-query') {
           (entryRepo as _PhotoReferenceRepository).failAfter = 1;
+        }
         if (failure == 'unknown') fakePhoto.referenceCheckFails = true;
         final before = container.read(journalChangesProvider);
         expect(
@@ -763,12 +766,14 @@ void main() {
           ),
         );
         await container.read(settingsControllerProvider.future);
-        if (failure == 'snapshot-query')
+        if (failure == 'snapshot-query') {
           (entryRepo as _PhotoReferenceRepository).failAfter = 0;
-        if (failure == 'commit')
+        }
+        if (failure == 'commit') {
           await db.customStatement(
             "CREATE TRIGGER reject_delete BEFORE DELETE ON entries BEGIN SELECT RAISE(ABORT, 'blocked'); END",
           );
+        }
         final before = container.read(journalChangesProvider);
         expect(
           await container

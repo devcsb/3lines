@@ -35,11 +35,12 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
       _completed = true;
       if (mounted) Navigator.pop(context, result);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _applying = false;
           _error = '가져오기에 실패했어요. 다시 시도해 주세요';
         });
+      }
     }
   }
 
