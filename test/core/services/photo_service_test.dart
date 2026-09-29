@@ -45,6 +45,37 @@ void main() {
     }
   });
 
+  for (final extension in ['tif', 'tiff', 'apng']) {
+    test('picker의 .$extension 파일은 복사하되 삭제와 정리는 보존한다', () async {
+      final source = await File(
+        p.join(temp.path, 'source.$extension'),
+      ).writeAsString('selected image');
+      final alias = await Link(
+        p.join(temp.path, 'docs_alias'),
+      ).create(docs.path);
+      final pickingService = PhotoService(
+        documentsDirectoryProvider: () async => Directory(alias.path),
+        picker: _Picker(XFile(source.path)),
+      );
+
+      final saved = await pickingService.pickFromGallery();
+
+      expect(saved, isNotNull);
+      expect(p.basename(saved!), matches(RegExp(r'^photo_\d+\.')));
+      expect(p.extension(saved), '.$extension');
+      expect(
+        p.dirname(saved),
+        p.join(await docs.resolveSymbolicLinks(), 'photos'),
+      );
+      expect(await File(saved).readAsString(), 'selected image');
+      expect(await pickingService.canonicalPhotoPath(saved), isNull);
+      await pickingService.deletePhoto(saved);
+      expect(await File(saved).readAsString(), 'selected image');
+      expect(await pickingService.cleanupOrphanedPhotos({}), 0);
+      expect(await File(saved).readAsString(), 'selected image');
+    });
+  }
+
   test('사진 폴더가 없으면 생성하고 Documents 별칭은 real 경로에 복사한다', () async {
     await photos.delete();
     final source = await File(

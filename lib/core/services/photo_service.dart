@@ -56,9 +56,14 @@ class PhotoService {
   /// Resolves an owned direct child of the trusted photos directory.
   /// Unknown ownership or an unsafe path returns null, including symlinks.
   Future<String?> canonicalPhotoPath(String path) async {
+    if (!_ownedPhotoName.hasMatch(p.basename(path))) return null;
+    return _canonicalPhotosChildPath(path);
+  }
+
+  // 복사 경계는 경로 안전성을 공유하지만 삭제용 소유 확장자를 강제하지 않는다.
+  Future<String?> _canonicalPhotosChildPath(String path) async {
     try {
       if (!p.isAbsolute(path) || p.split(path).contains('..')) return null;
-      if (!_ownedPhotoName.hasMatch(p.basename(path))) return null;
 
       final docs = await _documentsDirectoryProvider();
       final realDocs = await docs.resolveSymbolicLinks();
@@ -222,7 +227,7 @@ class PhotoService {
           : '.jpg';
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'photo_$timestamp$ext';
-      final savedPath = await canonicalPhotoPath(
+      final savedPath = await _canonicalPhotosChildPath(
         p.join(photosDir.path, fileName),
       );
       if (savedPath == null) return null;
