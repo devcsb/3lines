@@ -1038,19 +1038,23 @@ Timeline.deleteEntry는 `await repo.deleteEntry(date)` 성공 뒤 helper에 `_re
 
 ## 최종 리뷰와 전체 gate
 
-- [ ] 메인이 모든 작업 commit과 새 리뷰어의 승인/반례를 원장에서 대조한다. 명세 전체 수락 조건에 해당 시험이 있는지 확인하고 DB schema/saveEntry 변경, unsafe import public 호출, raw 오류 표시, 서비스 밖 File.delete가 생기지 않았는지 diff를 읽는다.
-- [ ] 메인이 `flutter analyze --no-pub`를 전체 branch에 한 번 실행한다. 기대 결과는 오류 0이다. 실패하면 baseline의 stale package_config 때문이라고 추정하지 말고 새 로그의 실제 원인을 보고한다.
-- [ ] 메인이 `flutter test --no-pub --reporter expanded`를 전체 branch에 한 번 실행한다. 기대 결과는 전체 PASS이며 기존 `+346/-11`을 성공 근거로 쓰지 않는다. gate 실패의 수정이 필요하면 명시적 보수 task를 배정하고 그 target 시험만 실행한 뒤 실패한 전체 gate의 재실행 이유를 원장에 기록한다.
-- [ ] 전체 gate 결과와 좁은 테스트 결과, 사진 실파일/race 검증 여부를 사용자에게 보고한다. 사용자 검토 없이 계획 단계에서 구현을 시작하거나 완료를 주장하지 않는다.
+- [x] 메인이 모든 작업 commit과 새 리뷰어의 승인/반례를 원장에서 대조한다. 명세 전체 수락 조건에 해당 시험이 있는지 확인하고 DB schema/saveEntry 변경, unsafe import public 호출, raw 오류 표시, 서비스 밖 File.delete가 생기지 않았는지 diff를 읽는다.
+- [x] 메인이 `flutter analyze --no-pub`를 전체 branch에 한 번 실행한다. 기대 결과는 오류 0이다. 실패하면 baseline의 stale package_config 때문이라고 추정하지 말고 새 로그의 실제 원인을 보고한다.
+- [x] 메인이 `flutter test --no-pub --reporter expanded`를 전체 branch에 한 번 실행한다. 기대 결과는 전체 PASS이며 기존 `+346/-11`을 성공 근거로 쓰지 않는다. gate 실패의 수정이 필요하면 명시적 보수 task를 배정하고 그 target 시험만 실행한 뒤 실패한 전체 gate의 재실행 이유를 원장에 기록한다.
+- [x] 전체 gate 결과와 좁은 테스트 결과, 사진 실파일/race 검증 여부를 사용자에게 보고한다. 사용자 검토 없이 계획 단계에서 구현을 시작하거나 완료를 주장하지 않는다.
 
 ## 재개 원장
 
 | 작업 | 상태 | owner | commit | gate/리뷰 근거 | blocker |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 계획 검토 대기 | 미배정 | 없음 | 아직 실행하지 않음 | 사용자 계획 승인 |
-| 2 | 계획 검토 대기 | 미배정 | 없음 | 아직 실행하지 않음 | Task 1 |
-| 3 | 계획 검토 대기 | 미배정 | 없음 | 아직 실행하지 않음 | Task 2 |
-| 4 | 계획 검토 대기 | 미배정 | 없음 | 아직 실행하지 않음 | 사용자 계획 승인 |
-| 5 | 계획 검토 대기 | 미배정 | 없음 | 아직 실행하지 않음 | Task 4 |
-| 6 | 계획 검토 대기 | 미배정 | 없음 | 아직 실행하지 않음 | Task 2/3/4 |
-| root 전체 gate | 계획 검토 대기 | root | 없음 | 아직 실행하지 않음 | 여섯 작업과 리뷰 완료 |
+| 1 | 구현/독립 검토 승인 | implement_import_contract | 3f42dc2, d7dd13b, 17f7f80 | 최종 target +7 exit0, constructor/clock 보완 후 Approved | 없음 |
+| 2 | 구현/독립 검토 승인 | implement_import_flow | 23165da | target +122 exit0, Approved | 없음 |
+| 3 | 구현/독립 검토 승인 | implement_text_export | 4d751f9, 6e0701e | target +113 및 round-trip focused +1 exit0, Approved | 없음 |
+| 4 | 구현/독립 검토 승인 | implement_photo_boundary | 3c46736 | 실제 FS target +28 exit0, Approved | 없음 |
+| 5 | 구현/독립 검토 승인 | implement_startup_photo_protection | 8a431df, 8a336be | 실제 FS/race target +38, 형식 보완 뒤 +41 exit0, Approved | 없음 |
+| 6 | 구현/독립 검토 승인 | implement_photo_reference_callers | 7be04a0 | bulk 최신 참조 보완 뒤 target +111 exit0, Approved | 없음 |
+| 최종 fix wave | 독립 재검토 Ready Yes | review_data_safety_final, workers/root | 8a336be, b077e6f | copy/삭제 경계 분리, 삭제 안내/controller 수명 정정, UI target +10/취소 focused +1 exit0 | 없음 |
+| root 전체 gate | 완료 | root | 48d647c | lint 보수 교차검토 Ready Yes, analyze No issues/exit0, 전체 test +532/exit0, diff check exit0 | 플랫폼/실기기/배포 미검증은 후속 범위 |
+
+위 단계별 시험은 전체 앱/배포 완료를 뜻하지 않는다. 최신 실행과 미검증 범위는
+`docs/superpowers/sdd/2026-09-30-data-safety-import/progress.md`에 기록한다.
