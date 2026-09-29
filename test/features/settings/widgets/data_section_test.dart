@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:three_lines/core/events/journal_changes.dart';
+import 'package:three_lines/core/services/photo_service.dart';
 import 'package:three_lines/core/time/app_clock.dart';
 import 'package:three_lines/data/database/app_database.dart';
 import 'package:three_lines/data/models/daily_entry.dart';
@@ -16,6 +17,25 @@ import 'package:three_lines/data/repositories/settings_repository.dart';
 import 'package:three_lines/features/settings/widgets/data_section.dart';
 
 import '../../../helpers/import_fixtures.dart';
+
+class _UnknownPhotoReferenceService extends PhotoService {
+  final deletedPaths = <String>[];
+  final referenceCheckCompleted = Completer<void>();
+
+  @override
+  Future<bool?> referencesPhoto(
+    String path,
+    Iterable<String> references,
+  ) async {
+    if (!referenceCheckCompleted.isCompleted) {
+      referenceCheckCompleted.complete();
+    }
+    return null;
+  }
+
+  @override
+  Future<void> deletePhoto(String path) async => deletedPaths.add(path);
+}
 
 void main() {
   late AppDatabase db;
@@ -54,6 +74,7 @@ void main() {
     Future<Uint8List?> Function() picker, {
     ValueNotifier<bool>? visible,
     double scale = 1,
+    PhotoService? photoService,
   }) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -61,6 +82,8 @@ void main() {
           appClockProvider.overrideWithValue(clock),
           entryRepositoryProvider.overrideWithValue(repo),
           settingsRepositoryProvider.overrideWithValue(settings),
+          if (photoService != null)
+            photoServiceProvider.overrideWithValue(photoService),
         ],
         child: MaterialApp(
           builder: (context, child) => MediaQuery(
@@ -107,6 +130,130 @@ void main() {
 
     expect(find.text('텍스트 기록 내보내기 (JSON)'), findsOneWidget);
     expect(find.text('사진 파일은 백업에 포함되지 않아요'), findsOneWidget);
+  });
+
+  testWidgets('사진 삭제 판정이 불명이어도 기록 삭제 결과를 과장하지 않는다', (tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const photoPath = '/test-only/photo_123.jpg';
+    final photoService = _UnknownPhotoReferenceService();
+    await tester.runAsync(() async {
+      await repo.saveEntry(
+        DailyEntry(
+          date: '2026-09-29',
+          emotion: 3,
+          answer1: '시험 기록',
+          photoPath: photoPath,
+        ),
+      );
+    });
+    final container = await mount(
+      tester,
+      () async => null,
+      photoService: photoService,
+      scale: 2,
+    );
+    final changesBefore = container.read(journalChangesProvider);
+
+    await tester.ensureVisible(find.text('모든 데이터 삭제'));
+    await tester.tap(find.text('모든 데이터 삭제'));
+    await tester.pumpAndSettle();
+
+    const confirmation =
+        '기록을 삭제하면 앱에서 되돌릴 수 없어요.\n'
+        '사용 중이거나 안전하게 삭제할 수 없는 사진 파일은 남을 수 있어요.\n'
+        '확인하려면 "삭제"를 입력하세요.';
+    expect(find.text(confirmation), findsOneWidget);
+    expect(find.text('모든 기록이 영구적으로 삭제됩니다.'), findsNothing);
+    expect(
+      tester.widget<AlertDialog>(find.byType(AlertDialog)).scrollable,
+      isTrue,
+    );
+    await tester.ensureVisible(find.text('취소'));
+    await tester.ensureVisible(find.text('다음'));
+    expect(tester.getRect(find.text('취소')).bottom, lessThanOrEqualTo(568));
+    expect(tester.getRect(find.text('다음')).bottom, lessThanOrEqualTo(568));
+    tester.view.physicalSize = const Size(568, 320);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('취소'));
+    await tester.ensureVisible(find.text('다음'));
+    expect(tester.getRect(find.text('취소')).bottom, lessThanOrEqualTo(320));
+    expect(tester.getRect(find.text('다음')).bottom, lessThanOrEqualTo(320));
+    await tester.tap(find.text('다음'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('삭제 확인'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '삭제');
+    await tester.pump();
+    final deleteButton = tester.widget<TextButton>(
+      find.widgetWithText(TextButton, '삭제'),
+    );
+    expect(deleteButton.onPressed, isNotNull);
+    await tester.tap(find.widgetWithText(TextButton, '삭제'));
+    await tester.pump();
+    await tester.runAsync(() => photoService.referenceCheckCompleted.future);
+    await tester.pump();
+    await flush(tester);
+
+    expect(await count(tester), 0);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.text('기록을 삭제했어요. 일부 사진 파일은 남을 수 있어요.'), findsOneWidget);
+    expect(find.text('모든 데이터가 삭제되었어요'), findsNothing);
+    expect(photoService.deletedPaths, isEmpty);
+    expect(container.read(journalChangesProvider), changesBefore + 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('삭제 입력 dialog 취소 전환은 controller 예외나 기록 변경을 만들지 않는다', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const photoPath = '/test-only/photo_456.jpg';
+    final photoService = _UnknownPhotoReferenceService();
+    await tester.runAsync(() async {
+      await repo.saveEntry(
+        DailyEntry(
+          date: '2026-09-29',
+          emotion: 3,
+          answer1: '유지할 기록',
+          photoPath: photoPath,
+        ),
+      );
+    });
+    final container = await mount(
+      tester,
+      () async => null,
+      photoService: photoService,
+      scale: 2,
+    );
+    final changesBefore = container.read(journalChangesProvider);
+
+    await tester.ensureVisible(find.text('모든 데이터 삭제'));
+    await tester.tap(find.text('모든 데이터 삭제'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('다음'));
+    await tester.pumpAndSettle();
+    expect(find.text('삭제 확인'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '삭');
+    await tester.pump();
+    await tester.tap(find.text('취소'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(await count(tester), 1);
+    final saved = (await repo.getEntryByDate('2026-09-29'))!;
+    expect(saved.answer1, '유지할 기록');
+    expect(saved.photoPath, photoPath);
+    expect(photoService.deletedPaths, isEmpty);
+    expect(photoService.referenceCheckCompleted.isCompleted, isFalse);
+    expect(container.read(journalChangesProvider), changesBefore);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('파일 선택 재탭과 미리보기 취소는 DB 및 이벤트를 바꾸지 않는다', (tester) async {

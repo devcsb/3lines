@@ -184,7 +184,12 @@ class _DataSectionState extends ConsumerState<DataSection> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('정말 삭제하시겠어요?'),
-        content: const Text('모든 기록이 영구적으로 삭제됩니다.\n확인하려면 "삭제"를 입력하세요.'),
+        scrollable: true,
+        content: const Text(
+          '기록을 삭제하면 앱에서 되돌릴 수 없어요.\n'
+          '사용 중이거나 안전하게 삭제할 수 없는 사진 파일은 남을 수 있어요.\n'
+          '확인하려면 "삭제"를 입력하세요.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -207,11 +212,9 @@ class _DataSectionState extends ConsumerState<DataSection> {
   }
 
   void _showDeleteInput(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => _DeleteInputDialog(
-        controller: controller,
         onDelete: () async {
           final success = await ref
               .read(settingsControllerProvider.notifier)
@@ -222,39 +225,41 @@ class _DataSectionState extends ConsumerState<DataSection> {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(success ? '모든 데이터가 삭제되었어요' : '데이터 삭제에 실패했어요'),
+                content: Text(
+                  success ? '기록을 삭제했어요. 일부 사진 파일은 남을 수 있어요.' : '데이터 삭제에 실패했어요',
+                ),
               ),
             );
           }
         },
       ),
-    ).then((_) => controller.dispose());
+    );
   }
 }
 
 /// Stateful dialog that enables the delete button only when "삭제" is typed.
 class _DeleteInputDialog extends StatefulWidget {
-  final TextEditingController controller;
   final VoidCallback onDelete;
 
-  const _DeleteInputDialog({required this.controller, required this.onDelete});
+  const _DeleteInputDialog({required this.onDelete});
 
   @override
   State<_DeleteInputDialog> createState() => _DeleteInputDialogState();
 }
 
 class _DeleteInputDialogState extends State<_DeleteInputDialog> {
+  late final TextEditingController _controller;
   bool _canDelete = false;
   bool _deleting = false;
 
   @override
   void initState() {
     super.initState();
-    widget.controller.addListener(_onTextChanged);
+    _controller = TextEditingController()..addListener(_onTextChanged);
   }
 
   void _onTextChanged() {
-    final matches = widget.controller.text == '삭제';
+    final matches = _controller.text == '삭제';
     if (matches != _canDelete) {
       setState(() => _canDelete = matches);
     }
@@ -262,7 +267,8 @@ class _DeleteInputDialogState extends State<_DeleteInputDialog> {
 
   @override
   void dispose() {
-    widget.controller.removeListener(_onTextChanged);
+    _controller.removeListener(_onTextChanged);
+    _controller.dispose();
     super.dispose();
   }
 
@@ -277,7 +283,7 @@ class _DeleteInputDialogState extends State<_DeleteInputDialog> {
     return AlertDialog(
       title: const Text('삭제 확인'),
       content: TextField(
-        controller: widget.controller,
+        controller: _controller,
         autofocus: true,
         decoration: const InputDecoration(
           hintText: '"삭제"를 입력하세요',
