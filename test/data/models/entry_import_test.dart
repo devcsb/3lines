@@ -105,6 +105,34 @@ void main() {
     });
   });
 
+  test('ParsedImport 생성자는 입력 컬렉션 별칭을 끊고 재귀 불변화한다', () {
+    final values = <Object?>['처음'];
+    final nested = <String, Object?>{'values': values};
+    final source = <Object?>[
+      {'nested': nested},
+    ];
+    final parsed = ParsedImport(
+      entries: source,
+      candidates: const [],
+      invalid: 0,
+      duplicate: 0,
+    );
+
+    values[0] = '변경';
+    source.add({'later': true});
+    expect(parsed.inputCount, 1);
+    final snapshot = parsed.entries.single as Map;
+    expect((snapshot['nested'] as Map)['values'], ['처음']);
+    expect(
+      () => (snapshot['nested'] as Map)['new'] = true,
+      throwsUnsupportedError,
+    );
+    expect(
+      () => ((snapshot['nested'] as Map)['values'] as List).add('추가'),
+      throwsUnsupportedError,
+    );
+  });
+
   test('교체 후보는 로컬 생성시각과 사진을 유지하고 전체 snapshot을 비교한다', () {
     final old = DailyEntry(
       id: 10,

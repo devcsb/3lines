@@ -48,7 +48,7 @@ class ParsedImport {
     required List<ImportCandidate> candidates,
     required this.invalid,
     required this.duplicate,
-  }) : entries = List<Object?>.unmodifiable(entries),
+  }) : entries = List<Object?>.unmodifiable(entries.map(_freeze)),
        candidates = List<ImportCandidate>.unmodifiable(candidates);
 
   final List<Object?> entries;
@@ -211,7 +211,7 @@ ParsedImport parseImportJson(String jsonStr, {required DateTime now}) {
     }
   }
   return ParsedImport(
-    entries: entries.map(_freeze).toList(),
+    entries: entries,
     candidates: candidates,
     invalid: invalid,
     duplicate: duplicate,
