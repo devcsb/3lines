@@ -542,24 +542,38 @@ void main() {
       await repo.saveEntry(original, preserveTimestamps: true);
 
       final exported = await repo.exportAllEntries();
-      final restoredDb = AppDatabase.forTesting(NativeDatabase.memory());
-      addTearDown(restoredDb.close);
-      final restoredRepo = EntryRepository(restoredDb);
-      final preview = await restoredRepo.previewImport(jsonEncode(exported));
-      final result = await restoredRepo.applyImport(preview);
+      final originalSnapshot = (await repo.getEntryByDate(original.date))!;
+      expect(originalSnapshot.date, original.date);
+      expect(originalSnapshot.emotion, original.emotion);
+      expect(originalSnapshot.prompt1, original.prompt1);
+      expect(originalSnapshot.answer1, original.answer1);
+      expect(originalSnapshot.prompt2, original.prompt2);
+      expect(originalSnapshot.answer2, original.answer2);
+      expect(originalSnapshot.prompt3, original.prompt3);
+      expect(originalSnapshot.answer3, original.answer3);
+      expect(originalSnapshot.photoPath, original.photoPath);
+      expect(originalSnapshot.createdAt, original.createdAt);
+      expect(originalSnapshot.updatedAt, original.updatedAt);
+
+      await db.close();
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+      repo = EntryRepository(db);
+      final preview = await repo.previewImport(jsonEncode(exported));
+      final result = await repo.applyImport(preview);
 
       expect(result.inserted, 1);
-      final restored = (await restoredRepo.getEntryByDate('2026-09-29'))!;
-      final stillOriginal = (await repo.getEntryByDate('2026-09-29'))!;
+      final restored = (await repo.getEntryByDate(original.date))!;
+      expect(restored.date, original.date);
+      expect(restored.emotion, original.emotion);
+      expect(restored.prompt1, original.prompt1);
+      expect(restored.answer1, original.answer1);
+      expect(restored.prompt2, original.prompt2);
+      expect(restored.answer2, original.answer2);
+      expect(restored.prompt3, original.prompt3);
+      expect(restored.answer3, original.answer3);
       expect(restored.photoPath, isNull);
       expect(restored.createdAt, original.createdAt);
       expect(restored.updatedAt, original.updatedAt);
-      expect(restored.answer1, original.answer1);
-      expect(restored.prompt1, original.prompt1);
-      expect(stillOriginal.photoPath, original.photoPath);
-      expect(stillOriginal.createdAt, original.createdAt);
-      expect(stillOriginal.updatedAt, original.updatedAt);
-      expect(stillOriginal.answer1, original.answer1);
     });
 
     test('exported data can be re-imported faithfully', () async {
