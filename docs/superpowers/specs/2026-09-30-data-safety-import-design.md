@@ -2,7 +2,7 @@
 
 ## 상태
 
-2026-09-30 사용자가 이 명세를 승인했습니다. 구현 계획 작성 단계로 진행하며, 작성된 구현 계획의 검토는 아직 받지 않았습니다. 승인된 실행 방식은 task별 subagent 구현과 독립 검토입니다. 제품 구현은 계획 검토 뒤에 시작합니다.
+2026-09-30 사용자가 이 명세와 구현 계획을 승인하고 실행을 지시했습니다. 승인된 실행 방식은 task별 subagent 구현과 독립 검토입니다. 격리 브랜치 `codex/data-safety-import-implementation`에서 구현하며 실행 상태는 `docs/superpowers/sdd/2026-09-30-data-safety-import/progress.md`에 기록합니다.
 
 ## 목적
 

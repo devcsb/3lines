@@ -9,10 +9,10 @@
 - 조사 기준 커밋 `a12d554ac9009823d44130e1ac88e4b36f3df709`
 - 2026-09-30 사용자 승인: 감사 결과의 개선 순서와 작성된 첫 작업 명세.
 - 2026-09-30 사용자 계획 승인과 실행 지시 완료.
-- 단계: `subagent-driven-development` 실행 중. Task 1/4/5 구현과 독립 검토 승인. Task 2의 저장소/확인 UI 연결을 구현한다.
+- 단계: `subagent-driven-development` 여섯 작업 구현과 작업별 독립 검토 승인. 전체 변경의 별도 검토와 root 전체 게이트를 준비한다.
 - 명세: `docs/superpowers/specs/2026-09-30-data-safety-import-design.md`
 - 계획: `docs/superpowers/plans/2026-09-30-data-safety-import.md`
-- Flutter 3.47.1 의존성/플러그인 등록 동기화를 `96962ff`에 commit했다. 현재 구현 head는 `17f7f80`이다. 릴리스와 계정 설정은 변경하지 않았다.
+- Flutter 3.47.1 의존성/플러그인 등록 동기화를 `96962ff`에 commit했다. 현재 제품 구현 head는 `7be04a0`이다. 릴리스와 계정 설정은 변경하지 않았다.
 
 ## 목적과 결정
 
@@ -84,11 +84,9 @@
 
 ## 이어서 할 일
 
-1. 승인된 계획의 Task 1과 Task 4를 각각 Luna high와 6.1-sol high 실행자가 구현한다.
-2. 작업별 target RED/GREEN 뒤 root가 소유 파일을 직렬 commit하고 fresh-context 검토자에게 범위 diff를 전달한다.
-3. 이어서 여섯 작업을 구현한다. 모델/검증과 사진 경계는 병렬 가능하며 겹치는 저장소, 컨트롤러와 시험 편집은 직렬화한다.
-   작성 파일 소유권을 나누고 다른 작업자의 편집을 되돌리지 않는다.
-4. 로컬 의존성 복구는 완료했다. 작업별 회귀 시험과 최종 전체 검증을 실행한다. 실기기 검증이 없으면 이를 완료로 표시하지 않는다.
+1. 여섯 작업 전체와 의존성 동기화를 별도의 fresh-context 검토자에게 전달한다.
+2. root가 전체 analyze/test와 최종 diff check를 실행하고 실제 결과를 기록한다.
+3. 승인 범위 밖 실기기, 배포, 후속 초안/통계/UI 작업은 완료로 표시하지 않는다.
 
 실행 판정은 공통 사진 삭제 helper를 PhotoService에 두어 세 controller의 복제를
 피하고, 시작 정리 시험의 전용 hook 대신 실제 파일 copy I/O 주입을 사용한다.
@@ -102,9 +100,9 @@ dispatch/review commit은 구현 경로의 `.superpowers/sdd/2026-09-30-data-saf
 | 1 입력 모델 | API/정책/alias/clock RED 뒤 최종 +7, exit 0 | 공개 constructor deep freeze와 fixture URI 누락 수정 후 Approved | 3f42dc2, d7dd13b, 17f7f80 |
 | 4 사진 소유 경계 | 외부 파일 삭제 행동 RED 뒤 +28, exit 0 | spec/quality Approved | 3c46736 |
 | 5 시작 정리 경합 | 실제 파일/DB RED +33/-5 뒤 +38, exit 0 | spec/quality Approved | 8a431df |
-| 2 가져오기 수직 흐름 | 구현 중 | 대기 | 미완료 |
-| 3 텍스트 내보내기 | 2 뒤 시작 | 대기 | 미완료 |
-| 6 호출자 참조 보호 | 2/3 뒤 시작 | 대기 | 미완료 |
+| 2 가져오기 수직 흐름 | API/실제 Today 행동 RED 뒤 5-file +122 exit0 | spec/quality Approved | 23165da |
+| 3 텍스트 내보내기 | 사진/안내 RED 뒤 +113 exit0, 순차 DB focused +1 경고 없음 | Minor 시험 보완 뒤 Approved | 4d751f9, 6e0701e |
+| 6 호출자 참조 보호 | 실제 삭제 행동 RED +86/-23, bulk 중 새 DB/활성 draft RED +0/-2 뒤 +111 exit0 | spec/quality Approved | 7be04a0 |
 
 위 결과는 실행자의 target 출력과 독립 source review를 대조한 기록이다. 전체
 analyze/test, 플랫폼 빌드와 실기기 검증은 아직 실행하지 않았다.
