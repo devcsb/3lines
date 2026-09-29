@@ -10,12 +10,26 @@ class FakePhotoService extends PhotoService {
   Completer<void>? deleteStarted;
   Completer<void>? deleteGate;
   Object? deleteError;
+  final Map<String, String> canonicalAliases = {};
+  bool referenceCheckFails = false;
 
   @override
   Future<String?> pickFromGallery() async => nextPickResult;
 
   @override
   Future<String?> pickFromCamera() async => nextPickResult;
+
+  @override
+  Future<bool?> referencesPhoto(
+    String path,
+    Iterable<String> references,
+  ) async {
+    if (referenceCheckFails) return null;
+    final canonical = canonicalAliases[path] ?? path;
+    return references.any(
+      (reference) => (canonicalAliases[reference] ?? reference) == canonical,
+    );
+  }
 
   @override
   Future<void> deletePhoto(String path) async {
