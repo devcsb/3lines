@@ -23,6 +23,29 @@ import '../../helpers/fake_biometric_service.dart';
 import '../../helpers/fake_photo_service.dart';
 import '../../helpers/import_fixtures.dart';
 
+class _PhotoReferenceRepository extends EntryRepository {
+  _PhotoReferenceRepository(super.db, {required super.clock});
+  int? failAfter;
+  int reads = 0;
+  @override
+  Future<List<String>> getAllPhotoPaths() async {
+    if (failAfter != null && reads++ >= failAfter!) {
+      throw StateError('reference read failed');
+    }
+    return super.getAllPhotoPaths();
+  }
+}
+
+class _AfterDeletePhotoService extends FakePhotoService {
+  Future<void> Function(String)? afterDelete;
+
+  @override
+  Future<void> deletePhoto(String path) async {
+    await super.deletePhoto(path);
+    await afterDelete?.call(path);
+  }
+}
+
 final class FakeReminderCoordinator implements ReminderCoordinator {
   bool enabledResult = true;
   bool timeResult = true;
@@ -76,9 +99,9 @@ void main() {
     );
     db = AppDatabase.forTesting(NativeDatabase.memory());
     clock = MutableImportClock(DateTime(2026, 9, 30, 12));
-    entryRepo = EntryRepository(db, clock: clock);
+    entryRepo = _PhotoReferenceRepository(db, clock: clock);
     settingsRepo = SettingsRepository(db);
-    fakePhoto = FakePhotoService();
+    fakePhoto = _AfterDeletePhotoService();
     fakeReminders = FakeReminderCoordinator();
     fakeBio = FakeBiometricService();
 
@@ -562,6 +585,203 @@ void main() {
   });
 
   group('deleteAllData', () {
+    test('전체 삭제 정리 사이 새 DB 참조가 생긴 두 번째 사진은 보존한다', () async {
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-09-28',
+          emotion: 3,
+          answer1: '첫 기록',
+          photoPath: '/first.jpg',
+        ),
+      );
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-09-29',
+          emotion: 3,
+          answer1: '둘째 기록',
+          photoPath: '/second.jpg',
+        ),
+      );
+      (fakePhoto as _AfterDeletePhotoService).afterDelete = (path) async {
+        if (path != '/first.jpg') return;
+        await entryRepo.saveEntry(
+          DailyEntry(
+            date: '2026-09-30',
+            emotion: 3,
+            answer1: '정리 중 새 기록',
+            photoPath: '/second.jpg',
+          ),
+        );
+      };
+      await container.read(settingsControllerProvider.future);
+      final before = container.read(journalChangesProvider);
+      expect(
+        await container
+            .read(settingsControllerProvider.notifier)
+            .deleteAllData(),
+        isTrue,
+      );
+      expect(
+        (await entryRepo.getEntryByDate('2026-09-30'))!.photoPath,
+        '/second.jpg',
+      );
+      expect(await entryRepo.getTotalCount(), 1);
+      expect(fakePhoto.deletedPaths, ['/first.jpg']);
+      expect(container.read(journalChangesProvider), before + 1);
+    });
+
+    test('전체 삭제 정리 사이 활성화된 Today 수정 사진은 보존한다', () async {
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-09-29',
+          emotion: 3,
+          answer1: '첫 기록',
+          photoPath: '/first.jpg',
+        ),
+      );
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-09-30',
+          emotion: 3,
+          answer1: '오늘 기록',
+          photoPath: '/second.jpg',
+        ),
+      );
+      final listen = container.listen(todayControllerProvider, (_, _) {});
+      addTearDown(listen.close);
+      final initial = await container.read(todayControllerProvider.future);
+      expect(initial.isCompleted && !initial.isEditing, isTrue);
+      final today = container.read(todayControllerProvider.notifier);
+      (fakePhoto as _AfterDeletePhotoService).afterDelete = (path) async {
+        if (path != '/first.jpg') return;
+        today.toggleEdit();
+        expect(
+          container.read(todayControllerProvider).value!.isEditing,
+          isTrue,
+        );
+      };
+      await container.read(settingsControllerProvider.future);
+      expect(
+        await container
+            .read(settingsControllerProvider.notifier)
+            .deleteAllData(),
+        isTrue,
+      );
+      expect(await entryRepo.getTotalCount(), 0);
+      expect(fakePhoto.deletedPaths, ['/first.jpg']);
+    });
+
+    for (final editing in [false, true]) {
+      test('전체 삭제 후 ${editing ? '수정' : '작성'} Today draft 별칭을 보호한다', () async {
+        await entryRepo.saveEntry(
+          DailyEntry(
+            date: editing ? '2026-09-30' : '2026-09-29',
+            emotion: 3,
+            answer1: '기록',
+            photoPath: '/real.jpg',
+          ),
+        );
+        final listen = container.listen(todayControllerProvider, (_, _) {});
+        addTearDown(listen.close);
+        await container.read(todayControllerProvider.future);
+        final today = container.read(todayControllerProvider.notifier);
+        if (editing) today.toggleEdit();
+        fakePhoto.canonicalAliases['/draft.jpg'] = '/real.jpg';
+        await today.attachPhoto('/draft.jpg');
+        await container.read(settingsControllerProvider.future);
+        final before = container.read(journalChangesProvider);
+        expect(
+          await container
+              .read(settingsControllerProvider.notifier)
+              .deleteAllData(),
+          isTrue,
+        );
+        expect(await entryRepo.getTotalCount(), 0);
+        expect(fakePhoto.deletedPaths, isEmpty);
+        expect(container.read(journalChangesProvider), before + 1);
+      });
+    }
+
+    test('완료된 readonly Today 사진은 전체 삭제 후 정리한다', () async {
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: '2026-09-30',
+          emotion: 3,
+          answer1: '기록',
+          photoPath: '/photo.jpg',
+        ),
+      );
+      expect(
+        (await container.read(todayControllerProvider.future)).isCompleted,
+        isTrue,
+      );
+      await container.read(settingsControllerProvider.future);
+      expect(
+        await container
+            .read(settingsControllerProvider.notifier)
+            .deleteAllData(),
+        isTrue,
+      );
+      expect(fakePhoto.deletedPaths, ['/photo.jpg']);
+    });
+
+    for (final failure in ['postcommit-query', 'unknown']) {
+      test('전체 삭제 $failure 실패는 파일만 보존하고 DB 성공을 유지한다', () async {
+        await entryRepo.saveEntry(
+          DailyEntry(
+            date: '2026-09-29',
+            emotion: 3,
+            answer1: '기록',
+            photoPath: '/photo.jpg',
+          ),
+        );
+        await container.read(settingsControllerProvider.future);
+        if (failure == 'postcommit-query')
+          (entryRepo as _PhotoReferenceRepository).failAfter = 1;
+        if (failure == 'unknown') fakePhoto.referenceCheckFails = true;
+        final before = container.read(journalChangesProvider);
+        expect(
+          await container
+              .read(settingsControllerProvider.notifier)
+              .deleteAllData(),
+          isTrue,
+        );
+        expect(await entryRepo.getTotalCount(), 0);
+        expect(fakePhoto.deletedPaths, isEmpty);
+        expect(container.read(journalChangesProvider), before + 1);
+      });
+    }
+
+    for (final failure in ['snapshot-query', 'commit']) {
+      test('전체 삭제 $failure 실패는 DB와 사진과 이벤트를 보존한다', () async {
+        await entryRepo.saveEntry(
+          DailyEntry(
+            date: '2026-09-29',
+            emotion: 3,
+            answer1: '기록',
+            photoPath: '/photo.jpg',
+          ),
+        );
+        await container.read(settingsControllerProvider.future);
+        if (failure == 'snapshot-query')
+          (entryRepo as _PhotoReferenceRepository).failAfter = 0;
+        if (failure == 'commit')
+          await db.customStatement(
+            "CREATE TRIGGER reject_delete BEFORE DELETE ON entries BEGIN SELECT RAISE(ABORT, 'blocked'); END",
+          );
+        final before = container.read(journalChangesProvider);
+        expect(
+          await container
+              .read(settingsControllerProvider.notifier)
+              .deleteAllData(),
+          isFalse,
+        );
+        expect(await entryRepo.getTotalCount(), 1);
+        expect(fakePhoto.deletedPaths, isEmpty);
+        expect(container.read(journalChangesProvider), before);
+      });
+    }
+
     test('removes all entries from the database', () async {
       await entryRepo.saveEntry(
         DailyEntry(date: '2026-03-01', emotion: 3, answer1: 'test'),

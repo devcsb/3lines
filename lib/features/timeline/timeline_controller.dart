@@ -1,5 +1,3 @@
-import 'dart:developer' as developer;
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/events/journal_changes.dart';
@@ -79,19 +77,15 @@ class TimelineController extends AsyncNotifier<TimelineState> {
     if (entry == null) return;
     await repo.deleteEntry(date);
 
-    // 첨부 사진 파일이 있으면 디스크에서도 삭제한다.
+    // DB 커밋 후 다른 기록과 활성 Today draft가 참조하지 않는 사진만 정리한다.
     if (entry.photoPath != null) {
-      final photoService = ref.read(photoServiceProvider);
-      try {
-        await photoService.deletePhoto(entry.photoPath!);
-      } catch (error, stackTrace) {
-        developer.log(
-          'Failed to delete entry photo after commit',
-          name: 'timeline',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
+      await ref
+          .read(photoServiceProvider)
+          .deleteUnreferencedPhoto(
+            entry.photoPath!,
+            readReferences: repo.getAllPhotoPaths,
+            retainedPaths: _retainedTodayDraftPaths(),
+          );
     }
 
     final period = state.value?.period ?? TimelinePeriod.weeks12;
@@ -100,6 +94,15 @@ class TimelineController extends AsyncNotifier<TimelineState> {
 
     ref.read(journalChangesProvider.notifier).markChanged();
     ref.invalidate(todayControllerProvider);
+  }
+
+  Iterable<String> _retainedTodayDraftPaths() {
+    final today = ref.read(todayControllerProvider).value;
+    if (today == null || (today.isCompleted && !today.isEditing)) {
+      return const [];
+    }
+    final path = today.photoPath;
+    return path == null ? const [] : [path];
   }
 }
 

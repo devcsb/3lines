@@ -14,6 +14,18 @@ import 'package:three_lines/features/today/today_controller.dart';
 
 import '../../helpers/fake_photo_service.dart';
 
+class _PhotoReferenceRepository extends EntryRepository {
+  _PhotoReferenceRepository(super.db);
+
+  bool referenceReadFails = false;
+
+  @override
+  Future<List<String>> getAllPhotoPaths() async {
+    if (referenceReadFails) throw StateError('reference read failed');
+    return super.getAllPhotoPaths();
+  }
+}
+
 void main() {
   late AppDatabase db;
   late EntryRepository entryRepo;
@@ -23,7 +35,7 @@ void main() {
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    entryRepo = EntryRepository(db);
+    entryRepo = _PhotoReferenceRepository(db);
     settingsRepo = SettingsRepository(db);
     fakePhoto = FakePhotoService();
 
@@ -39,6 +51,179 @@ void main() {
   tearDown(() async {
     container.dispose();
     await db.close();
+  });
+
+  group('사진 참조 보호', () {
+    test('같은 draft 재첨부와 별칭 교체는 현재 사진을 보존한다', () async {
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+      fakePhoto.canonicalAliases.addAll({
+        '/draft/a.jpg': '/real/a.jpg',
+        '/draft/alias.jpg': '/real/a.jpg',
+      });
+      await notifier.attachPhoto('/draft/a.jpg');
+      await notifier.attachPhoto('/draft/a.jpg');
+      await notifier.attachPhoto('/draft/alias.jpg');
+      expect(fakePhoto.deletedPaths, isEmpty);
+      expect(
+        container.read(todayControllerProvider).value!.photoPath,
+        '/draft/alias.jpg',
+      );
+    });
+
+    for (final action in ['attach', 'remove', 'cancel', 'discard']) {
+      test('$action 정리는 다른 기록의 사진 별칭을 보존한다', () async {
+        await entryRepo.saveEntry(
+          DailyEntry(
+            date: '2026-01-01',
+            emotion: 3,
+            answer1: '다른 기록',
+            photoPath: '/real/shared.jpg',
+          ),
+        );
+        await entryRepo.saveEntry(
+          DailyEntry(
+            date: du.getTodayString(),
+            emotion: 3,
+            answer1: '원래 답변',
+            photoPath: '/saved.jpg',
+          ),
+        );
+        fakePhoto.canonicalAliases['/alias/shared.jpg'] = '/real/shared.jpg';
+        await container.read(todayControllerProvider.future);
+        final notifier = container.read(todayControllerProvider.notifier);
+        notifier.toggleEdit();
+        if (action == 'discard') {
+          await notifier.cancelEdit();
+          await notifier.attachPhoto('/alias/shared.jpg');
+        } else {
+          await notifier.attachPhoto('/alias/shared.jpg');
+          if (action == 'attach') await notifier.attachPhoto('/new.jpg');
+          if (action == 'remove') await notifier.removePhoto();
+          if (action == 'cancel') await notifier.cancelEdit();
+        }
+        expect(fakePhoto.deletedPaths, isEmpty);
+        expect(
+          (await entryRepo.getEntryByDate('2026-01-01'))!.photoPath,
+          '/real/shared.jpg',
+        );
+      });
+    }
+
+    test('늦은 picker 결과가 저장 사진 별칭이면 보존한다', () async {
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: du.getTodayString(),
+          emotion: 3,
+          answer1: '저장',
+          photoPath: '/saved.jpg',
+        ),
+      );
+      fakePhoto.canonicalAliases['/alias.jpg'] = '/saved.jpg';
+      await container.read(todayControllerProvider.future);
+      await container
+          .read(todayControllerProvider.notifier)
+          .attachPhoto('/alias.jpg');
+      expect(fakePhoto.deletedPaths, isEmpty);
+      expect(
+        container.read(todayControllerProvider).value!.photoPath,
+        '/saved.jpg',
+      );
+    });
+
+    for (final failure in ['query', 'unknown', 'shared', 'alias']) {
+      test('저장 후 $failure 참조는 파일을 보존하고 DB 성공과 이벤트를 유지한다', () async {
+        await entryRepo.saveEntry(
+          DailyEntry(
+            date: du.getTodayString(),
+            emotion: 3,
+            answer1: '원래 답변',
+            photoPath: '/old.jpg',
+          ),
+        );
+        if (failure == 'shared') {
+          await entryRepo.saveEntry(
+            DailyEntry(
+              date: '2026-01-01',
+              emotion: 3,
+              answer1: '공유',
+              photoPath: '/alias.jpg',
+            ),
+          );
+          fakePhoto.canonicalAliases['/alias.jpg'] = '/old.jpg';
+        }
+        if (failure == 'alias')
+          fakePhoto.canonicalAliases['/new.jpg'] = '/old.jpg';
+        await container.read(todayControllerProvider.future);
+        final notifier = container.read(todayControllerProvider.notifier);
+        notifier.toggleEdit();
+        await notifier.attachPhoto('/new.jpg');
+        notifier.setAnswer(0, '저장된 답변');
+        if (failure == 'query') {
+          (entryRepo as _PhotoReferenceRepository).referenceReadFails = true;
+        }
+        if (failure == 'unknown') fakePhoto.referenceCheckFails = true;
+        final before = container.read(journalChangesProvider);
+        expect(await notifier.save(), isTrue);
+        expect((await entryRepo.getTodayEntry())!.photoPath, '/new.jpg');
+        expect((await entryRepo.getTodayEntry())!.answer1, '저장된 답변');
+        expect(fakePhoto.deletedPaths, isEmpty);
+        expect(container.read(journalChangesProvider), before + 1);
+        expect(
+          container.read(todayControllerProvider).value!.isSaving,
+          isFalse,
+        );
+      });
+    }
+
+    for (final action in ['attach', 'remove', 'cancel', 'discard']) {
+      test('$action 참조 판정 불명은 파일을 보존한다', () async {
+        await entryRepo.saveEntry(
+          DailyEntry(
+            date: du.getTodayString(),
+            emotion: 3,
+            answer1: '저장',
+            photoPath: '/saved.jpg',
+          ),
+        );
+        await container.read(todayControllerProvider.future);
+        final notifier = container.read(todayControllerProvider.notifier);
+        notifier.toggleEdit();
+        await notifier.attachPhoto('/draft.jpg');
+        fakePhoto.referenceCheckFails = true;
+        if (action == 'attach') await notifier.attachPhoto('/next.jpg');
+        if (action == 'remove') await notifier.removePhoto();
+        if (action == 'cancel') await notifier.cancelEdit();
+        if (action == 'discard') {
+          await notifier.cancelEdit();
+          await notifier.attachPhoto('/late.jpg');
+        }
+        expect(fakePhoto.deletedPaths, isEmpty);
+      });
+    }
+
+    test('DB 저장 실패는 교체 사진을 정리하거나 이벤트를 발행하지 않는다', () async {
+      await entryRepo.saveEntry(
+        DailyEntry(
+          date: du.getTodayString(),
+          emotion: 3,
+          answer1: '원래 답변',
+          photoPath: '/old.jpg',
+        ),
+      );
+      await container.read(todayControllerProvider.future);
+      final notifier = container.read(todayControllerProvider.notifier);
+      notifier.toggleEdit();
+      await notifier.attachPhoto('/new.jpg');
+      await db.customStatement(
+        "CREATE TRIGGER reject_save BEFORE UPDATE ON entries BEGIN SELECT RAISE(ABORT, 'blocked'); END",
+      );
+      final before = container.read(journalChangesProvider);
+      expect(await notifier.save(), isFalse);
+      expect((await entryRepo.getTodayEntry())!.photoPath, '/old.jpg');
+      expect(fakePhoto.deletedPaths, isEmpty);
+      expect(container.read(journalChangesProvider), before);
+    });
   });
 
   group('build', () {

@@ -10,8 +10,19 @@ import 'package:three_lines/data/repositories/entry_repository.dart';
 import 'package:three_lines/data/repositories/settings_repository.dart';
 import 'package:three_lines/features/timeline/timeline_controller.dart';
 import 'package:three_lines/features/timeline/timeline_state.dart';
+import 'package:three_lines/features/today/today_controller.dart';
 
 import '../../helpers/fake_photo_service.dart';
+
+class _PhotoReferenceRepository extends EntryRepository {
+  _PhotoReferenceRepository(super.db);
+  bool referenceReadFails = false;
+  @override
+  Future<List<String>> getAllPhotoPaths() async {
+    if (referenceReadFails) throw StateError('reference read failed');
+    return super.getAllPhotoPaths();
+  }
+}
 
 void main() {
   late AppDatabase db;
@@ -22,7 +33,7 @@ void main() {
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    entryRepo = EntryRepository(db);
+    entryRepo = _PhotoReferenceRepository(db);
     settingsRepo = SettingsRepository(db);
     fakePhoto = FakePhotoService();
 
@@ -79,6 +90,97 @@ void main() {
   });
 
   group('deleteEntry', () {
+    test('다른 기록의 사진 별칭은 보존하고 마지막 참조만 삭제한다', () async {
+      fakePhoto.canonicalAliases['/alias.jpg'] = '/real.jpg';
+      await entryRepo.saveEntry(
+        makeEntry('2026-01-01', photoPath: '/real.jpg'),
+      );
+      await entryRepo.saveEntry(
+        makeEntry('2026-01-02', photoPath: '/alias.jpg'),
+      );
+      await container.read(timelineControllerProvider.future);
+      final notifier = container.read(timelineControllerProvider.notifier);
+      await notifier.deleteEntry('2026-01-01');
+      expect(fakePhoto.deletedPaths, isEmpty);
+      await container.read(timelineControllerProvider.future);
+      await notifier.deleteEntry('2026-01-02');
+      expect(fakePhoto.deletedPaths, ['/alias.jpg']);
+      expect(await entryRepo.getTotalCount(), 0);
+    });
+
+    for (final editing in [false, true]) {
+      test('${editing ? '수정' : '작성'} 중 Today draft 별칭을 보호한다', () async {
+        await entryRepo.saveEntry(
+          makeEntry('2026-01-01', photoPath: '/real.jpg'),
+        );
+        if (editing) await entryRepo.saveEntry(makeEntry(du.getTodayString()));
+        final listen = container.listen(todayControllerProvider, (_, _) {});
+        addTearDown(listen.close);
+        await container.read(todayControllerProvider.future);
+        final today = container.read(todayControllerProvider.notifier);
+        if (editing) today.toggleEdit();
+        fakePhoto.canonicalAliases['/draft.jpg'] = '/real.jpg';
+        await today.attachPhoto('/draft.jpg');
+        await container.read(timelineControllerProvider.future);
+        await container
+            .read(timelineControllerProvider.notifier)
+            .deleteEntry('2026-01-01');
+        expect(await entryRepo.getEntryByDate('2026-01-01'), isNull);
+        expect(fakePhoto.deletedPaths, isEmpty);
+      });
+    }
+
+    test('완료된 readonly Today 표시는 마지막 참조 삭제를 막지 않는다', () async {
+      final date = du.getTodayString();
+      await entryRepo.saveEntry(makeEntry(date, photoPath: '/photo.jpg'));
+      final today = await container.read(todayControllerProvider.future);
+      expect(today.isCompleted && !today.isEditing, isTrue);
+      await container.read(timelineControllerProvider.future);
+      await container
+          .read(timelineControllerProvider.notifier)
+          .deleteEntry(date);
+      expect(fakePhoto.deletedPaths, ['/photo.jpg']);
+    });
+
+    for (final failure in ['query', 'unknown']) {
+      test('커밋 뒤 $failure 실패는 파일만 보존하고 삭제 이벤트를 유지한다', () async {
+        await entryRepo.saveEntry(
+          makeEntry('2026-01-01', photoPath: '/photo.jpg'),
+        );
+        await container.read(timelineControllerProvider.future);
+        if (failure == 'query')
+          (entryRepo as _PhotoReferenceRepository).referenceReadFails = true;
+        if (failure == 'unknown') fakePhoto.referenceCheckFails = true;
+        final before = container.read(journalChangesProvider);
+        await container
+            .read(timelineControllerProvider.notifier)
+            .deleteEntry('2026-01-01');
+        expect(await entryRepo.getEntryByDate('2026-01-01'), isNull);
+        expect(fakePhoto.deletedPaths, isEmpty);
+        expect(container.read(journalChangesProvider), before + 1);
+      });
+    }
+
+    test('DB 삭제 실패는 사진을 정리하거나 이벤트를 발행하지 않는다', () async {
+      await entryRepo.saveEntry(
+        makeEntry('2026-01-01', photoPath: '/photo.jpg'),
+      );
+      await container.read(timelineControllerProvider.future);
+      await db.customStatement(
+        "CREATE TRIGGER reject_delete BEFORE DELETE ON entries BEGIN SELECT RAISE(ABORT, 'blocked'); END",
+      );
+      final before = container.read(journalChangesProvider);
+      await expectLater(
+        container
+            .read(timelineControllerProvider.notifier)
+            .deleteEntry('2026-01-01'),
+        throwsA(isA<Exception>()),
+      );
+      expect(await entryRepo.getEntryByDate('2026-01-01'), isNotNull);
+      expect(fakePhoto.deletedPaths, isEmpty);
+      expect(container.read(journalChangesProvider), before);
+    });
+
     test('기록 삭제 후 DB에서 제거하고 저널 이벤트를 정확히 한 번 발생시킨다', () async {
       const date = '2026-08-06';
       await entryRepo.saveEntry(makeEntry(date));

@@ -168,16 +168,13 @@ class TodayController extends AsyncNotifier<TodayState> {
     // DB 저장이 성공한 후의 작업은 실패해도 이미 커밋된 기록을 되돌리지 않는다.
     final oldPhotoPath = current.existingEntry?.photoPath;
     if (oldPhotoPath != null && oldPhotoPath != current.photoPath) {
-      try {
-        final photoService = ref.read(photoServiceProvider);
-        await photoService.deletePhoto(oldPhotoPath);
-      } catch (e, stack) {
-        developer.log(
-          'Failed to delete replaced photo',
-          error: e,
-          stackTrace: stack,
-        );
-      }
+      await ref
+          .read(photoServiceProvider)
+          .deleteUnreferencedPhoto(
+            oldPhotoPath,
+            readReferences: entryRepo.getAllPhotoPaths,
+            retainedPaths: [if (current.photoPath != null) current.photoPath!],
+          );
     }
 
     var streakCount = current.currentStreak;
@@ -248,16 +245,13 @@ class TodayController extends AsyncNotifier<TodayState> {
 
     final currentPhotoPath = current.photoPath;
     if (currentPhotoPath != null && currentPhotoPath != saved.photoPath) {
-      final photoService = ref.read(photoServiceProvider);
-      try {
-        await photoService.deletePhoto(currentPhotoPath);
-      } catch (e, stack) {
-        developer.log(
-          'Failed to discard unsaved photo',
-          error: e,
-          stackTrace: stack,
-        );
-      }
+      await ref
+          .read(photoServiceProvider)
+          .deleteUnreferencedPhoto(
+            currentPhotoPath,
+            readReferences: ref.read(entryRepositoryProvider).getAllPhotoPaths,
+            retainedPaths: [if (saved.photoPath != null) saved.photoPath!],
+          );
     }
 
     state = AsyncData(
@@ -310,29 +304,30 @@ class TodayController extends AsyncNotifier<TodayState> {
     // 성공 후 정리한다. 미저장 사진만 파일 정리를 시도한다.
     final savedPath = current.existingEntry?.photoPath;
     if (current.photoPath != savedPath) {
-      try {
-        final photoService = ref.read(photoServiceProvider);
-        await photoService.deletePhoto(current.photoPath!);
-      } catch (e, stack) {
-        developer.log(
-          'Failed to delete removed photo',
-          error: e,
-          stackTrace: stack,
-        );
-      }
+      await ref
+          .read(photoServiceProvider)
+          .deleteUnreferencedPhoto(
+            current.photoPath!,
+            readReferences: ref.read(entryRepositoryProvider).getAllPhotoPaths,
+            retainedPaths: [if (savedPath != null) savedPath],
+          );
     }
   }
 
   Future<void> _discardUnattachedPhoto(String path) async {
-    try {
-      await ref.read(photoServiceProvider).deletePhoto(path);
-    } catch (e, stack) {
-      developer.log(
-        'Failed to discard unattached photo',
-        error: e,
-        stackTrace: stack,
-      );
-    }
+    final current = state.value;
+    final currentPath = current?.photoPath;
+    final savedPath = current?.existingEntry?.photoPath;
+    await ref
+        .read(photoServiceProvider)
+        .deleteUnreferencedPhoto(
+          path,
+          readReferences: ref.read(entryRepositoryProvider).getAllPhotoPaths,
+          retainedPaths: [
+            if (currentPath != null) currentPath,
+            if (savedPath != null) savedPath,
+          ],
+        );
   }
 
   Future<void> refresh() async {

@@ -213,37 +213,41 @@ class SettingsController extends AsyncNotifier<SettingsState> {
 
   /// Deletes all entries. Returns false on failure.
   Future<bool> deleteAllData() async {
+    final entryRepo = ref.read(entryRepositoryProvider);
+    late final List<String> photoPaths;
     try {
-      final entryRepo = ref.read(entryRepositoryProvider);
-      final photoService = ref.read(photoServiceProvider);
       final totalCount = await entryRepo.getTotalCount();
       if (totalCount == 0) return true;
 
       // 삭제 전에 모든 사진 파일 경로를 확보한다.
-      final photoPaths = await entryRepo.getAllPhotoPaths();
-
+      photoPaths = await entryRepo.getAllPhotoPaths();
       await entryRepo.deleteAllEntries();
-
-      // 고아 사진 파일을 디스크에서 정리한다.
-      for (final path in photoPaths) {
-        try {
-          await photoService.deletePhoto(path);
-        } catch (error, stackTrace) {
-          developer.log(
-            'Failed to delete entry photo after bulk delete',
-            name: 'settings',
-            error: error,
-            stackTrace: stackTrace,
-          );
-        }
-      }
-
-      ref.read(journalChangesProvider.notifier).markChanged();
-      ref.invalidate(todayControllerProvider);
-      return true;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
+
+    // 후보마다 현재 DB 참조와 활성 draft를 읽고, 조회 실패 시 파일을 보존한다.
+    final photoService = ref.read(photoServiceProvider);
+    for (final path in photoPaths) {
+      await photoService.deleteUnreferencedPhoto(
+        path,
+        readReferences: entryRepo.getAllPhotoPaths,
+        retainedPaths: _retainedTodayDraftPaths(),
+      );
+    }
+
+    ref.read(journalChangesProvider.notifier).markChanged();
+    ref.invalidate(todayControllerProvider);
+    return true;
+  }
+
+  Iterable<String> _retainedTodayDraftPaths() {
+    final today = ref.read(todayControllerProvider).value;
+    if (today == null || (today.isCompleted && !today.isEditing)) {
+      return const [];
+    }
+    final path = today.photoPath;
+    return path == null ? const [] : [path];
   }
 }
 
