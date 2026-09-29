@@ -14,6 +14,7 @@ import '../../core/settings/settings_keys.dart';
 import '../../core/theme/theme_notifier.dart';
 import '../../core/time/app_clock.dart';
 import '../../core/utils/date_utils.dart' as du;
+import '../../data/models/entry_import.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../lock/lock_screen.dart';
@@ -182,37 +183,33 @@ class SettingsController extends AsyncNotifier<SettingsState> {
         : loadedVersion;
   }
 
-  /// Imports entries from a JSON string (exported format). Returns import
-  /// result with counts, or throws on invalid JSON.
-  Future<({int imported, int skipped})> importData(String jsonStr) async {
-    final decoded = json.decode(jsonStr);
-    final List<dynamic> entriesList;
-    if (decoded is List<dynamic>) {
-      entriesList = decoded;
-    } else if (decoded is Map<String, dynamic>) {
-      final list = decoded['entries'] as List<dynamic>?;
-      if (list == null) {
-        throw const FormatException('No entries found in file');
+  final _applications = <ImportPreview, Future<ImportResult>>{};
+
+  Future<ImportPreview> previewImport(String text) =>
+      ref.read(entryRepositoryProvider).previewImport(text);
+
+  Future<ImportResult> applyImport(
+    ImportPreview preview, {
+    ConflictPolicy policy = ConflictPolicy.preserve,
+  }) => _applications.putIfAbsent(preview, () async {
+    // 이미 확인한 작업의 커밋과 이벤트까지 controller 수명을 유지한다.
+    final retain = ref.keepAlive();
+    try {
+      final result = await ref
+          .read(entryRepositoryProvider)
+          .applyImport(preview, policy: policy);
+      if (ref.mounted && result.changedCount > 0) {
+        ref.read(journalChangesProvider.notifier).markChanged();
+        ref.invalidate(todayControllerProvider);
       }
-      entriesList = list;
-    } else {
-      throw const FormatException('Invalid export format');
+      return result;
+    } catch (_) {
+      _applications.remove(preview);
+      rethrow;
+    } finally {
+      retain.close();
     }
-    // cast<>() 대신 whereType으로 안전하게 필터링하여
-    // 잘못된 타입의 항목이 전체 가져오기를 실패시키지 않도록 한다.
-    final entries = entriesList.whereType<Map<String, dynamic>>().toList();
-    final skippedByType = entriesList.length - entries.length;
-    final entryRepo = ref.read(entryRepositoryProvider);
-    final result = await entryRepo.importEntries(entries);
-
-    // Refresh dependent screens
-    if (result.imported > 0) {
-      ref.read(journalChangesProvider.notifier).markChanged();
-      ref.invalidate(todayControllerProvider);
-    }
-
-    return (imported: result.imported, skipped: result.skipped + skippedByType);
-  }
+  });
 
   /// Deletes all entries. Returns false on failure.
   Future<bool> deleteAllData() async {

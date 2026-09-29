@@ -1,10 +1,15 @@
+import 'dart:convert';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:three_lines/core/time/app_clock.dart';
 import 'package:three_lines/core/utils/date_utils.dart' as du;
 import 'package:three_lines/data/database/app_database.dart';
 import 'package:three_lines/data/models/daily_entry.dart';
+import 'package:three_lines/data/models/entry_import.dart';
 import 'package:three_lines/data/repositories/entry_repository.dart';
+
+import '../../helpers/import_fixtures.dart';
 
 void main() {
   late AppDatabase db;
@@ -440,174 +445,60 @@ void main() {
     });
   });
 
-  group('importEntries', () {
-    test('imports entries from valid JSON format', () async {
-      final entries = [
-        {
-          'date': '2026-03-01',
-          'emotion': 4,
-          'prompts': [
-            {'category': 'gratitude', 'question': '감사한 것', 'answer': '가족'},
-            {'category': 'acceptance', 'question': '수용할 것', 'answer': '실수'},
-            {'category': 'intention', 'question': '의도', 'answer': '운동'},
-          ],
-        },
-        {
-          'date': '2026-03-02',
-          'emotion': 3,
-          'prompts': [
-            {'category': 'gratitude', 'question': '감사한 것', 'answer': '날씨'},
-            {'category': 'acceptance', 'question': '수용할 것', 'answer': ''},
-            {'category': 'intention', 'question': '의도', 'answer': '독서'},
-          ],
-        },
-      ];
-      final result = await repo.importEntries(entries);
-      expect(result.imported, 2);
-      expect(result.skipped, 0);
-      expect(await repo.getTotalCount(), 2);
-
-      final entry = await repo.getEntryByDate('2026-03-01');
-      expect(entry!.emotion, 4);
-      expect(entry.answer1, '가족');
-      expect(entry.prompt1, '감사한 것');
+  group('previewImport/applyImport', () {
+    test('정상 JSON을 미리보기 후 적용한다', () async {
+      final preview = await repo.previewImport(
+        jsonEncode([
+          importRecord('2026-03-01', emotion: 4, answer: '가족'),
+          importRecord('2026-03-02'),
+        ]),
+      );
+      expect(await repo.getTotalCount(), 0);
+      final result = await repo.applyImport(preview);
+      expect((result.inserted, result.invalid), (2, 0));
+      final entry = (await repo.getEntryByDate('2026-03-01'))!;
+      expect((entry.emotion, entry.answer1, entry.prompt1), (4, '가족', '질문1'));
     });
 
-    test('skips entries with missing required fields', () async {
-      final entries = [
-        {'date': '2026-03-01'}, // missing emotion and prompts
-        {
-          'date': '2026-03-02',
-          'emotion': 3,
-          'prompts': [
-            {'category': 'gratitude', 'question': 'q', 'answer': 'a'},
-          ],
-        },
-      ];
-      final result = await repo.importEntries(entries);
-      expect(result.imported, 1);
-      expect(result.skipped, 1);
-    });
-
-    test('overwrites existing entries on same date', () async {
+    test('기존 날짜의 기록은 기본 보존하고 명시적 교체만 허용한다', () async {
       await repo.saveEntry(makeEntry('2026-03-01', emotion: 2));
-      final entries = [
-        {
-          'date': '2026-03-01',
-          'emotion': 5,
-          'prompts': [
-            {'category': 'gratitude', 'question': 'q', 'answer': 'new'},
-            {'category': 'acceptance', 'question': 'q2', 'answer': ''},
-            {'category': 'intention', 'question': 'q3', 'answer': ''},
-          ],
-        },
-      ];
-      await repo.importEntries(entries);
-      final entry = await repo.getEntryByDate('2026-03-01');
-      expect(entry!.emotion, 5);
-      expect(entry.answer1, 'new');
+      final preview = await repo.previewImport(
+        jsonEncode([importRecord('2026-03-01', emotion: 5, answer: 'new')]),
+      );
+      expect((await repo.applyImport(preview)).conflictSkipped, 1);
+      expect((await repo.getEntryByDate('2026-03-01'))!.emotion, 2);
+      expect(
+        (await repo.applyImport(
+          preview,
+          policy: ConflictPolicy.replacePreviewed,
+        )).replaced,
+        1,
+      );
+      expect((await repo.getEntryByDate('2026-03-01'))!.answer1, 'new');
     });
 
-    test('clamps emotion values to valid range', () async {
-      final entries = [
-        {
-          'date': '2026-03-01',
-          'emotion': 10,
-          'prompts': [
-            {'category': 'gratitude', 'question': 'q', 'answer': 'a'},
-          ],
-        },
-      ];
-      await repo.importEntries(entries);
-      final entry = await repo.getEntryByDate('2026-03-01');
-      expect(entry!.emotion, 5); // clamped to max
-    });
-
-    test('손상된 prompts(비-Map) 항목이 있어도 다음 정상 항목은 import된다', () async {
-      // 회귀 방지: 과거엔 prompts[i] as Map의 ClassCastError가 try-catch 밖에서
-      // 발생해 transaction 전체가 중단되며 정상 항목까지 누락됐다.
-      final entries = [
-        {
-          'date': '2026-03-01',
-          'emotion': 3,
-          'prompts': ['not-a-map', 123, null],
-        },
-        {
-          'date': '2026-03-02',
-          'emotion': 4,
-          'prompts': [
-            {'question': 'q', 'answer': '정상'},
-          ],
-        },
-      ];
-      await repo.importEntries(entries);
-      final ok = await repo.getEntryByDate('2026-03-02');
-      expect(ok, isNotNull);
-      expect(ok!.answer1, '정상');
-    });
-
-    test('깨진 created_at/updated_at 문자열도 throw 없이 import된다', () async {
-      final entries = [
-        {
-          'date': '2026-03-03',
-          'emotion': 2,
-          'prompts': [
-            {'question': 'q', 'answer': 'a'},
-          ],
-          'created_at': 'not-a-date',
-          'updated_at': '!!!',
-        },
-      ];
-      final result = await repo.importEntries(entries);
-      expect(result.imported, 1);
-      expect(await repo.getEntryByDate('2026-03-03'), isNotNull);
-    });
-
-    test('created_at/updated_at 타임스탬프를 보존한다', () async {
-      final createdAt = DateTime.parse('2026-03-03T09:10:11.000+09:00');
-      final updatedAt = DateTime.parse('2026-03-04T10:11:12.000+09:00');
-      final entries = [
-        {
-          'date': '2026-03-03',
-          'emotion': 2,
-          'prompts': [
-            {'question': 'q', 'answer': 'a'},
-          ],
-          'created_at': createdAt.toIso8601String(),
-          'updated_at': updatedAt.toIso8601String(),
-        },
-      ];
-
-      final result = await repo.importEntries(entries);
-      final entry = await repo.getEntryByDate('2026-03-03');
-
-      expect(result.imported, 1);
-      expect(entry, isNotNull);
-      expect(entry!.createdAt.toUtc(), createdAt.toUtc());
-      expect(entry.updatedAt.toUtc(), updatedAt.toUtc());
-    });
-
-    test('emotion이 숫자가 아니면 해당 항목만 skip되고 나머지는 import된다', () async {
-      final entries = [
-        {
-          'date': '2026-03-04',
-          'emotion': 'oops',
-          'prompts': [
-            {'question': 'q', 'answer': 'a'},
-          ],
-        },
-        {
-          'date': '2026-03-05',
-          'emotion': 4,
-          'prompts': [
-            {'question': 'q', 'answer': 'ok'},
-          ],
-        },
-      ];
-      final result = await repo.importEntries(entries);
-      expect(result.skipped, 1);
-      expect(result.imported, 1);
-      expect(await repo.getEntryByDate('2026-03-05'), isNotNull);
+    test('누락 필드와 손상 prompts 및 timestamp를 보정하지 않는다', () async {
+      final preview = await repo.previewImport(
+        jsonEncode([
+          {'date': '2026-03-01'},
+          {
+            ...importRecord('2026-03-02'),
+            'prompts': ['not-a-map', 123, null],
+          },
+          {
+            ...importRecord('2026-03-03'),
+            'created_at': 'not-a-date',
+            'updated_at': '!!!',
+          },
+          importRecord('2026-03-04', emotion: 10),
+          importRecord('2026-03-05', emotion: 'oops'),
+          importRecord('2026-03-06', answer: '정상'),
+        ]),
+      );
+      final result = await repo.applyImport(preview);
+      expect((result.inserted, result.invalid, result.total), (1, 5, 6));
+      expect(await repo.getTotalCount(), 1);
+      expect((await repo.getEntryByDate('2026-03-06'))!.answer1, '정상');
     });
   });
 
@@ -644,8 +535,10 @@ void main() {
       await repo.deleteAllEntries();
       expect(await repo.getTotalCount(), 0);
 
-      final result = await repo.importEntries(exported);
-      expect(result.imported, 2);
+      final result = await repo.applyImport(
+        await repo.previewImport(jsonEncode(exported)),
+      );
+      expect(result.inserted, 2);
       expect(await repo.getTotalCount(), 2);
 
       final entry1 = await repo.getEntryByDate('2026-03-01');

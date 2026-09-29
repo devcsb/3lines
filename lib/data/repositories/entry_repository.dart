@@ -6,6 +6,7 @@ import '../../core/time/app_clock.dart';
 import '../../core/utils/text_analysis.dart';
 import '../database/app_database.dart';
 import '../models/daily_entry.dart';
+import '../models/entry_import.dart';
 import '../models/weekly_retrospective.dart';
 
 class EntryRepository {
@@ -217,8 +218,10 @@ class EntryRepository {
             .get();
     return rows
         .map(
-          (r) =>
-              (date: DateTime.parse(r.read(dateCol)!), emotion: r.read(emotionCol)!),
+          (r) => (
+            date: DateTime.parse(r.read(dateCol)!),
+            emotion: r.read(emotionCol)!,
+          ),
         )
         .toList();
   }
@@ -535,71 +538,61 @@ class EntryRepository {
     return allEntries.map((e) => _fromEntry(e).toJson()).toList();
   }
 
-  Future<({int imported, int skipped})> importEntries(
-    List<Map<String, dynamic>> entries,
-  ) async {
-    int imported = 0;
-    int skipped = 0;
-    await _db.transaction(() async {
-      for (final json in entries) {
-        // 항목 단위로 전부 감싸 손상 데이터 1건이 transaction 전체를
-        // 중단시키지 않도록 한다(타입 캐스트 실패 포함).
-        try {
-          final date = json['date'] as String?;
-          final emotionRaw = json['emotion'];
-          final emotion = emotionRaw is num ? emotionRaw.toInt() : null;
-          final prompts = json['prompts'] as List<dynamic>?;
-          if (date == null || emotion == null || prompts == null) {
-            skipped++;
-            continue;
-          }
-
-          // prompts 항목이 Map 이 아니거나 값이 String 이 아니면 빈 문자열로 처리.
-          String field(int i, String key) {
-            if (i < prompts.length) {
-              final p = prompts[i];
-              if (p is Map) {
-                final v = p[key];
-                if (v is String) return v;
-              }
-            }
-            return '';
-          }
-
-          // Preserve original timestamps if available
-          final createdAtRaw = json['created_at'] as String?;
-          final createdAt = createdAtRaw != null
-              ? DateTime.tryParse(createdAtRaw)
-              : null;
-          final updatedAtRaw = json['updated_at'] as String?;
-          final updatedAt = updatedAtRaw != null
-              ? DateTime.tryParse(updatedAtRaw)
-              : null;
-          // Photo path is metadata-only on import (file may not exist)
-          final photoPath = json['photo_path'] as String?;
-
-          final entry = DailyEntry(
-            date: date,
-            emotion: emotion.clamp(1, 5),
-            prompt1: field(0, 'question'),
-            answer1: field(0, 'answer'),
-            prompt2: field(1, 'question'),
-            answer2: field(1, 'answer'),
-            prompt3: field(2, 'question'),
-            answer3: field(2, 'answer'),
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            photoPath: photoPath,
-          );
-          await saveEntry(entry, preserveTimestamps: true);
-          imported++;
-        } catch (_) {
-          skipped++;
-        }
-      }
-    });
-    return (imported: imported, skipped: skipped);
+  Future<ImportPreview> previewImport(String jsonStr) async {
+    final now = _clock.now();
+    final parsed = parseImportJson(jsonStr, now: now);
+    final conflicts = <String, DailyEntry>{};
+    for (final candidate in parsed.candidates) {
+      final current = await getEntryByDate(candidate.date);
+      if (current != null) conflicts[candidate.date] = current;
+    }
+    return ImportPreview(parsed: parsed, conflicts: conflicts);
   }
+
+  Future<ImportResult> applyImport(
+    ImportPreview preview, {
+    ConflictPolicy policy = ConflictPolicy.preserve,
+  }) => _db.transaction(() async {
+    final now = _clock.now();
+    var inserted = 0, replaced = 0, skipped = 0, changed = 0;
+    var invalid = preview.parsed.invalid;
+    for (final candidate in preview.parsed.candidates) {
+      if (!isImportDateValid(candidate.date, now)) {
+        invalid++;
+        continue;
+      }
+      final current = await getEntryByDate(candidate.date);
+      if (current == null) {
+        await _db
+            .into(_db.entries)
+            .insert(
+              _toCompanion(candidate.toEntry(now), preserveTimestamps: true),
+            );
+        inserted++;
+      } else if (policy == ConflictPolicy.preserve ||
+          !preview.conflicts.containsKey(candidate.date)) {
+        skipped++;
+      } else if (!sameImportSnapshot(
+        current,
+        preview.conflicts[candidate.date]!,
+      )) {
+        changed++;
+      } else {
+        final replacement = candidate.toEntry(now, replacing: current);
+        await (_db.update(_db.entries)..where((t) => t.id.equals(current.id!)))
+            .write(_toCompanion(replacement, preserveTimestamps: true));
+        replaced++;
+      }
+    }
+    return ImportResult(
+      inserted: inserted,
+      replaced: replaced,
+      conflictSkipped: skipped,
+      changedSincePreview: changed,
+      invalid: invalid,
+      duplicate: preview.parsed.duplicate,
+    );
+  });
 
   // -- Private helpers --
 

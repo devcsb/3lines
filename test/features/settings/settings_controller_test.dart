@@ -10,14 +10,18 @@ import 'package:three_lines/core/events/journal_changes.dart';
 import 'package:three_lines/core/services/biometric_service.dart';
 import 'package:three_lines/core/services/photo_service.dart';
 import 'package:three_lines/core/services/reminder_coordinator.dart';
+import 'package:three_lines/core/time/app_clock.dart';
 import 'package:three_lines/data/database/app_database.dart';
 import 'package:three_lines/data/models/daily_entry.dart';
+import 'package:three_lines/data/models/entry_import.dart';
 import 'package:three_lines/data/repositories/entry_repository.dart';
 import 'package:three_lines/data/repositories/settings_repository.dart';
 import 'package:three_lines/features/settings/settings_controller.dart';
+import 'package:three_lines/features/today/today_controller.dart';
 
 import '../../helpers/fake_biometric_service.dart';
 import '../../helpers/fake_photo_service.dart';
+import '../../helpers/import_fixtures.dart';
 
 final class FakeReminderCoordinator implements ReminderCoordinator {
   bool enabledResult = true;
@@ -60,6 +64,7 @@ void main() {
   late FakeReminderCoordinator fakeReminders;
   late FakeBiometricService fakeBio;
   late ProviderContainer container;
+  late MutableImportClock clock;
 
   setUp(() {
     PackageInfo.setMockInitialValues(
@@ -70,7 +75,8 @@ void main() {
       buildSignature: 'test',
     );
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    entryRepo = EntryRepository(db);
+    clock = MutableImportClock(DateTime(2026, 9, 30, 12));
+    entryRepo = EntryRepository(db, clock: clock);
     settingsRepo = SettingsRepository(db);
     fakePhoto = FakePhotoService();
     fakeReminders = FakeReminderCoordinator();
@@ -78,6 +84,7 @@ void main() {
 
     container = ProviderContainer(
       overrides: [
+        appClockProvider.overrideWithValue(clock),
         entryRepositoryProvider.overrideWithValue(entryRepo),
         settingsRepositoryProvider.overrideWithValue(settingsRepo),
         photoServiceProvider.overrideWithValue(fakePhoto),
@@ -177,7 +184,134 @@ void main() {
     });
   });
 
-  group('importData', () {
+  group('previewImport/applyImport', () {
+    test('오늘 기록 가져오기는 Today 실제 상태를 한 번 갱신한다', () async {
+      final settingsListen = container.listen(
+        settingsControllerProvider,
+        (_, _) {},
+      );
+      var loaded = 0;
+      final todayListen = container.listen(todayControllerProvider, (_, next) {
+        if (!next.isLoading && next.hasValue) loaded++;
+      });
+      addTearDown(settingsListen.close);
+      addTearDown(todayListen.close);
+      await container.read(settingsControllerProvider.future);
+      expect(
+        (await container.read(todayControllerProvider.future)).isCompleted,
+        isFalse,
+      );
+      expect(loaded, 1);
+      final notifier = container.read(settingsControllerProvider.notifier);
+      final preview = await notifier.previewImport(
+        jsonEncode([importRecord('2026-09-30', answer: '가져온 오늘 기록')]),
+      );
+      expect(
+        container.read(todayControllerProvider).value!.isCompleted,
+        isFalse,
+      );
+      await Future.wait([
+        notifier.applyImport(preview),
+        notifier.applyImport(preview),
+      ]);
+      final today = await container.read(todayControllerProvider.future);
+      expect((today.isCompleted, today.answer1), (true, '가져온 오늘 기록'));
+      expect(loaded, 2);
+      await notifier.applyImport(preview);
+      final preserved = await notifier.previewImport(
+        jsonEncode([importRecord('2026-09-30')]),
+      );
+      await notifier.applyImport(preserved);
+      await container.pump();
+      expect(loaded, 2);
+    });
+
+    test('동시 확인과 성공 재호출은 첫 policy와 동일 Future를 재사용한다', () async {
+      final listen = container.listen(settingsControllerProvider, (_, _) {});
+      addTearDown(listen.close);
+      await container.read(settingsControllerProvider.future);
+      await entryRepo.saveEntry(
+        DailyEntry(date: '2026-09-29', emotion: 2, answer1: '로컬'),
+        preserveTimestamps: true,
+      );
+      final notifier = container.read(settingsControllerProvider.notifier);
+      final before = container.read(journalChangesProvider);
+      final preview = await notifier.previewImport(
+        jsonEncode([importRecord('2026-09-29'), importRecord('2026-09-28')]),
+      );
+      expect(await entryRepo.getTotalCount(), 1);
+      expect(container.read(journalChangesProvider), before);
+      final first = notifier.applyImport(preview);
+      final second = notifier.applyImport(
+        preview,
+        policy: ConflictPolicy.replacePreviewed,
+      );
+      expect(identical(first, second), isTrue);
+      final results = await Future.wait([first, second]);
+      expect(results.map((r) => (r.inserted, r.conflictSkipped)), [
+        (1, 1),
+        (1, 1),
+      ]);
+      expect((await entryRepo.getEntryByDate('2026-09-29'))!.answer1, '로컬');
+      expect(container.read(journalChangesProvider), before + 1);
+      expect(identical(first, notifier.applyImport(preview)), isTrue);
+      expect(container.read(journalChangesProvider), before + 1);
+    });
+
+    test('DB 실패는 이벤트 없이 재시도하고 실제 변경 없는 성공은 발행하지 않는다', () async {
+      final listen = container.listen(settingsControllerProvider, (_, _) {});
+      addTearDown(listen.close);
+      await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+      final before = container.read(journalChangesProvider);
+      await db.customStatement('''
+        CREATE TRIGGER fail_import BEFORE INSERT ON entries
+        BEGIN SELECT RAISE(ABORT, 'failure'); END;
+      ''');
+      final preview = await notifier.previewImport(
+        jsonEncode([importRecord('2026-09-29')]),
+      );
+      await expectLater(
+        notifier.applyImport(preview),
+        throwsA(isA<Exception>()),
+      );
+      expect(await entryRepo.getTotalCount(), 0);
+      expect(container.read(journalChangesProvider), before);
+      await db.customStatement('DROP TRIGGER fail_import');
+      expect((await notifier.applyImport(preview)).inserted, 1);
+      expect(container.read(journalChangesProvider), before + 1);
+      final preserved = await notifier.previewImport(
+        jsonEncode([importRecord('2026-09-29')]),
+      );
+      expect((await notifier.applyImport(preserved)).conflictSkipped, 1);
+      expect(container.read(journalChangesProvider), before + 1);
+    });
+
+    test('승인 후 listener가 사라져도 커밋과 저널 이벤트를 완료한다', () async {
+      final listen = container.listen(settingsControllerProvider, (_, _) {});
+      await container.read(settingsControllerProvider.future);
+      final notifier = container.read(settingsControllerProvider.notifier);
+      final preview = await notifier.previewImport(
+        jsonEncode([importRecord('2026-09-29')]),
+      );
+      final started = Completer<void>();
+      final gate = Completer<void>();
+      final blocker = db.transaction(() async {
+        started.complete();
+        await gate.future;
+      });
+      await started.future;
+      final before = container.read(journalChangesProvider);
+      final application = notifier.applyImport(preview);
+      listen.close();
+      await container.pump();
+      gate.complete();
+      await blocker;
+      expect((await application).inserted, 1);
+      expect(await entryRepo.getTotalCount(), 1);
+      expect(container.read(journalChangesProvider), before + 1);
+    });
+
     const validJson = '''
 {
   "app": "3Lines",
@@ -210,10 +344,13 @@ void main() {
       final notifier = container.read(settingsControllerProvider.notifier);
       final changesBefore = container.read(journalChangesProvider);
 
-      final result = await notifier.importData(validJson);
+      final preview = await notifier.previewImport(validJson);
+      expect(await entryRepo.getTotalCount(), 0);
+      expect(container.read(journalChangesProvider), changesBefore);
+      final result = await notifier.applyImport(preview);
 
-      expect(result.imported, 2);
-      expect(result.skipped, 0);
+      expect(result.inserted, 2);
+      expect(result.total, 2);
       expect(await entryRepo.getTotalCount(), 2);
       expect(container.read(journalChangesProvider), changesBefore + 1);
     });
@@ -235,15 +372,17 @@ void main() {
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
 
-      final result = await notifier.importData(bareJson);
-      expect(result.imported, 1);
+      final result = await notifier.applyImport(
+        await notifier.previewImport(bareJson),
+      );
+      expect(result.inserted, 1);
     });
 
     test('throws FormatException for completely invalid JSON', () async {
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
       expect(
-        () => notifier.importData('not json at all'),
+        () => notifier.previewImport('not json at all'),
         throwsA(isA<FormatException>()),
       );
     });
@@ -252,12 +391,12 @@ void main() {
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
       expect(
-        () => notifier.importData('{"app": "3Lines", "version": "1.0.0"}'),
+        () => notifier.previewImport('{"app": "3Lines", "version": "1.0.0"}'),
         throwsA(isA<FormatException>()),
       );
     });
 
-    test('counts non-map items in list as skipped', () async {
+    test('손상 prompts와 non-map을 invalid로 분류한다', () async {
       const mixedJson = '''
 {
   "entries": [
@@ -274,9 +413,10 @@ void main() {
       await container.read(settingsControllerProvider.future);
       final notifier = container.read(settingsControllerProvider.notifier);
 
-      final result = await notifier.importData(mixedJson);
-      // 2 non-map items counted as skippedByType, 1 map item attempted
-      expect(result.skipped, greaterThanOrEqualTo(2));
+      final result = await notifier.applyImport(
+        await notifier.previewImport(mixedJson),
+      );
+      expect((result.inserted, result.invalid, result.total), (0, 3, 3));
     });
 
     test('returns zero imported for empty entries list', () async {
@@ -286,9 +426,11 @@ void main() {
       final notifier = container.read(settingsControllerProvider.notifier);
       final changesBefore = container.read(journalChangesProvider);
 
-      final result = await notifier.importData(emptyEntriesJson);
-      expect(result.imported, 0);
-      expect(result.skipped, 0);
+      final result = await notifier.applyImport(
+        await notifier.previewImport(emptyEntriesJson),
+      );
+      expect(result.changedCount, 0);
+      expect(result.total, 0);
       expect(await entryRepo.getTotalCount(), 0);
       expect(container.read(journalChangesProvider), changesBefore);
     });
@@ -385,9 +527,11 @@ void main() {
       await entryRepo.deleteAllEntries();
       expect(await entryRepo.getTotalCount(), 0);
 
-      final result = await notifier.importData(jsonStr);
-      expect(result.imported, 1);
-      expect(result.skipped, 0);
+      final result = await notifier.applyImport(
+        await notifier.previewImport(jsonStr),
+      );
+      expect(result.inserted, 1);
+      expect(result.total, 1);
       expect(await entryRepo.getTotalCount(), 1);
     });
   });
