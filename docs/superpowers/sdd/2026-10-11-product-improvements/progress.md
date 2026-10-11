@@ -42,6 +42,14 @@
 - Task6b Timeline/Insights는35PASS 뒤 실제 렌더에서 단일 감정 숫자64px/원48px 잘림과 툴팁 대비3.0176:1을 추가 RED로 확인했다. 이를 보완하고 최종40개/회귀/렌더/analyze를 수행 중이며 Flutter 슬롯을 소유한다. LockScreen은 수정하지 않았고 여기의 잠금 표시 개선은 InsightsLockedView다.
 - Task4b의 작성도움5+실Today복구/키보드6+사진회복4=15시험을 준비했다. 아직 실행/컴파일하지 않았고 운영 Today/Prompt/Photo 코드는 편집하지 않았다. 사진은 실 PhotoService/임시File/memoryDB로 취소/권한/복사실패/재시도/late결과 보호를 검사하도록 준비했다.
 
+### b9d7ca9 이후 진행
+
+- Timeline/Insights 표시계층18파일은 `b9d7ca9`다. readability40PASS, 기존UI56PASS, 감정점재캡처5PASS, 상세16조합2PASS, target18items analyze0issues/format0changed를 확인하고 독립 검토 중이다. 실제한글PNG에서 chart/월간/주간/PDF/잠금통계/상세/감정점/기간선택을 확인했다. root도 Ocean dark100% 렌더를 열었다.
+- Task3 `b294d6f`의 기존2건은 닫혔지만 최초 Riverpod managed build pending 중 수동 reset이 앞서끝나고 새입력뒤 최초build가옛session을덮는 새Important1건이 나왔다. actualRED에서 답변이빈문자열로돌아감을확인했다. 첫managed future settle 이후 최신request/epoch의 reset만 별도load로실행하는직렬안을 구현 중이다. build는watch를, load는캡처의존성읽기를맡는다. 매reset마다현재future를await하여nestedreset을deadlock시키지않는다. framework재빌드/수동오류retry후캐시경계도확인한다. Task4b Today 인계는 계속보류다.
+- 병렬 진행을 위해 Task6b의 Today 보조위젯 emotion_picker/one_year_ago/streak_pulse/milestone/completion_animation/animated_save_button와 해당시험만 기존구현자에게 인계했다. TodayScreen/controller/Prompt/Photo는편집하지않고 실제RED부터관찰한다.
+- root가 `bash test/tool/release/android_release_gate_test.sh`를 실제실행했다. Gradle은 `allowUnsignedRelease=true is forbidden when CI=true`로실패했고 이를기대한shellgate는exit0으로통과했다(Gradle42s). 실제서명자료를읽거나배포하지않았다. 가능한로컬Android컴파일은여전히남았다.
+- 현재 Flutter슬롯은 Androidgate종료후 Task3초기build GREEN에양도했다. 다음은Today보조위젯RED이며 전체Flutter gate는아직없다.
+
 | 책임 | 독립 리뷰어 | 상태 |
 |---|---|---|
 | 작성/초안/자정/앱 수명 | audit_writing_continuity | 조사 완료, 날짜 혼합 저장과 invalidate/늦은 응답/사진 초안 유실 반례를 R1에 반영 |
