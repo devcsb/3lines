@@ -89,7 +89,7 @@ jobs:
         run: flutter test
 
   android:
-    name: Build signed Android bundle
+    name: Build signed Android bundle and APK
     needs: validate
     runs-on: ubuntu-latest
     env:
@@ -132,13 +132,24 @@ jobs:
             "storeFile=$KEYSTORE_PATH" > android/keystore.properties
       - name: Build signed AAB
         run: flutter build appbundle --release
+      - name: Build signed universal APK
+        run: flutter build apk --release
       - name: Verify AAB signature
         run: tool/release/verify_android_artifact.sh build/app/outputs/bundle/release/app-release.aab
-      - name: Upload AAB
+      - name: Verify APK signature
+        run: tool/release/verify_android_artifact.sh build/app/outputs/flutter-apk/app-release.apk
+      - name: Stage Android release assets
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          cp build/app/outputs/bundle/release/app-release.aab release-assets/
+          cp build/app/outputs/flutter-apk/app-release.apk release-assets/
+      - name: Upload AAB and APK
         uses: actions/upload-artifact@v4
         with:
           name: 3lines-android-${{ github.ref_name }}
-          path: build/app/outputs/bundle/release/app-release.aab
+          # A single directory keeps download-artifact flat for release-assets/*.
+          path: release-assets/*
           if-no-files-found: error
 
   ios:
@@ -212,11 +223,12 @@ jobs:
     if: |
       always()
       && startsWith(github.ref, 'refs/tags/v')
+      && needs.preflight.result == 'success'
       && needs.android.result == 'success'
       && (needs.ios.result == 'success' || needs.ios.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
-      - name: Download Android bundle
+      - name: Download Android bundle and APK
         uses: actions/download-artifact@v4
         with:
           name: 3lines-android-${{ github.ref_name }}
@@ -230,7 +242,7 @@ jobs:
       - name: Note missing iOS package
         if: needs.ios.result == 'skipped'
         run: |
-          echo "This release contains the Android bundle only; Apple signing material is not configured." \
+          echo "This release contains the Android AAB and APK only; Apple signing material is not configured." \
             >> "$GITHUB_STEP_SUMMARY"
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2

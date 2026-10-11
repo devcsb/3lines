@@ -1,17 +1,17 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/Flutter-3.41-02569B?style=flat-square&logo=flutter&logoColor=white" />
+<img src="https://img.shields.io/badge/Flutter-3.47.1-02569B?style=flat-square&logo=flutter&logoColor=white" />
 <img src="https://img.shields.io/badge/Dart-3.11-0175C2?style=flat-square&logo=dart&logoColor=white" />
 <img src="https://img.shields.io/badge/Android-API%2026+-3DDC84?style=flat-square&logo=android&logoColor=white" />
 <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" />
 
 # 3Lines
 
-**하루 3줄로 마음의 회복탄력성을 키우는 마이크로 저널**
+**한국어로 짧게 남기는 하루의 감정과 기록**
 
-*감사 · 수용 · 의도 — 30초면 충분합니다*
+*감사, 수용, 의도 중 한 줄부터 시작하세요*
 
-[**APK 다운로드**](../../releases/latest) · [버그 리포트](../../issues) · [기능 제안](../../issues)
+[GitHub 릴리스 확인](../../releases/latest) · [버그 리포트](../../issues) · [기능 제안](../../issues)
 
 </div>
 
@@ -30,7 +30,7 @@
 저널링을 시작하려다 빈 페이지 앞에서 포기한 적 있으신가요?
 
 **3Lines**는 "딱 3줄만" 이라는 원칙으로 만든 미니멀 저널 앱입니다.
-긍정심리학의 **Mental Resilience 3축**을 기반으로, 매일 30초의 기록이 쌓여 자신의 감정 패턴을 발견하게 해줍니다.
+감사, 수용, 의도라는 세 질문을 제공합니다. 감정과 답변 하나를 입력하면 기록을 저장할 수 있고, 세 질문을 모두 채우지 않아도 됩니다. 심리 효과와 30초 완료를 검증한 앱은 아닙니다.
 
 ```
 감사  ─  오늘 감사한 작은 것 하나는?
@@ -42,7 +42,7 @@
 
 ## 주요 기능
 
-### 📝 30초 핵심 루프
+### 📝 짧은 기록
 - 5단계 감정 선택 (힘듦 😫 → 감사 😊)
 - 탭 가능한 예시 문구로 빈 페이지 마찰 감소
 - 저장 완료 체크마크 애니메이션
@@ -61,12 +61,12 @@
 - 월간 감정 요약 카드
 - 주간 회고 리포트
 
-### 🔒 완전한 프라이버시
-- **100% 오프라인** — 서버 없음, 계정 없음, 네트워크 권한 없음
-- 모든 데이터는 기기에만 저장
+### 🔒 기기 안에 저장하는 기록
+- 일기는 계정이나 서버 없이 기기에 저장
+- 내보내기나 공유를 선택하면 파일이 기기 밖으로 나갈 수 있음
 - 생체인증(Face ID / 지문) 앱 잠금
 - 알림 미리보기에도 저널 답변을 포함하지 않는 중립 문구 사용
-- JSON 내보내기 / 가져오기
+- 완료 기록의 JSON 텍스트 내보내기 / 가져오기 (초안, 사진, 설정 제외)
 - 월간 리포트 PDF 생성
 
 ### 🎨 세련된 디자인
@@ -96,18 +96,22 @@
 
 ### APK 직접 설치 (Android)
 
-1. [Releases](../../releases/latest) 페이지에서 `app-arm64-v8a-release.apk` 다운로드
-2. 폰에서 **설정 → 보안 → 알 수 없는 소스 허용**
-3. APK 파일 탭하여 설치
+2026-10-11에 확인한 공개 [v1.2.3](https://github.com/devcsb/3lines/releases/tag/v1.2.3)에는 `app-release.aab`만 있고 설치용 APK는 없습니다. AAB는 휴대폰에서 직접 설치할 수 없습니다. 이 로컬 개선은 아직 게시하지 않았습니다.
 
-> 대부분의 최신 Android 폰은 `arm64-v8a` 버전을 사용하세요.
+다음 서명 릴리스의 첨부에 `app-release.apk`가 실제로 나타나면 다음 순서로 설치합니다.
+
+1. [Releases](../../releases/latest)에서 universal `app-release.apk`를 내려받습니다.
+2. 해당 브라우저나 파일 앱에 필요한 외부 앱 설치 권한을 허용합니다.
+3. APK를 열어 설치합니다. 설치 뒤 권한을 다시 끌 수 있습니다.
+
+업데이트하려면 기존 설치본과 같은 서명이 필요합니다. 서명이 다르면 삭제로 우회하지 말고 먼저 완료 기록을 JSON으로 내보내세요. JSON은 사진, 초안, 설정을 보존하지 않습니다. GitHub 베타와 Google Play 등록은 별개입니다. [베타 관찰 안내](docs/ANDROID_BETA.md)를 참고하세요.
 
 ### 직접 빌드
 
 **요구 사항**
-- Flutter 3.41+
+- Flutter 3.47.1 (CI 기준)
 - Dart 3.11+
-- Android Studio (JDK 17)
+- Android Studio (JDK 21)
 
 ```bash
 # 1. 저장소 클론
@@ -125,7 +129,7 @@ flutter run
 
 # 5. APK 빌드
 # 배포 빌드는 CI에서 android/keystore.properties를 주입해야 합니다.
-flutter build apk --release --split-per-abi
+flutter build apk --release
 
 # 서명 없는 로컬 컴파일/매니페스트 검증만 필요한 경우
 flutter build apk --release --split-per-abi \
@@ -136,7 +140,7 @@ flutter build apk --release --split-per-abi \
 upload keystore와 CI 서명 검사를 반드시 구성하세요.
 
 모바일 릴리스의 버전·서명·CocoaPods·TestFlight 절차는 [릴리스 가이드](docs/RELEASE.md)를 따르세요. 태그 기반
-GitHub Actions는 검증을 통과한 AAB/IPA만 GitHub Release에 첨부하며, 스토어 업로드는 명시적으로 활성화한 경우에만 실행됩니다.
+GitHub Actions 소스는 검증을 통과한 AAB와 universal APK를 GitHub Release에 첨부하도록 구성합니다. Apple signing이 준비된 경우 IPA도 포함하며, TestFlight 업로드는 명시적으로 활성화한 경우에만 실행됩니다. 실제 게시 여부는 해당 Release 첨부에서 확인하세요.
 
 ---
 
