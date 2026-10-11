@@ -73,6 +73,14 @@
 - 잔여R6는 writing11/Today복구7/전체Settings2개의 신규20개다. writing의최초결과는1PASS/10FAIL이며 category3.77:1/counter2.35:1/사진오류3.217:1와사진추가native버튼부재였다. 사진추가200% overflow를관찰한것은아니다. PhotoAttachment는native버튼과Wrap/정보색으로보완중이다. Task4검토종료후 Prompt/TodayScreen표시계층도Task6에인계했다. controller/서비스/Undo/사진결과/managedloading/저장조건은더이상수정하지않는다.
 - 현재 Flutter단독슬롯은Task6다. 잔여20개실제RED→GREEN/관련회귀/analyze/render 및독립검토뒤 root전체analyze/test/Android컴파일, R1~R6최종대조가남았다. 외부배포와실기기검증은수행하지않았다.
 
+### c2b1573 전체 게이트와 마지막 사진 표시 보완
+
+- 최종 R6 표시8파일은 `dbc6aad`다. 신규20개와 기존36개를 묶은56PASS,8파일analyze0,format0을확인했다. 낮은대비,테마큰글씨35~67px넘침/native키보드조작,손상확인본문잘림을보완했다. root도dark설정과세로손상안내PNG를열어확인했다.
+- 독립 R6검토는 Critical0/Important0/Minor1이다. 사진오류시험이errorBuilder만따로렌더해실제제거버튼Stack을빼먹었다. source/기존PNG좌표상제거버튼이오류문구끝과겹치고합성대비3.236:1이된다. Task6에 PhotoAttachment와해당시험2파일만의실제조합RED 및조건부오른쪽공간예약을인계했다. 나머지R6표시변경은인계가능판정이다.
+- root최초전체analyze의13info를`c2b1573`의5파일에서타입명시/braces/underscore/기존then의unawaited표시만으로정리했다. 독립검토가의미보존/새반례없음을확인했다. root전체`flutter analyze --no-pub`는Noissues/exit0이며`flutter test --no-pub --reporter expanded`는807PASS/exit0(34초)이다. 로그`/tmp/3lines-product-final-tests.log`. 사진후속변경전결과이므로그수정뒤최종전체gate를갱신한다.
+- root가 GitHub Release를다시읽었고최신공개v1.2.3/published2026-08-29/AAB한개72,099,129bytes는그대로였다. APK/IPA나현재개선본은게시되지않았다.
+- 현재Flutter슬롯은사진Minor반례/보완을위해Task6에인계했다. 종료후root전체gate/로컬unsignedAndroidcompile/최종요구대조문서와독립완료검토를실행한다. 이때까지goal은active다.
+
 | 책임 | 독립 리뷰어 | 상태 |
 |---|---|---|
 | 작성/초안/자정/앱 수명 | audit_writing_continuity | 조사 완료, 날짜 혼합 저장과 invalidate/늦은 응답/사진 초안 유실 반례를 R1에 반영 |
