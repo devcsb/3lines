@@ -14,13 +14,20 @@
 
 ### 최신 재개 지점
 
-- 최신 구현 HEAD는 `89db6c0`이다. 아래 초기 인계 기록보다 이 절을 우선한다.
+- 최신 구현 HEAD는 `af58a9a`이다. 아래 초기 인계 기록보다 이 절을 우선한다.
 - Task1/2/5는 후속 독립 검토에서 기존 지적이 모두 닫혔다. 전체 gate와 실제 OS 동작은 별도다.
 - Task3 초기 구현은 `fc19521`이며 관련394개 PASS 뒤 독립 검토에서 Important5/Minor1을 발견했다. 날짜 조회 중 입력 덮어쓰기, 손상 초안의 사용자 복구 경로 부재, 취소 중 재시도로 초안 재등장, 미구독 Today의 전체삭제 수명, nullable key 누락 수용, 회고 metadata 유실을 고치는 중이다. `.superpowers/sdd/2026-10-11-product-improvements/task-3-review-fixes.md`에 판정을 기록했다. 기존394개 PASS를 수정 후 결과로 재사용하지 않는다.
 - Task6a는 `89db6c0`에 커밋했다. target27개, Data 보관 안내1개 PASS 및 target analyze0issues다. 독립 xhigh 검토는 Critical/Important/Minor 모두0으로 인계 가능을 보고했고 실제 한글 렌더18장을 확인했다. DataSection의 기존 사진삭제 시험에서 드러난 Today 수명 결함은 Task3 소유로 인계했다. Task6b 하위 화면 대비/48dp/렌더는 아직 남았다.
 - Task7의 독립 검토는 JSON 평문/OS 백업/앱 잠금 범위 문서 누락을 지적했고 `e5043ef`로 고쳤다. Task6a 독립 검토자가 이 문서 지적도 닫았다. 실제 Android 컴파일, 서명 배포, 설치는 아직 미검증이다.
 - Task4는 미실행 RED 시험만 준비했다. Task4a QuestionsSection/LockScreen을 먼저 진행하고 Task4b Today/Prompt/Photo/SettingsController는 Task3 재검토 종료까지 보류한다. Task4의 새 RED 파일 때문에 Task3 시험에서 Today 디렉터리 전체를 무심코 실행하지 않는다.
 - 현재 Flutter 단독 실행 슬롯은 Task3 구현자가 소유한다. 종료 확인 후 다른 task에 인계한다. 전체 analyze/test, Android gate/build, R1~R6 최종 대조는 아직 실행하지 않았다.
+
+후속 진행은 다음과 같다.
+
+- Task3의 6건 보완을 `af58a9a` 11파일에 커밋했다. 새 반례45개와 최종 관련 소비자344개 PASS(exit0), format0changed다. DataSection 기존 삭제 시험은 Today 강제 listener 없이 실제 사진 참조 gate/DB0/unknown 사진 보존/event/안내 assertion을 유지했다. 원래 xhigh 검토자에게 재검토를 넘겼으며 Task4b 소유권은 아직 보류했다.
+- Task4a는 `9b7c4c9`다. 질문 저장 await/inline 오류/입력 유지/기기 인증 재시도 및 작은 화면 스크롤을 구현했다. 실제 RED6FAIL 후 새 질문4+새Lock2+기존Lock8=14PASS다. 독립 검토는 신규 Critical0/Important0, 시험Minor1이다. 영구 listener와30ms wait가 수명/완료 검증을 가리는 시험을 보강 중이다. 기존 resetPrompts 순차 write의 부분 실패/화면 불일치는 Important로 확인했으며 Task4b에서 기존 repository transaction으로 원자화한다.
+- Task6b는 Timeline/Insights부터 진행한다. 실제 한글 렌더와 대비/48dp target25개에서 RED22FAIL/3PASS를 관찰했다. StatCard의 일반크기 한글 잘림, 200% 고정 grid 넘침, Timeline 3.277:1 및 detail dark2.850:1의 낮은 대비, PDF native button 부재를 고치는 중이다. Today/Prompt/Emotion은 Task4b 이후 인계한다.
+- Flutter 슬롯은 Task3 consumer 종료 후 Task4a 질문 시험에 양도했다. 이후 Task6b GREEN을 실행한다. 전체 gate/Android build/전체 요구 대조는 여전히 남았다.
 
 | 책임 | 독립 리뷰어 | 상태 |
 |---|---|---|
