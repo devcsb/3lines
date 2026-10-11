@@ -34,6 +34,17 @@ class SettingsRepository {
     return results;
   }
 
+  Future<void> resetPrompts() {
+    return _db.transaction(() async {
+      for (var index = 0; index < SettingKeys.promptKeys.length; index++) {
+        await setSetting(
+          SettingKeys.promptKeys[index],
+          defaultPromptQuestions[index],
+        );
+      }
+    });
+  }
+
   /// Returns today's prompts. Uses the rotating pool unless the user has
   /// explicitly saved a custom prompt for that slot.
   Future<List<String>> getRotatingPrompts() async {

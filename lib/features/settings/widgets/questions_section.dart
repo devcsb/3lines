@@ -191,8 +191,7 @@ class _PromptResetDialogState extends ConsumerState<_PromptResetDialog> {
       if (mounted) {
         setState(() {
           _saving = false;
-          // 현재 API는 세 질문을 순서대로 저장하므로 일부만 바뀌었을 수 있다.
-          _error = '초기화를 끝내지 못했어요. 일부 질문은 바뀌었을 수 있으니 다시 초기화해주세요.';
+          _error = '초기화하지 못했어요. 질문은 그대로 유지했어요. 다시 시도해주세요.';
         });
       }
     }

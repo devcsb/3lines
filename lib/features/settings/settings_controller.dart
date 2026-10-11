@@ -71,12 +71,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
 
   Future<void> resetPrompts() async {
     final repo = ref.read(settingsRepositoryProvider);
-    for (int i = 0; i < 3; i++) {
-      await repo.setSetting(
-        SettingKeys.promptKeys[i],
-        defaultPromptQuestions[i],
-      );
-    }
+    await repo.resetPrompts();
     ref.read(journalChangesProvider.notifier).markChanged();
     final current = state.value;
     if (current == null) return;
