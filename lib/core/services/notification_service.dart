@@ -162,7 +162,7 @@ final class NotificationService implements ReminderScheduler {
   @override
   Future<void> migrateLegacyReminders() {
     if (kIsWeb) return Future<void>.value();
-    return cancelAll();
+    return _cancelIds([..._streakIds(), weeklyId, ...legacyIds]);
   }
 
   List<int> _streakIds() =>

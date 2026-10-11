@@ -244,10 +244,9 @@ void main() {
     expect(platform.cancelled, containsAll([200, 300, 0, 1, 2]));
   });
 
-  test('legacy migration은 기존 단발 일일과 위험 회고 ID도 정리한다', () async {
+  test('legacy migration은 기존 일일 예약을 남기고 위험 회고만 정리한다', () async {
     await service.migrateLegacyReminders();
     expect(platform.cancelled.toSet(), {
-      ...List<int>.generate(30, (i) => 100 + i),
       ...List<int>.generate(30, (i) => 200 + i),
       300,
       0,

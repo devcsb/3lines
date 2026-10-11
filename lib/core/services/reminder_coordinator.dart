@@ -124,7 +124,10 @@ final class DefaultReminderCoordinator implements ReminderCoordinator {
     return _serialize(() async {
       final stored = await _settingsRepository.getReminderSettings();
       await _scheduler.migrateLegacyReminders();
-      if (!stored.enabled) return;
+      if (!stored.enabled) {
+        await _scheduler.cancelAll();
+        return;
+      }
 
       final context = await _context(hour: stored.hour, minute: stored.minute);
       await _scheduler.replaceDailyAndStreak(context);

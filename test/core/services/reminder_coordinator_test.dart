@@ -88,6 +88,15 @@ final class FailingReminderSettingsRepository extends SettingsRepository {
   }
 }
 
+final class FailingTodayEntryRepository extends EntryRepository {
+  FailingTodayEntryRepository(super.db);
+
+  @override
+  Future<DailyEntry?> getTodayEntry() async {
+    throw StateError('today entry read failed');
+  }
+}
+
 void main() {
   late AppDatabase db;
   late SettingsRepository settings;
@@ -225,9 +234,9 @@ void main() {
     expect((stored.hour, stored.minute), (21, 0));
   });
 
-  test('비활성 launch도 legacy 예약만 정리하고 새 알림은 만들지 않는다', () async {
+  test('비활성 launch는 일일 예약까지 정리하고 새 알림은 만들지 않는다', () async {
     await coordinator.reconcileOnLaunch();
-    expect(scheduler.calls, ['migrate']);
+    expect(scheduler.calls, ['migrate', 'cancelAll']);
   });
 
   test('활성 launch는 legacy 취소 후 전체 계획을 조정한다', () async {
@@ -391,6 +400,54 @@ void main() {
       expect(platform.pending, isEmpty);
       expect(platform.cancelled, isEmpty);
       expect((await settings.getReminderSettings()).enabled, isFalse);
+    });
+
+    test('활성 launch의 기록 조회 실패에도 기존 일일 예약은 유지한다', () async {
+      await storeReminder(enabled: true);
+      await coordinator.reconcileOnLaunch();
+      platform.cancelled.clear();
+      coordinator = DefaultReminderCoordinator(
+        settingsRepository: settings,
+        entryRepository: FailingTodayEntryRepository(db),
+        scheduler: NotificationService(
+          platform: platform,
+          timeZoneResolver: const FixedTimeZoneResolver('Asia/Seoul'),
+          now: (_) => tz.TZDateTime(tz.local, 2026, 8, 9, 12),
+        ),
+      );
+      await expectLater(coordinator.reconcileOnLaunch(), throwsStateError);
+      expectDailyPlan(firstDay: 9, hour: 21);
+      expect(platform.cancelled, containsAll([0, 1, 2, 200, 229, 300]));
+      expect(platform.cancelled.where((id) => id >= 100 && id <= 129), isEmpty);
+    });
+
+    test('활성 launch의 플랫폼 초기화 실패에도 기존 일일 예약은 유지한다', () async {
+      await storeReminder(enabled: true);
+      await coordinator.reconcileOnLaunch();
+      platform.cancelled.clear();
+      platform.initializeError = StateError('initialize failed');
+      coordinator = DefaultReminderCoordinator(
+        settingsRepository: settings,
+        entryRepository: entries,
+        scheduler: NotificationService(
+          platform: platform,
+          timeZoneResolver: const FixedTimeZoneResolver('Asia/Seoul'),
+          now: (_) => tz.TZDateTime(tz.local, 2026, 8, 9, 12),
+        ),
+      );
+      await expectLater(coordinator.reconcileOnLaunch(), throwsStateError);
+      expectDailyPlan(firstDay: 9, hour: 21);
+      expect(platform.cancelled, containsAll([0, 1, 2, 200, 229, 300]));
+      expect(platform.cancelled.where((id) => id >= 100 && id <= 129), isEmpty);
+    });
+
+    test('비활성 launch는 남아 있는 기존 일일 예약도 제거한다', () async {
+      await storeReminder(enabled: true);
+      await coordinator.reconcileOnLaunch();
+      expectDailyPlan(firstDay: 9, hour: 21);
+      await storeReminder(enabled: false);
+      await coordinator.reconcileOnLaunch();
+      expect(platform.pending, isEmpty);
     });
 
     test('DB 시간 저장 실패는 이전 시각 단일 일일 계획을 복원한다', () async {
