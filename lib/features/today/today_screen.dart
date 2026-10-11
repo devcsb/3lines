@@ -9,6 +9,7 @@ import '../../core/utils/date_utils.dart' as du;
 import '../../shared/widgets/staggered_fade_in.dart';
 import 'today_controller.dart';
 import 'today_state.dart';
+import '../../data/models/journal_draft.dart';
 import '../../core/services/photo_service.dart';
 import 'widgets/animated_save_button.dart';
 import 'widgets/completion_animation.dart';
@@ -68,6 +69,46 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('데이터를 불러올 수 없어요', style: theme.textTheme.bodyLarge),
+              if (error is CorruptDraft) ...[
+                Text(
+                  '${RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(error.date) ? error.date : '날짜 확인 불가'} 초안을 읽지 못했어요',
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('읽지 못한 초안을 폐기할까요?'),
+                        content: const Text(
+                          '이 초안만 지워요. 저장된 기록과 다른 초안은 유지해요. 안전하게 확인할 수 없는 사진 파일은 남겨둬요.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('돌아가기'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('이 초안만 폐기'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true && mounted) {
+                      final success = await ref
+                          .read(todayControllerProvider.notifier)
+                          .discardCorruptDraft(error);
+                      if (!success && context.mounted)
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('초안이 바뀌었거나 폐기하지 못했어요. 다시 불러와주세요.'),
+                          ),
+                        );
+                    }
+                  },
+                  child: const Text('읽지 못한 초안 폐기'),
+                ),
+              ],
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => ref.invalidate(todayControllerProvider),
@@ -89,7 +130,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
 
           final isReadMode = state.isCompleted && !state.isEditing;
           final isInteractionLocked =
-              isReadMode || state.isSaving || state.isCancelling;
+              isReadMode ||
+              state.isSaving ||
+              state.isCancelling ||
+              state.isSwitchingDate;
 
           return SafeArea(
             bottom: false,
@@ -117,9 +161,11 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                         if (state.draftDate !=
                             ref.read(appClockProvider).todayString())
                           TextButton(
-                            onPressed: () => ref
-                                .read(todayControllerProvider.notifier)
-                                .startToday(),
+                            onPressed: state.isSwitchingDate
+                                ? null
+                                : () => ref
+                                      .read(todayControllerProvider.notifier)
+                                      .startToday(),
                             child: const Text('오늘 작성하기'),
                           ),
                         if (state.draftDates.isNotEmpty)
@@ -127,9 +173,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                             children: [
                               for (final date in state.draftDates)
                                 TextButton(
-                                  onPressed: () => ref
-                                      .read(todayControllerProvider.notifier)
-                                      .selectDate(date),
+                                  onPressed: state.isSwitchingDate
+                                      ? null
+                                      : () => ref
+                                            .read(
+                                              todayControllerProvider.notifier,
+                                            )
+                                            .selectDate(date),
                                   child: Text('$date 보관 초안'),
                                 ),
                             ],
@@ -142,9 +192,11 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                           Text(state.draftError!),
                           if (state.storageStatus == DraftStorageStatus.failed)
                             TextButton(
-                              onPressed: () => ref
-                                  .read(todayControllerProvider.notifier)
-                                  .retryDraftStorage(),
+                              onPressed: isInteractionLocked
+                                  ? null
+                                  : () => ref
+                                        .read(todayControllerProvider.notifier)
+                                        .retryDraftStorage(),
                               child: const Text('초안 보관 다시 시도'),
                             ),
                         ],
@@ -489,7 +541,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                 AnimatedSaveButton(
                                   emotionSelected: state.emotion != null,
                                   filledCount: state.filledAnswerCount,
-                                  canSave: state.canSave && !state.isCancelling,
+                                  canSave:
+                                      state.canSave &&
+                                      !state.isCancelling &&
+                                      !state.isSwitchingDate,
                                   isSaving: state.isSaving,
                                   isCancelling: state.isCancelling,
                                   guidanceMessage: state.isCancelling

@@ -16,6 +16,7 @@ import '../../core/theme/theme_notifier.dart';
 import '../../core/time/app_clock.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../data/models/entry_import.dart';
+import '../../data/models/journal_draft.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../lock/lock_screen.dart';
@@ -212,28 +213,56 @@ class SettingsController extends AsyncNotifier<SettingsState> {
 
   /// Deletes all entries. Returns false on failure.
   Future<bool> deleteAllData() async {
+    final retain = ref.keepAlive();
+    try {
+      return await _deleteAllData();
+    } finally {
+      retain.close();
+    }
+  }
+
+  Future<bool> _deleteAllData() async {
     final entryRepo = ref.read(entryRepositoryProvider);
+    final photoService = ref.read(photoServiceProvider);
     late final List<String> photoPaths;
     try {
       // 삭제 전에 모든 사진 파일 경로를 확보한다.
-      photoPaths = await entryRepo.getAllPhotoPaths();
+      try {
+        photoPaths = await entryRepo.getAllPhotoPaths();
+      } on CorruptDraft {
+        // Unknown draft references preserve files; explicit whole-delete can still clear rows.
+        photoPaths = const [];
+        developer.log(
+          'Photo cleanup skipped for unreadable draft',
+          name: 'SettingsController',
+        );
+      }
       await entryRepo.deleteAllEntries();
     } catch (_) {
       return false;
     }
 
-    await ref.read(todayControllerProvider.notifier).resetAfterDelete();
+    if (ref.mounted) {
+      try {
+        await ref.read(todayControllerProvider.notifier).resetAfterDelete();
+      } catch (e, stack) {
+        developer.log(
+          'Post-delete UI refresh failed',
+          error: e,
+          stackTrace: stack,
+        );
+      }
+    }
     // 삭제한 live 초안은 더 이상 정리 후보를 보호하지 않는다.
-    final photoService = ref.read(photoServiceProvider);
     for (final path in photoPaths) {
       await photoService.deleteUnreferencedPhoto(
         path,
         readReferences: entryRepo.getAllPhotoPaths,
-        retainedPaths: _retainedTodayDraftPaths(),
+        retainedPaths: ref.mounted ? _retainedTodayDraftPaths() : const [],
       );
     }
 
-    ref.read(journalChangesProvider.notifier).markChanged();
+    if (ref.mounted) ref.read(journalChangesProvider.notifier).markChanged();
     return true;
   }
 

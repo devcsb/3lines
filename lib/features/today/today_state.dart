@@ -23,6 +23,7 @@ class TodayState {
   final DailyEntry? existingEntry;
   final bool isSaving;
   final bool isCancelling;
+  final bool isSwitchingDate;
   final DailyEntry? oneYearAgoEntry;
   final DailyEntry? sixMonthsAgoEntry;
   final DailyEntry? oneMonthAgoEntry;
@@ -51,6 +52,7 @@ class TodayState {
     this.existingEntry,
     this.isSaving = false,
     this.isCancelling = false,
+    this.isSwitchingDate = false,
     this.oneYearAgoEntry,
     this.sixMonthsAgoEntry,
     this.oneMonthAgoEntry,
@@ -108,6 +110,7 @@ class TodayState {
     DailyEntry? Function()? existingEntry,
     bool? isSaving,
     bool? isCancelling,
+    bool? isSwitchingDate,
     DailyEntry? Function()? oneYearAgoEntry,
     DailyEntry? Function()? sixMonthsAgoEntry,
     DailyEntry? Function()? oneMonthAgoEntry,
@@ -138,6 +141,7 @@ class TodayState {
           : this.existingEntry,
       isSaving: isSaving ?? this.isSaving,
       isCancelling: isCancelling ?? this.isCancelling,
+      isSwitchingDate: isSwitchingDate ?? this.isSwitchingDate,
       oneYearAgoEntry: oneYearAgoEntry != null
           ? oneYearAgoEntry()
           : this.oneYearAgoEntry,

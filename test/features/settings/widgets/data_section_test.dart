@@ -129,8 +129,14 @@ void main() {
     await mount(tester, () async => null);
 
     expect(find.text('텍스트 기록 내보내기 (JSON)'), findsOneWidget);
-    expect(find.text('JSON은 암호화되지 않은 평문이에요. 사진 파일, 설정, 초안은 포함되지 않아요'), findsOneWidget);
-    expect(find.text('앱 삭제나 기기 분실에 대비해 텍스트 기록을 내보내고, 파일을 안전한 곳에 보관하세요'), findsOneWidget);
+    expect(
+      find.text('JSON은 암호화되지 않은 평문이에요. 사진 파일, 설정, 초안은 포함되지 않아요'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('앱 삭제나 기기 분실에 대비해 텍스트 기록을 내보내고, 파일을 안전한 곳에 보관하세요'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('사진 삭제 판정이 불명이어도 기록 삭제 결과를 과장하지 않는다', (tester) async {
@@ -159,7 +165,9 @@ void main() {
     final changesBefore = container.read(journalChangesProvider);
 
     await tester.ensureVisible(find.text('모든 데이터 삭제'));
-    await tester.tap(find.text('모든 데이터 삭제'));
+    await tester.runAsync(() async {
+      await tester.tap(find.text('모든 데이터 삭제'));
+    });
     await tester.pumpAndSettle();
 
     const confirmation =
@@ -182,7 +190,10 @@ void main() {
     await tester.ensureVisible(find.text('다음'));
     expect(tester.getRect(find.text('취소')).bottom, lessThanOrEqualTo(320));
     expect(tester.getRect(find.text('다음')).bottom, lessThanOrEqualTo(320));
-    await tester.tap(find.text('다음'));
+    await tester.runAsync(() async {
+      await tester.tap(find.text('다음'));
+      await Future<void>.delayed(Duration.zero);
+    });
     await tester.pumpAndSettle();
 
     expect(find.text('삭제 확인'), findsOneWidget);
@@ -192,9 +203,24 @@ void main() {
       find.widgetWithText(TextButton, '삭제'),
     );
     expect(deleteButton.onPressed, isNotNull);
-    await tester.tap(find.widgetWithText(TextButton, '삭제'));
+    await tester.ensureVisible(find.widgetWithText(TextButton, '삭제'));
+    await tester.runAsync(() async {
+      await tester.tap(find.widgetWithText(TextButton, '삭제'));
+    });
     await tester.pump();
-    await tester.runAsync(() => photoService.referenceCheckCompleted.future);
+    // Native SQLite와 provider 재생성의 fake-zone continuation을 번갈아 진행한다.
+    // Today listener를 붙이지 않고 실제 사진 정리 진입을 기다린다.
+    for (
+      var attempt = 0;
+      attempt < 30 && !photoService.referenceCheckCompleted.isCompleted;
+      attempt++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    expect(photoService.referenceCheckCompleted.isCompleted, isTrue);
     await tester.pump();
     await flush(tester);
 

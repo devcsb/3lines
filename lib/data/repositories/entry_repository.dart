@@ -35,8 +35,47 @@ class EntryRepository {
     final row = await (_db.select(
       _db.settings,
     )..where((t) => t.key.equals('$_draftPrefix$date'))).getSingleOrNull();
-    return row == null ? null : JournalDraft.decode(row.value, date: date);
+    return row == null ? null : _decodeDraft(row.key, row.value);
   }
+
+  JournalDraft _decodeDraft(String key, String payload) {
+    final date = key.substring(_draftPrefix.length);
+    try {
+      return JournalDraft.decode(payload, date: date);
+    } on FormatException {
+      throw CorruptDraft(
+        date: date,
+        key: key,
+        rawPayload: payload,
+        epoch: _journalEpoch,
+      );
+    }
+  }
+
+  Future<void> discardCorruptDraft(CorruptDraft damaged) =>
+      _queueDraft(() async {
+        _checkEpoch(damaged.epoch);
+        if (damaged.key != '$_draftPrefix${damaged.date}')
+          throw const StaleDraft();
+        await _db.transaction(() async {
+          final row = await (_db.select(
+            _db.settings,
+          )..where((t) => t.key.equals(damaged.key))).getSingleOrNull();
+          if (row == null || row.value != damaged.rawPayload)
+            throw const StaleDraft();
+          try {
+            JournalDraft.decode(row.value, date: damaged.date);
+            throw const StaleDraft();
+          } on FormatException {
+            await (_db.delete(_db.settings)..where(
+                  (t) =>
+                      t.key.equals(damaged.key) &
+                      t.value.equals(damaged.rawPayload),
+                ))
+                .go();
+          }
+        });
+      });
 
   Future<JournalDraft?> loadDraft(String date) =>
       _queueDraft(() => _readDraft(date));
@@ -51,14 +90,7 @@ class EntryRepository {
                   t.key.isSmallerThanValue('draft_v1;'),
             ))
             .get();
-    final drafts = rows
-        .map(
-          (row) => JournalDraft.decode(
-            row.value,
-            date: row.key.substring(_draftPrefix.length),
-          ),
-        )
-        .toList();
+    final drafts = rows.map((row) => _decodeDraft(row.key, row.value)).toList();
     drafts.sort((a, b) => b.date.compareTo(a.date));
     return drafts;
   }

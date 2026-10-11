@@ -27,6 +27,28 @@ class GateRepository extends EntryRepository {
   Completer<void>? saveRelease;
   Completer<void>? storeStarted;
   Completer<void>? storeRelease;
+  Completer<void>? queryStarted;
+  Completer<void>? queryRelease;
+  Completer<void>? metadataStarted;
+  Completer<void>? metadataRelease;
+  bool failMetadata = false;
+  @override
+  Future<({int count, bool usedGraceDay})> getCurrentStreakWithGrace() async {
+    if (metadataStarted != null && !metadataStarted!.isCompleted)
+      metadataStarted!.complete();
+    await metadataRelease?.future;
+    if (failMetadata) throw StateError('test metadata failure');
+    return super.getCurrentStreakWithGrace();
+  }
+
+  @override
+  Future<DailyEntry?> getEntryByDate(String date) async {
+    if (queryStarted != null && !queryStarted!.isCompleted)
+      queryStarted!.complete();
+    await queryRelease?.future;
+    return super.getEntryByDate(date);
+  }
+
   @override
   Future<void> saveEntry(
     DailyEntry entry, {
@@ -358,5 +380,219 @@ void main() {
       '2026-10-12',
     );
     expect((await entries.loadDraft('2026-10-11'))!.answers[0], '보존할 입력');
+  });
+  test('날짜 조회 중 controller 입력을 잠그고 snapshot을 되돌리지 않는다', () async {
+    container.dispose();
+    final gate = GateRepository(db, clock: clock);
+    entries = gate;
+    container = open();
+    await container.read(todayControllerProvider.future);
+    final c = container.read(todayControllerProvider.notifier);
+    c.setAnswer(0, '목록 snapshot');
+    await entries.listDrafts();
+    gate.queryStarted = Completer();
+    gate.queryRelease = Completer();
+    final switching = c.selectDate('2026-10-11');
+    await gate.queryStarted!.future;
+    c.setAnswer(0, '조회 중 변경');
+    expect(
+      container.read(todayControllerProvider).value!.answer1,
+      '목록 snapshot',
+    );
+    expect(await c.retryDraftStorage(), isFalse);
+    gate.queryRelease!.complete();
+    await switching;
+    expect(
+      container.read(todayControllerProvider).value!.answer1,
+      '목록 snapshot',
+    );
+  });
+  test('취소 중 보관 재시도는 폐기한 초안을 restart에서 부활시키지 않는다', () async {
+    final photo = FakePhotoService();
+    await entries.saveEntry(
+      DailyEntry(
+        date: '2026-10-11',
+        emotion: 3,
+        answer1: '원본',
+        photoPath: '/saved.jpg',
+      ),
+    );
+    container.dispose();
+    container = ProviderContainer(
+      overrides: [
+        appClockProvider.overrideWithValue(clock),
+        entryRepositoryProvider.overrideWithValue(entries),
+        settingsRepositoryProvider.overrideWithValue(settings),
+        photoServiceProvider.overrideWithValue(photo),
+      ],
+    );
+    container.listen(todayControllerProvider, (_, _) {});
+    await container.read(todayControllerProvider.future);
+    await db.customStatement(
+      "CREATE TRIGGER fail_store BEFORE INSERT ON settings BEGIN SELECT RAISE(ABORT, 'test failure'); END",
+    );
+    final c = container.read(todayControllerProvider.notifier);
+    c.toggleEdit();
+    await c.attachPhoto('/new.jpg');
+    expect(
+      container.read(todayControllerProvider).value!.storageStatus,
+      DraftStorageStatus.failed,
+    );
+    await db.customStatement('DROP TRIGGER fail_store');
+    photo.deleteStarted = Completer();
+    photo.deleteGate = Completer();
+    final cancelling = c.cancelEdit();
+    await photo.deleteStarted!.future;
+    expect(await c.retryDraftStorage(), isFalse);
+    photo.deleteGate!.complete();
+    await cancelling;
+    expect(await entries.listDrafts(), isEmpty);
+    container.dispose();
+    container = open();
+    expect(
+      (await container.read(todayControllerProvider.future)).isEditing,
+      isFalse,
+    );
+  });
+  test('Today 미구독 전체삭제는 provider dispose에도 DB 성공과 후처리를 유지한다', () async {
+    container.dispose();
+    container = ProviderContainer(
+      overrides: [
+        appClockProvider.overrideWithValue(clock),
+        entryRepositoryProvider.overrideWithValue(entries),
+        settingsRepositoryProvider.overrideWithValue(settings),
+        photoServiceProvider.overrideWithValue(FakePhotoService()),
+      ],
+    );
+    await entries.saveEntry(
+      DailyEntry(date: '2026-10-11', emotion: 3, answer1: '삭제할 기록'),
+    );
+    await container.read(settingsControllerProvider.future);
+    final deleting = container
+        .read(settingsControllerProvider.notifier)
+        .deleteAllData();
+    await container.pump();
+    expect(await deleting, isTrue);
+    expect(await entries.getTotalCount(), 0);
+  });
+  test('미구독 reset API는 느린 metadata 중 자기 수명을 유지한다', () async {
+    container.dispose();
+    final gate = GateRepository(db, clock: clock);
+    entries = gate;
+    container = ProviderContainer(
+      overrides: [
+        appClockProvider.overrideWithValue(clock),
+        entryRepositoryProvider.overrideWithValue(entries),
+        settingsRepositoryProvider.overrideWithValue(settings),
+      ],
+    );
+    gate.metadataStarted = Completer();
+    gate.metadataRelease = Completer();
+    final resetting = container
+        .read(todayControllerProvider.notifier)
+        .resetAfterDelete();
+    await gate.metadataStarted!.future;
+    await container.pump();
+    gate.metadataRelease!.complete();
+    await resetting;
+  });
+  test('container 자체가 종료돼도 진행 중 reset은 UI 쓰기 없이 종료한다', () async {
+    container.dispose();
+    final gate = GateRepository(db, clock: clock);
+    container = ProviderContainer(
+      overrides: [
+        appClockProvider.overrideWithValue(clock),
+        entryRepositoryProvider.overrideWithValue(gate),
+        settingsRepositoryProvider.overrideWithValue(settings),
+      ],
+    );
+    gate.metadataStarted = Completer();
+    gate.metadataRelease = Completer();
+    final resetting = container
+        .read(todayControllerProvider.notifier)
+        .resetAfterDelete();
+    await gate.metadataStarted!.future;
+    container.dispose();
+    gate.metadataRelease!.complete();
+    await resetting;
+    container = open();
+  });
+  test('DB 삭제 뒤 metadata 실패는 삭제 성공과 사진 후처리를 되돌리지 않는다', () async {
+    container.dispose();
+    final gate = GateRepository(db, clock: clock);
+    entries = gate;
+    final photos = FakePhotoService();
+    container = ProviderContainer(
+      overrides: [
+        appClockProvider.overrideWithValue(clock),
+        entryRepositoryProvider.overrideWithValue(gate),
+        settingsRepositoryProvider.overrideWithValue(settings),
+        photoServiceProvider.overrideWithValue(photos),
+      ],
+    );
+    await gate.saveEntry(
+      DailyEntry(date: '2026-10-11', emotion: 3, photoPath: '/old/photo.jpg'),
+    );
+    await container.read(settingsControllerProvider.future);
+    gate.failMetadata = true;
+    expect(
+      await container.read(settingsControllerProvider.notifier).deleteAllData(),
+      isTrue,
+    );
+    expect(await gate.getTotalCount(), 0);
+    expect(photos.deletedPaths, contains('/old/photo.jpg'));
+  });
+  test('날짜 왕복과 refresh는 현재 시계의 회고와 최근 감정을 갱신한다', () async {
+    await entries.saveEntry(
+      DailyEntry(date: '2025-10-11', emotion: 4, answer1: '일년 전'),
+    );
+    await entries.saveEntry(
+      DailyEntry(date: '2026-04-11', emotion: 3, answer1: '반년 전'),
+    );
+    await entries.saveEntry(
+      DailyEntry(date: '2026-09-11', emotion: 2, answer1: '한달 전'),
+    );
+    container.dispose();
+    container = open();
+    final initial = await container.read(todayControllerProvider.future);
+    expect(initial.oneYearAgoEntry!.answer1, '일년 전');
+    final c = container.read(todayControllerProvider.notifier);
+    c.setAnswer(0, '내 입력');
+    await c.selectDate('2026-10-10');
+    await c.selectDate('2026-10-11');
+    var live = container.read(todayControllerProvider).value!;
+    expect(live.oneYearAgoEntry?.answer1, '일년 전');
+    expect(live.sixMonthsAgoEntry?.answer1, '반년 전');
+    expect(live.oneMonthAgoEntry?.answer1, '한달 전');
+    await entries.saveEntry(
+      DailyEntry(date: '2025-10-11', emotion: 5, answer1: '바뀐 일년 전'),
+    );
+    await entries.saveEntry(
+      DailyEntry(date: '2026-10-10', emotion: 5, answer1: '어제'),
+    );
+    await c.refresh();
+    live = container.read(todayControllerProvider).value!;
+    expect(live.oneYearAgoEntry?.answer1, '바뀐 일년 전');
+    expect(live.recentEmotions.map((e) => e.emotion), contains(5));
+    expect(live.answer1, '내 입력');
+    await entries.deleteEntry('2025-10-11');
+    await c.refresh();
+    expect(
+      container.read(todayControllerProvider).value!.oneYearAgoEntry,
+      isNull,
+    );
+    clock.value = DateTime(2026, 10, 12);
+    await entries.saveEntry(
+      DailyEntry(date: '2025-10-12', emotion: 3, answer1: '새 날짜 회고'),
+    );
+    await c.refresh();
+    expect(
+      container.read(todayControllerProvider).value!.oneYearAgoEntry?.answer1,
+      '새 날짜 회고',
+    );
+    expect(
+      container.read(todayControllerProvider).value!.draftDate,
+      '2026-10-11',
+    );
   });
 }

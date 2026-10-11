@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,6 +18,7 @@ import 'package:three_lines/features/today/today_controller.dart';
 import 'package:three_lines/features/today/today_screen.dart';
 import 'package:three_lines/features/today/widgets/animated_save_button.dart';
 import 'package:three_lines/features/today/widgets/completion_animation.dart';
+import 'package:three_lines/features/today/widgets/prompt_card.dart';
 import '../../helpers/fake_photo_service.dart';
 
 class Clock extends AppClock {
@@ -28,6 +30,16 @@ class DelayedRepository extends EntryRepository {
   DelayedRepository(super.db, {required super.clock});
   final entered = Completer<void>();
   final release = Completer<void>();
+  Completer<void>? queryEntered;
+  Completer<void>? queryRelease;
+  @override
+  Future<DailyEntry?> getEntryByDate(String date) async {
+    if (queryEntered != null && !queryEntered!.isCompleted)
+      queryEntered!.complete();
+    await queryRelease?.future;
+    return super.getEntryByDate(date);
+  }
+
   @override
   Future<void> saveEntry(
     DailyEntry entry, {
@@ -109,6 +121,54 @@ void main() {
     });
     await tester.pumpAndSettle();
     expect(container.read(todayControllerProvider).value!.answer1, '어제 입력');
+  });
+  testWidgets('날짜 조회 중 화면 입력과 저장 및 날짜 버튼을 잠근다', (tester) async {
+    await show(tester);
+    repo.queryEntered = Completer();
+    repo.queryRelease = Completer();
+    late Future<void> switching;
+    await tester.runAsync(() async {
+      switching = container.read(todayControllerProvider.notifier).startToday();
+    });
+    for (var i = 0; i < 30 && !repo.queryEntered!.isCompleted; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    expect(repo.queryEntered!.isCompleted, isTrue);
+    await tester.pump();
+    expect(
+      tester
+          .widget<AnimatedSaveButton>(find.byType(AnimatedSaveButton))
+          .canSave,
+      isFalse,
+    );
+    expect(
+      tester
+          .widget<TextButton>(find.widgetWithText(TextButton, '오늘 작성하기'))
+          .onPressed,
+      isNull,
+    );
+    for (final card in tester.widgetList<PromptCard>(find.byType(PromptCard))) {
+      expect(card.readOnly, isTrue);
+      expect(card.onChanged, isNull);
+    }
+    var finished = false;
+    switching.then((_) => finished = true);
+    repo.queryRelease!.complete();
+    for (var i = 0; i < 30 && !finished; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    expect(finished, isTrue);
+    await tester.pumpAndSettle();
+    expect(
+      container.read(todayControllerProvider).value!.draftDate,
+      '2026-10-12',
+    );
   });
   testWidgets('늦은 어제 저장의 완료 화면은 전환한 오늘에 나타나지 않는다', (tester) async {
     await show(tester);
@@ -204,6 +264,81 @@ void main() {
     expect(container.read(todayControllerProvider).value!.answer1, '외부 수정');
     await tester.runAsync(() async {
       expect(await repo.loadDraft('2026-10-12'), isNull);
+    });
+  });
+  testWidgets('손상 초안 오류 화면은 날짜를 알리고 확인 취소 후 명시 폐기만 한다', (tester) async {
+    final writer = EntryRepository(db, clock: Clock());
+    late Directory photoDirectory;
+    late File preservedPhoto;
+    await tester.runAsync(() async {
+      photoDirectory = await Directory.systemTemp.createTemp(
+        'draft-recovery-ui-',
+      );
+      preservedPhoto = await File(
+        '${photoDirectory.path}/photo.jpg',
+      ).writeAsString('fixture');
+      await writer.saveEntry(
+        DailyEntry(
+          date: '2026-10-10',
+          emotion: 3,
+          answer1: '유효 완료',
+          photoPath: preservedPhoto.path,
+        ),
+      );
+      await db.customStatement(
+        "INSERT INTO settings(key,value) VALUES ('draft_v1:2026-10-09','RAW_PRIVATE_MARKER')",
+      );
+    });
+    addTearDown(() => photoDirectory.delete(recursive: true));
+    await tester.runAsync(() async {
+      container.listen(todayControllerProvider, (_, _) {});
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: TodayScreen()),
+      ),
+    );
+    await tester.pump();
+    expect(find.textContaining('2026-10-09'), findsOneWidget);
+    expect(find.textContaining('RAW_PRIVATE_MARKER'), findsNothing);
+    await tester.runAsync(() async {
+      await tester.tap(find.text('읽지 못한 초안 폐기'));
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('돌아가기'));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      expect(
+        (await db
+                .customSelect(
+                  "SELECT value FROM settings WHERE key='draft_v1:2026-10-09'",
+                )
+                .getSingle())
+            .read<String>('value'),
+        'RAW_PRIVATE_MARKER',
+      );
+      expect(await preservedPhoto.exists(), isTrue);
+    });
+    await tester.runAsync(() async {
+      await tester.tap(find.text('읽지 못한 초안 폐기'));
+    });
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.text('이 초안만 폐기'));
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+    });
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      expect((await writer.getEntryByDate('2026-10-10'))!.answer1, '유효 완료');
+      expect((await repo.loadDraft('2026-10-11'))!.answers[0], '어제 입력');
+      expect(await preservedPhoto.exists(), isTrue);
+    });
+    expect(container.read(todayControllerProvider).value!.answer1, '어제 입력');
+    await tester.runAsync(() async {
+      container.read(todayControllerProvider.notifier).setAnswer(0, '다시 입력');
+      expect((await repo.loadDraft('2026-10-11'))!.answers[0], '다시 입력');
     });
   });
 }

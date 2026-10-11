@@ -11,6 +11,20 @@ class StaleDraft implements Exception {
   const StaleDraft();
 }
 
+/// Recovery token for one unreadable row. Raw content is never in the message.
+class CorruptDraft extends FormatException {
+  CorruptDraft({
+    required this.date,
+    required this.key,
+    required this.rawPayload,
+    required this.epoch,
+  }) : super('보관 초안을 읽을 수 없어요 ($date)');
+  final String date;
+  final String key;
+  final String rawPayload;
+  final int epoch;
+}
+
 /// Private storage format, separate from the completed-entry JSON export.
 class JournalDraft {
   JournalDraft({
@@ -74,6 +88,9 @@ class JournalDraft {
     try {
       final value = jsonDecode(payload) as Map<String, dynamic>;
       if (value['version'] is! int ||
+          !value.containsKey('emotion') ||
+          !value.containsKey('photo') ||
+          !value.containsKey('baseline') ||
           value['version'] != 1 ||
           value['date'] != date ||
           value['revision'] is! int ||
@@ -93,6 +110,7 @@ class JournalDraft {
             b['emotion'] is! int ||
             b['emotion'] < 1 ||
             b['emotion'] > 5 ||
+            !b.containsKey('photo') ||
             (b['photo'] != null && b['photo'] is! String)) {
           throw const FormatException('원본 형식 오류');
         }

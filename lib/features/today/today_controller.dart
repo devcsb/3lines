@@ -13,6 +13,14 @@ import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import 'today_state.dart';
 
+typedef _TodayMetadata = ({
+  ({int count, bool usedGraceDay}) streak,
+  DailyEntry? year,
+  DailyEntry? sixMonths,
+  DailyEntry? month,
+  List<({DateTime date, int emotion})> trend,
+});
+
 class TodayController extends AsyncNotifier<TodayState> {
   static const _milestones = [7, 30, 100, 365];
 
@@ -202,7 +210,12 @@ class TodayController extends AsyncNotifier<TodayState> {
 
   Future<bool> retryDraftStorage() async {
     final current = state.value;
-    if (current == null || current.draftRevision == 0) return false;
+    if (current == null ||
+        current.draftRevision == 0 ||
+        current.isSaving ||
+        current.isCancelling ||
+        current.isSwitchingDate)
+      return false;
     state = AsyncData(
       current.copyWith(storageStatus: DraftStorageStatus.storing),
     );
@@ -214,9 +227,10 @@ class TodayController extends AsyncNotifier<TodayState> {
 
   Future<void> selectDate(String date) async {
     final started = state.value;
-    if (started == null) return;
+    if (started == null || started.isSwitchingDate) return;
     final request = _selectionRequest + 1;
     final retain = ref.keepAlive();
+    state = AsyncData(started.copyWith(isSwitchingDate: true));
     try {
       await _selectDate(date);
     } catch (e, stack) {
@@ -224,6 +238,7 @@ class TodayController extends AsyncNotifier<TodayState> {
       if (ref.mounted &&
           request == _selectionRequest &&
           state.value?.session == started.session &&
+          state.value?.draftRevision == started.draftRevision &&
           ref.read(entryRepositoryProvider).journalEpoch == started.epoch) {
         _session = started.session;
         state = AsyncData(
@@ -234,6 +249,14 @@ class TodayController extends AsyncNotifier<TodayState> {
         );
       }
     } finally {
+      if (ref.mounted &&
+          state.value?.session == started.session &&
+          state.value?.draftRevision == started.draftRevision &&
+          state.value?.epoch == started.epoch &&
+          ref.read(entryRepositoryProvider).journalEpoch == started.epoch) {
+        _session = started.session;
+        state = AsyncData(state.value!.copyWith(isSwitchingDate: false));
+      }
       retain.close();
     }
   }
@@ -265,7 +288,13 @@ class TodayController extends AsyncNotifier<TodayState> {
     final prompts = saved == null
         ? await ref.read(settingsRepositoryProvider).getRotatingPrompts()
         : [saved.prompt1, saved.prompt2, saved.prompt3];
-    if (!ref.mounted || session != _session || epoch != repo.journalEpoch)
+    final metadata = await _readMetadata();
+    if (!ref.mounted ||
+        session != _session ||
+        epoch != repo.journalEpoch ||
+        state.value?.session != current.session ||
+        state.value?.draftRevision != current.draftRevision ||
+        request != _selectionRequest)
       return;
     var next = TodayState(
       draftDate: date,
@@ -279,8 +308,12 @@ class TodayController extends AsyncNotifier<TodayState> {
       photoPath: saved?.photoPath,
       existingEntry: saved,
       isCompleted: saved != null,
-      currentStreak: current.currentStreak,
-      usedGraceDay: current.usedGraceDay,
+      currentStreak: metadata.streak.count,
+      usedGraceDay: metadata.streak.usedGraceDay,
+      oneYearAgoEntry: metadata.year,
+      sixMonthsAgoEntry: metadata.sixMonths,
+      oneMonthAgoEntry: metadata.month,
+      recentEmotions: metadata.trend,
       draftDates: drafts.map((d) => d.date).toList(),
     );
     if (draft != null) next = _withDraft(next, draft);
@@ -292,7 +325,11 @@ class TodayController extends AsyncNotifier<TodayState> {
 
   Future<bool> reopenSavedEntry() async {
     final current = state.value;
-    if (current == null) return false;
+    if (current == null ||
+        current.isSaving ||
+        current.isCancelling ||
+        current.isSwitchingDate)
+      return false;
     try {
       await ref
           .read(entryRepositoryProvider)
@@ -312,9 +349,31 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   Future<void> resetAfterDelete() async {
-    _session = ++_nextSession;
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(build);
+    final retain = ref.keepAlive();
+    try {
+      _session = ++_nextSession;
+      final resettingSession = _session;
+      state = const AsyncLoading();
+      final result = await AsyncValue.guard(build);
+      if (ref.mounted &&
+          (_session == resettingSession || result.value?.session == _session))
+        state = result;
+    } finally {
+      retain.close();
+    }
+  }
+
+  Future<bool> discardCorruptDraft(CorruptDraft damaged) async {
+    final retain = ref.keepAlive();
+    try {
+      await ref.read(entryRepositoryProvider).discardCorruptDraft(damaged);
+      if (ref.mounted) await resetAfterDelete();
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      retain.close();
+    }
   }
 
   void setEmotion(int value) {
@@ -322,6 +381,7 @@ class TodayController extends AsyncNotifier<TodayState> {
     if (current == null ||
         current.isSaving ||
         current.isCancelling ||
+        current.isSwitchingDate ||
         (current.isCompleted && !current.isEditing) ||
         value < 1 ||
         value > 5) {
@@ -335,6 +395,7 @@ class TodayController extends AsyncNotifier<TodayState> {
     if (current == null ||
         current.isSaving ||
         current.isCancelling ||
+        current.isSwitchingDate ||
         (current.isCompleted && !current.isEditing)) {
       return;
     }
@@ -366,6 +427,7 @@ class TodayController extends AsyncNotifier<TodayState> {
         !current.canSave ||
         current.isSaving ||
         current.isCancelling ||
+        current.isSwitchingDate ||
         (current.isCompleted && !current.isEditing)) {
       return false;
     }
@@ -473,18 +535,32 @@ class TodayController extends AsyncNotifier<TodayState> {
 
   void toggleEdit() {
     final current = state.value;
-    if (current == null || current.isSaving || current.isCancelling) return;
+    if (current == null ||
+        current.isSaving ||
+        current.isCancelling ||
+        current.isSwitchingDate)
+      return;
     state = AsyncData(current.copyWith(isEditing: !current.isEditing));
   }
 
   Future<void> cancelEdit() async {
+    final retain = ref.keepAlive();
+    try {
+      await _cancelEdit();
+    } finally {
+      retain.close();
+    }
+  }
+
+  Future<void> _cancelEdit() async {
     final current = state.value;
     final saved = current?.existingEntry;
     if (current == null ||
         saved == null ||
         !current.isEditing ||
         current.isSaving ||
-        current.isCancelling) {
+        current.isCancelling ||
+        current.isSwitchingDate) {
       return;
     }
 
@@ -546,6 +622,7 @@ class TodayController extends AsyncNotifier<TodayState> {
     }
     if (current.isSaving ||
         current.isCancelling ||
+        current.isSwitchingDate ||
         (current.isCompleted && !current.isEditing)) {
       await _discardUnattachedPhoto(path);
       return;
@@ -568,6 +645,7 @@ class TodayController extends AsyncNotifier<TodayState> {
     if (current == null ||
         current.isSaving ||
         current.isCancelling ||
+        current.isSwitchingDate ||
         (current.isCompleted && !current.isEditing) ||
         current.photoPath == null) {
       return;
@@ -609,12 +687,16 @@ class TodayController extends AsyncNotifier<TodayState> {
     _scheduleMidnightRefresh();
     try {
       final repo = ref.read(entryRepositoryProvider);
-      final streak = await repo.getCurrentStreakWithGrace();
+      final metadata = await _readMetadata();
       final saved = await repo.getEntryByDate(current.draftDate);
       if (!_matches(current)) return;
       var next = current.copyWith(
-        currentStreak: streak.count,
-        usedGraceDay: streak.usedGraceDay,
+        currentStreak: metadata.streak.count,
+        usedGraceDay: metadata.streak.usedGraceDay,
+        oneYearAgoEntry: () => metadata.year,
+        sixMonthsAgoEntry: () => metadata.sixMonths,
+        oneMonthAgoEntry: () => metadata.month,
+        recentEmotions: metadata.trend,
       );
       if (!current.isDirty &&
           !current.isEditing &&
@@ -642,6 +724,25 @@ class TodayController extends AsyncNotifier<TodayState> {
         stackTrace: stack,
       );
     }
+  }
+
+  Future<_TodayMetadata> _readMetadata() async {
+    final repo = ref.read(entryRepositoryProvider);
+    final now = ref.read(appClockProvider).now();
+    final result = await Future.wait([
+      repo.getCurrentStreakWithGrace(),
+      repo.getOneYearAgoEntry(),
+      repo.getSixMonthsAgoEntry(),
+      repo.getOneMonthAgoEntry(),
+      repo.getEmotionTrend(DateTime(now.year, now.month, now.day - 6), now),
+    ]);
+    return (
+      streak: result[0] as ({int count, bool usedGraceDay}),
+      year: result[1] as DailyEntry?,
+      sixMonths: result[2] as DailyEntry?,
+      month: result[3] as DailyEntry?,
+      trend: result[4] as List<({DateTime date, int emotion})>,
+    );
   }
 
   /// Called by the view when the app returns from background.
@@ -675,4 +776,6 @@ final todayControllerProvider =
     AsyncNotifierProvider<TodayController, TodayState>(
       TodayController.new,
       isAutoDispose: true,
+      // Errors have explicit retry/recovery UI, rather than a hidden retry loop.
+      retry: (_, _) => null,
     );
