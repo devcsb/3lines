@@ -265,8 +265,9 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     final today = ref.read(todayControllerProvider).value;
     if (today == null ||
         today.epoch != ref.read(entryRepositoryProvider).journalEpoch ||
-        (today.isCompleted && !today.isEditing))
+        (today.isCompleted && !today.isEditing)) {
       return const [];
+    }
     return [?today.photoPath, ?today.existingEntry?.photoPath];
   }
 }

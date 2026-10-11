@@ -22,7 +22,7 @@ class EntryRepository {
     final result = _draftQueue.then((_) => action());
     _draftQueue = result.then<void>(
       (_) {},
-      onError: (Object _, StackTrace __) {},
+      onError: (Object _, StackTrace _) {},
     );
     return result;
   }
@@ -55,14 +55,16 @@ class EntryRepository {
   Future<void> discardCorruptDraft(CorruptDraft damaged) =>
       _queueDraft(() async {
         _checkEpoch(damaged.epoch);
-        if (damaged.key != '$_draftPrefix${damaged.date}')
+        if (damaged.key != '$_draftPrefix${damaged.date}') {
           throw const StaleDraft();
+        }
         await _db.transaction(() async {
           final row = await (_db.select(
             _db.settings,
           )..where((t) => t.key.equals(damaged.key))).getSingleOrNull();
-          if (row == null || row.value != damaged.rawPayload)
+          if (row == null || row.value != damaged.rawPayload) {
             throw const StaleDraft();
+          }
           try {
             JournalDraft.decode(row.value, date: damaged.date);
             throw const StaleDraft();
@@ -120,8 +122,9 @@ class EntryRepository {
   }) => _queueDraft(() async {
     _checkEpoch(epoch);
     final current = await _readDraft(date);
-    if (current != null && current.revision != revision)
+    if (current != null && current.revision != revision) {
       throw const StaleDraft();
+    }
     await (_db.delete(
       _db.settings,
     )..where((t) => t.key.equals('$_draftPrefix$date'))).go();

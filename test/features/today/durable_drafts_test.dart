@@ -52,8 +52,9 @@ class GateRepository extends EntryRepository {
   @override
   Future<({int count, bool usedGraceDay})> getCurrentStreakWithGrace() async {
     final release = metadataRelease;
-    if (metadataStarted != null && !metadataStarted!.isCompleted)
+    if (metadataStarted != null && !metadataStarted!.isCompleted) {
       metadataStarted!.complete();
+    }
     if (gateMetadataOnce) metadataRelease = null;
     await release?.future;
     if (failMetadata) throw StateError('test metadata failure');
@@ -62,8 +63,9 @@ class GateRepository extends EntryRepository {
 
   @override
   Future<DailyEntry?> getEntryByDate(String date) async {
-    if (queryStarted != null && !queryStarted!.isCompleted)
+    if (queryStarted != null && !queryStarted!.isCompleted) {
       queryStarted!.complete();
+    }
     await queryRelease?.future;
     return super.getEntryByDate(date);
   }

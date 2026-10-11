@@ -35,8 +35,9 @@ class DelayedRepository extends EntryRepository {
   Completer<void>? queryRelease;
   @override
   Future<DailyEntry?> getEntryByDate(String date) async {
-    if (queryEntered != null && !queryEntered!.isCompleted)
+    if (queryEntered != null && !queryEntered!.isCompleted) {
       queryEntered!.complete();
+    }
     await queryRelease?.future;
     return super.getEntryByDate(date);
   }
@@ -140,7 +141,9 @@ void main() {
         .isNotEmpty;
     final inputCount = find.byType(PromptCard).evaluate().length;
     var loaded = false;
-    container.read(todayControllerProvider.future).then((_) => loaded = true);
+    unawaited(
+      container.read(todayControllerProvider.future).then((_) => loaded = true),
+    );
     repo.queryRelease!.complete();
     for (var i = 0; i < 30 && !loaded; i++) {
       await tester.runAsync(
@@ -185,7 +188,7 @@ void main() {
       expect(card.onChanged, isNull);
     }
     var finished = false;
-    switching.then((_) => finished = true);
+    unawaited(switching.then((_) => finished = true));
     repo.queryRelease!.complete();
     for (var i = 0; i < 30 && !finished; i++) {
       await tester.runAsync(
@@ -287,8 +290,9 @@ void main() {
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
       (call) async {
-        if (call.method == 'Clipboard.setData')
+        if (call.method == 'Clipboard.setData') {
           copied = (call.arguments as Map)['text'] as String;
+        }
         return null;
       },
     );

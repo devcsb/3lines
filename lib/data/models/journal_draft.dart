@@ -108,8 +108,8 @@ class JournalDraft {
             b['id'] is! int ||
             b['date'] != date ||
             b['emotion'] is! int ||
-            b['emotion'] < 1 ||
-            b['emotion'] > 5 ||
+            (b['emotion'] as int) < 1 ||
+            (b['emotion'] as int) > 5 ||
             !b.containsKey('photo') ||
             (b['photo'] != null && b['photo'] is! String)) {
           throw const FormatException('원본 형식 오류');
