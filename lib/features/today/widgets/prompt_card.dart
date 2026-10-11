@@ -132,7 +132,7 @@ class _PromptCardState extends State<PromptCard> {
                     Text(
                       label.toUpperCase(),
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: accent,
+                        color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.2,
                       ),
@@ -176,9 +176,11 @@ class _PromptCardState extends State<PromptCard> {
                             child: Text(
                               widget.answer.isEmpty ? '—' : widget.answer,
                               style: theme.textTheme.bodyLarge?.copyWith(
-                                color: theme.colorScheme.onSurface.withValues(
-                                  alpha: widget.answer.isEmpty ? 0.3 : 0.7,
-                                ),
+                                color: widget.answer.isEmpty
+                                    ? theme.colorScheme.onSurfaceVariant
+                                    : theme.colorScheme.onSurface.withValues(
+                                        alpha: 0.7,
+                                      ),
                               ),
                             ),
                           )
@@ -215,8 +217,7 @@ class _PromptCardState extends State<PromptCard> {
                                 counterText: _isFocused ? null : '',
                                 counterStyle: theme.textTheme.bodySmall
                                     ?.copyWith(
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.3),
+                                      color: theme.colorScheme.onSurfaceVariant,
                                     ),
                               ),
                               onChanged: widget.onChanged,

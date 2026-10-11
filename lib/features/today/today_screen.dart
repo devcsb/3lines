@@ -159,6 +159,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                     final confirmed = await showDialog<bool>(
                       context: context,
                       builder: (context) => AlertDialog(
+                        scrollable: true,
                         title: const Text('읽지 못한 초안을 폐기할까요?'),
                         content: const Text(
                           '이 초안만 지워요. 저장된 기록과 다른 초안은 유지해요. 안전하게 확인할 수 없는 사진 파일은 남겨둬요.',
@@ -234,9 +235,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                             DateTime.tryParse(state.draftDate) ?? now,
                           ),
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.45,
-                            ),
+                            color: theme.colorScheme.onSurfaceVariant,
                             letterSpacing: 0.5,
                           ),
                         ),

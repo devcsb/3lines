@@ -51,9 +51,7 @@ class WidgetSection extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Text(text, style: theme.textTheme.bodySmall),
-                ),
+                Expanded(child: Text(text, style: theme.textTheme.bodySmall)),
               ],
             ),
           );
@@ -63,7 +61,7 @@ class WidgetSection extends StatelessWidget {
           '감정 칩을 누르면 앱의 오늘 화면이 열리고 감정이 미리 선택됩니다. '
           '저장은 앱에서 한 줄 이상 작성한 뒤 완료하세요.',
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ],
@@ -88,9 +86,7 @@ class WidgetSection extends StatelessWidget {
           '중간 크기에서 감정 빠른 선택이 보입니다.',
         ];
       default:
-        return const [
-          'iOS 또는 Android 기기에서 홈 화면 위젯을 추가할 수 있어요.',
-        ];
+        return const ['iOS 또는 Android 기기에서 홈 화면 위젯을 추가할 수 있어요.'];
     }
   }
 }

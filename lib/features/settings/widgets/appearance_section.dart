@@ -59,7 +59,7 @@ class AppearanceSection extends ConsumerWidget {
           child: Text(
             '액센트 테마',
             style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ),
@@ -131,66 +131,68 @@ class _AccentChip extends StatelessWidget {
       enabled: isUnlocked,
       selected: isSelected,
       label: '$label 테마${isUnlocked ? '' : ' (잠김)'}',
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 48),
-            child: AnimatedContainer(
-              duration: duration,
-              curve: AppMotion.standardCurve,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          padding: EdgeInsets.zero,
+          side: BorderSide.none,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ).copyWith(animationDuration: duration),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: AnimatedContainer(
+            duration: duration,
+            curve: AppMotion.standardCurve,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? seed.withValues(alpha: 0.15)
+                  : theme.colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
                 color: isSelected
-                    ? seed.withValues(alpha: 0.15)
-                    : theme.colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected
-                      ? seed
-                      : theme.colorScheme.outlineVariant.withValues(
-                          alpha: isUnlocked ? 0.6 : 0.3,
-                        ),
-                  width: isSelected ? 1.5 : 1.0,
-                ),
+                    ? seed
+                    : theme.colorScheme.outlineVariant.withValues(
+                        alpha: isUnlocked ? 0.6 : 0.3,
+                      ),
+                width: isSelected ? 1.5 : 1.0,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: seed.withValues(alpha: opacity),
-                      shape: BoxShape.circle,
-                    ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: seed.withValues(alpha: opacity),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
                     label,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: isUnlocked
-                          ? theme.colorScheme.onSurface.withValues(
-                              alpha: isSelected ? 0.9 : 0.65,
-                            )
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                      color: theme.colorScheme.onSurfaceVariant,
                       fontWeight: isSelected
                           ? FontWeight.w600
                           : FontWeight.normal,
                     ),
                   ),
-                  if (!isUnlocked) ...[
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.lock_outline_rounded,
-                      size: 12,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                    ),
-                  ],
+                ),
+                if (!isUnlocked) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.lock_outline_rounded,
+                    size: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ),

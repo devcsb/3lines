@@ -32,14 +32,15 @@ class PhotoAttachment extends StatelessWidget {
 
     if (readOnly) return const SizedBox.shrink();
 
-    return Row(
+    return Wrap(
+      spacing: 10,
+      runSpacing: 8,
       children: [
         _AddPhotoButton(
           icon: Icons.camera_alt_outlined,
           label: '카메라',
           onTap: onPickCamera,
         ),
-        const SizedBox(width: 10),
         _AddPhotoButton(
           icon: Icons.photo_library_outlined,
           label: '갤러리',
@@ -76,16 +77,17 @@ class _PhotoThumbnail extends StatelessWidget {
             fit: BoxFit.cover,
             errorBuilder: (_, _, _) => Container(
               width: double.infinity,
-              height: 60,
+              constraints: const BoxConstraints(minHeight: 60),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
                 child: Text(
                   '사진을 불러올 수 없어요',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -139,42 +141,22 @@ class _AddPhotoButton extends StatelessWidget {
       button: true,
       enabled: onTap != null,
       label: label,
-      child: Material(
-        color: theme.colorScheme.surfaceContainerLow,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 48),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon,
-                    size: 16,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
+      child: TextButton.icon(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          foregroundColor: theme.colorScheme.onSurfaceVariant,
+          backgroundColor: theme.colorScheme.surfaceContainerLow,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
             ),
           ),
         ),
+        icon: Icon(icon, size: 16),
+        label: Text(label, style: theme.textTheme.labelMedium),
       ),
     );
   }
