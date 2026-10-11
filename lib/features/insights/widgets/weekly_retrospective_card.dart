@@ -38,13 +38,15 @@ class WeeklyRetrospectiveCard extends StatelessWidget {
               Icon(
                 Icons.auto_awesome_rounded,
                 size: 16,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                color: theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 6),
-              Text(
-                '주간 회고',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              Expanded(
+                child: Text(
+                  '주간 회고',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
@@ -53,42 +55,41 @@ class WeeklyRetrospectiveCard extends StatelessWidget {
           Text(
             retrospective.summaryText,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+              color: theme.colorScheme.onSurface,
               height: 1.5,
             ),
           ),
           if (retrospective.bestDay != null ||
               retrospective.worstDay != null) ...[
             const SizedBox(height: 14),
-            Row(
-              children: [
-                if (retrospective.bestDay != null)
-                  Expanded(
-                    child: _DayHighlight(
-                      label: '기록 중 가장 높은 감정',
-                      date: retrospective.bestDay!.date,
-                      emotion: retrospective.bestDay!.emotion,
-                    ),
-                  ),
-                if (retrospective.bestDay != null &&
-                    retrospective.worstDay != null)
-                  Container(
-                    width: 1,
-                    height: 32,
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
-                    color: theme.colorScheme.outlineVariant.withValues(
-                      alpha: 0.3,
-                    ),
-                  ),
-                if (retrospective.worstDay != null)
-                  Expanded(
-                    child: _DayHighlight(
-                      label: '기록 중 가장 낮은 감정',
-                      date: retrospective.worstDay!.date,
-                      emotion: retrospective.worstDay!.emotion,
-                    ),
-                  ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columns =
+                    constraints.maxWidth >= 360 &&
+                        MediaQuery.textScalerOf(context).scale(14) <= 20
+                    ? 2
+                    : 1;
+                final width =
+                    (constraints.maxWidth - (columns - 1) * 16) / columns;
+                return Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  children: [
+                    if (retrospective.bestDay != null)
+                      _DayHighlight(
+                        label: '기록 중 가장 높은 감정',
+                        date: retrospective.bestDay!.date,
+                        emotion: retrospective.bestDay!.emotion,
+                      ),
+                    if (retrospective.worstDay != null)
+                      _DayHighlight(
+                        label: '기록 중 가장 낮은 감정',
+                        date: retrospective.worstDay!.date,
+                        emotion: retrospective.worstDay!.emotion,
+                      ),
+                  ].map((item) => SizedBox(width: width, child: item)).toList(),
+                );
+              },
             ),
           ],
         ],
@@ -123,24 +124,24 @@ class _DayHighlight extends StatelessWidget {
         Text(
           label,
           style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 4),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 4,
           children: [
             Container(
               width: 8,
               height: 8,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-            const SizedBox(width: 4),
             Text(
               '$dateLabel $emotionLabel',
               style: theme.textTheme.labelMedium?.copyWith(
-                color: color,
+                color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
             ),

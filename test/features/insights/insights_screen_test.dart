@@ -99,10 +99,10 @@ void main() {
       (widget) =>
           widget is Semantics && widget.properties.label == '인사이트 기간: 1주, 선택됨',
     );
-    final chip = tester.widget<AnimatedContainer>(
-      find.descendant(of: target, matching: find.byType(AnimatedContainer)),
+    final chip = tester.widget<OutlinedButton>(
+      find.descendant(of: target, matching: find.byType(OutlinedButton)),
     );
-    expect(chip.duration, Duration.zero);
+    expect(chip.style!.animationDuration, Duration.zero);
   });
 
   testWidgets('reduce-motion에서는 인사이트 해금 배너가 최종 위치에 표시된다', (tester) async {

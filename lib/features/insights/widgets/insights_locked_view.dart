@@ -73,86 +73,94 @@ class _InsightsLockedViewState extends State<InsightsLockedView>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Center(
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          return Opacity(
-            opacity: _fadeAnimation.value.clamp(0.0, 1.0),
-            child: Transform.scale(scale: _scaleAnimation.value, child: child),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Animated progress ring with icon
-              SizedBox(
-                width: 96,
-                height: 96,
-                child: AnimatedBuilder(
-                  animation: _progressAnimation,
-                  builder: (context, child) {
-                    return CustomPaint(
-                      painter: _ProgressRingPainter(
-                        progress: _progressAnimation.value,
-                        color: theme.colorScheme.primary,
-                        trackColor: theme.colorScheme.primaryContainer
-                            .withValues(alpha: 0.4),
-                      ),
-                      child: child,
-                    );
-                  },
-                  child: Center(
-                    child: Icon(
-                      Icons.auto_graph_rounded,
-                      size: 36,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                    ),
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: _fadeAnimation.value.clamp(0.0, 1.0),
+                  child: Transform.scale(
+                    scale: _scaleAnimation.value,
+                    child: child,
                   ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                '${widget.requiredCount}일 이상 기록하면\n인사이트가 열려요',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Count label
-              AnimatedBuilder(
-                animation: _progressAnimation,
-                builder: (context, _) {
-                  final animatedCount =
-                      (widget.totalCount *
-                              _progressAnimation.value /
-                              (widget.totalCount / widget.requiredCount).clamp(
-                                0.01,
-                                1.0,
-                              ))
-                          .clamp(0, widget.totalCount)
-                          .round();
-                  return Text(
-                    '$animatedCount / ${widget.requiredCount}일',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w600,
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(40),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Animated progress ring with icon
+                    SizedBox(
+                      width: 96,
+                      height: 96,
+                      child: AnimatedBuilder(
+                        animation: _progressAnimation,
+                        builder: (context, child) {
+                          return CustomPaint(
+                            painter: _ProgressRingPainter(
+                              progress: _progressAnimation.value,
+                              color: theme.colorScheme.primary,
+                              trackColor: theme.colorScheme.primaryContainer
+                                  .withValues(alpha: 0.4),
+                            ),
+                            child: child,
+                          );
+                        },
+                        child: Center(
+                          child: Icon(
+                            Icons.auto_graph_rounded,
+                            size: 36,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
                     ),
-                  );
-                },
-              ),
-              if (widget.onGoToToday != null) ...[
-                const SizedBox(height: 24),
-                FilledButton.tonal(
-                  onPressed: widget.onGoToToday,
-                  child: const Text('오늘의 기록 쓰러 가기'),
+                    const SizedBox(height: 24),
+                    Text(
+                      '${widget.requiredCount}일 이상 기록하면\n인사이트가 열려요',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Count label
+                    AnimatedBuilder(
+                      animation: _progressAnimation,
+                      builder: (context, _) {
+                        final animatedCount =
+                            (widget.totalCount *
+                                    _progressAnimation.value /
+                                    (widget.totalCount / widget.requiredCount)
+                                        .clamp(0.01, 1.0))
+                                .clamp(0, widget.totalCount)
+                                .round();
+                        return Text(
+                          '$animatedCount / ${widget.requiredCount}일',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        );
+                      },
+                    ),
+                    if (widget.onGoToToday != null) ...[
+                      const SizedBox(height: 24),
+                      FilledButton.tonal(
+                        onPressed: widget.onGoToToday,
+                        child: const Text('오늘의 기록 쓰러 가기'),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            ],
+              ),
+            ),
           ),
         ),
       ),

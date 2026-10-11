@@ -68,7 +68,7 @@ class _KeywordCloudState extends State<KeywordCloud>
       return Text(
         '아직 분석할 키워드가 부족해요',
         style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+          color: theme.colorScheme.onSurfaceVariant,
         ),
       );
     }
@@ -117,9 +117,7 @@ class _KeywordCloudState extends State<KeywordCloud>
                       entry.key,
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontSize: 12 + (intensity * 3),
-                        color: theme.colorScheme.primary.withValues(
-                          alpha: intensity,
-                        ),
+                        color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: intensity > 0.6
                             ? FontWeight.w600
                             : FontWeight.normal,

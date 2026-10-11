@@ -88,9 +88,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                         padding: const EdgeInsets.only(left: 8),
                         child: Icon(
                           Icons.search_rounded,
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.4,
-                          ),
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                       trailing: [
@@ -141,27 +139,38 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                     // Period toggle
                     Semantics(
                       label: '타임라인 기간 선택',
-                      child: SegmentedButton<TimelinePeriod>(
-                        segments: const [
-                          ButtonSegment(
-                            value: TimelinePeriod.weeks12,
-                            label: Text('12주'),
-                          ),
-                          ButtonSegment(
-                            value: TimelinePeriod.months6,
-                            label: Text('6개월'),
-                          ),
-                          ButtonSegment(
-                            value: TimelinePeriod.year1,
-                            label: Text('1년'),
-                          ),
-                        ],
-                        selected: {state.period},
-                        onSelectionChanged: (selection) {
-                          ref
-                              .read(timelineControllerProvider.notifier)
-                              .setPeriod(selection.first);
-                        },
+                      child: LayoutBuilder(
+                        builder: (context, constraints) =>
+                            SegmentedButton<TimelinePeriod>(
+                              direction:
+                                  constraints.maxWidth < 480 &&
+                                      MediaQuery.textScalerOf(
+                                            context,
+                                          ).scale(14) >
+                                          20
+                                  ? Axis.vertical
+                                  : Axis.horizontal,
+                              segments: const [
+                                ButtonSegment(
+                                  value: TimelinePeriod.weeks12,
+                                  label: Text('12주'),
+                                ),
+                                ButtonSegment(
+                                  value: TimelinePeriod.months6,
+                                  label: Text('6개월'),
+                                ),
+                                ButtonSegment(
+                                  value: TimelinePeriod.year1,
+                                  label: Text('1년'),
+                                ),
+                              ],
+                              selected: {state.period},
+                              onSelectionChanged: (selection) {
+                                ref
+                                    .read(timelineControllerProvider.notifier)
+                                    .setPeriod(selection.first);
+                              },
+                            ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -254,7 +263,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
           child: Text(
             "'${state.searchQuery}'에 대한 결과가 없어요",
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ),
@@ -269,7 +278,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
               ? '최근 100개 표시'
               : '${state.searchResults.length}개의 결과',
           style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 12),
@@ -317,9 +326,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                             Text(
                               du.formatDateString(entry.date),
                               style: theme.textTheme.labelMedium?.copyWith(
-                                color: theme.colorScheme.onSurface.withValues(
-                                  alpha: 0.5,
-                                ),
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -339,9 +346,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                       Icon(
                         Icons.chevron_right_rounded,
                         size: 20,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.3,
-                        ),
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ],
                   ),

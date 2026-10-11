@@ -43,5 +43,8 @@ ThemeData uiRenderTheme(ThemeData theme) {
     textButtonTheme: TextButtonThemeData(
       style: korean(theme.textButtonTheme.style!),
     ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: korean(theme.segmentedButtonTheme.style!),
+    ),
   );
 }

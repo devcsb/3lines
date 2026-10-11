@@ -106,9 +106,7 @@ class _StreakBadgeState extends State<StreakBadge>
                     Text(
                       '현재 연속',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.5,
-                        ),
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -137,9 +135,7 @@ class _StreakBadgeState extends State<StreakBadge>
                       Text(
                         '최장 기록',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.5,
-                          ),
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],

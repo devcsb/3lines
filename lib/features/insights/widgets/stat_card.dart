@@ -95,8 +95,8 @@ class _StatCardState extends State<StatCard>
                 ),
               ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
@@ -112,7 +112,7 @@ class _StatCardState extends State<StatCard>
                       color: theme.colorScheme.primary,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 16),
                   // Animated value
                   numericValue != null
                       ? _AnimatedValue(
@@ -133,7 +133,7 @@ class _StatCardState extends State<StatCard>
                   Text(
                     widget.title,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],

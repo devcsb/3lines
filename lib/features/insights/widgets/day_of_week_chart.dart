@@ -32,6 +32,8 @@ class DayOfWeekChart extends StatelessWidget {
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
+                reservedSize:
+                    MediaQuery.textScalerOf(context).scale(12) * 1.5 + 8,
                 getTitlesWidget: (value, _) {
                   final weekday = value.toInt() + 1;
                   return Padding(

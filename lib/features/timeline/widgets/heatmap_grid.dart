@@ -159,10 +159,7 @@ class _HeatmapGridState extends State<HeatmapGrid>
                         child: Text(
                           dayLabels[i],
                           style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 10,
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.5,
-                            ),
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),

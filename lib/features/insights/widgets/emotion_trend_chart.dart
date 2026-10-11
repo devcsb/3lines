@@ -89,8 +89,8 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: MediaQuery.textScalerOf(context).scale(48),
+                height: MediaQuery.textScalerOf(context).scale(48),
                 decoration: BoxDecoration(
                   color:
                       AppColors.emotionColors[data.first.emotion]?.withValues(
@@ -103,7 +103,7 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
                   child: Text(
                     '${data.first.emotion}',
                     style: theme.textTheme.headlineSmall?.copyWith(
-                      color: AppColors.emotionColors[data.first.emotion],
+                      color: theme.colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -113,7 +113,7 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
               Text(
                 '${AppColors.emotionLabels[data.first.emotion]} · ${firstDate.month}/${firstDate.day}',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -215,15 +215,15 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
-                  reservedSize: 30,
+                  reservedSize:
+                      MediaQuery.textScalerOf(context).scale(12) * 2.5 + 8,
                   interval: 1,
                   getTitlesWidget: (value, _) {
                     if (value < 1 || value > 5) return const SizedBox();
                     return Text(
                       AppColors.emotionLabels[value.toInt()] ?? '',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: AppColors.emotionColors[value.toInt()],
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                       ),
                     );
@@ -233,7 +233,8 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
-                  reservedSize: 24,
+                  reservedSize:
+                      MediaQuery.textScalerOf(context).scale(12) * 1.5 + 8,
                   interval: bottomInterval,
                   getTitlesWidget: (value, _) {
                     final dayOffset = value.toInt();
@@ -245,9 +246,7 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         '${date.month}/${date.day}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
-                        ),
+                        style: theme.textTheme.bodySmall,
                       ),
                     );
                   },
@@ -264,6 +263,8 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
             lineBarsData: lineBars,
             lineTouchData: LineTouchData(
               touchTooltipData: LineTouchTooltipData(
+                getTooltipColor: (_) =>
+                    theme.colorScheme.surfaceContainerHighest,
                 getTooltipItems: (touchedSpots) {
                   return touchedSpots.map((spot) {
                     final dayOffset = spot.x.toInt();

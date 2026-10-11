@@ -13,7 +13,7 @@ class GratitudeKeywordsList extends StatelessWidget {
       return Text(
         '아직 분석할 키워드가 부족해요',
         style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+          color: theme.colorScheme.onSurfaceVariant,
         ),
       );
     }
@@ -47,7 +47,7 @@ class GratitudeKeywordsList extends StatelessWidget {
               Text(
                 '$count회',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/default_prompts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/utils/date_utils.dart' as du;
 import '../../../data/models/daily_entry.dart';
 import '../../../data/repositories/entry_repository.dart';
@@ -87,6 +88,10 @@ class _EntryDetailSheetState extends ConsumerState<EntryDetailSheet> {
 
   void _move(int index) {
     if (_navigating || _window[index] == null) return;
+    if (AppMotion.reduceMotion(context)) {
+      _pageController.jumpToPage(index);
+      return;
+    }
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 250),
@@ -214,7 +219,7 @@ class _EntryDetailContent extends StatelessWidget {
                     Text(
                       emotionLabel,
                       style: theme.textTheme.labelMedium?.copyWith(
-                        color: emotionColor,
+                        color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -226,7 +231,7 @@ class _EntryDetailContent extends StatelessWidget {
                 IconButton(
                   icon: Icon(
                     Icons.delete_outline_rounded,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+                    color: theme.colorScheme.onSurfaceVariant,
                     size: 20,
                   ),
                   tooltip: '삭제',
@@ -281,20 +286,19 @@ class _EntryDetailContent extends StatelessWidget {
                   Icon(
                     Icons.chevron_left_rounded,
                     size: 16,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 Text(
                   '스와이프로 탐색',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    fontSize: 10,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
                 if (hasNext)
                   Icon(
                     Icons.chevron_right_rounded,
                     size: 16,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
               ],
             ),
@@ -399,26 +403,25 @@ class _EntryDetailContent extends StatelessWidget {
           Text(
             category.label.toUpperCase(),
             style: theme.textTheme.labelSmall?.copyWith(
-              color: accent.withValues(alpha: 0.7),
+              color: theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
-              fontSize: 10,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             question,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             answer.isEmpty ? '—' : answer,
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(
-                alpha: answer.isEmpty ? 0.25 : 0.8,
-              ),
+              color: answer.isEmpty
+                  ? theme.colorScheme.onSurfaceVariant
+                  : theme.colorScheme.onSurface,
               height: 1.5,
             ),
           ),

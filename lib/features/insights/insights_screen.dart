@@ -80,11 +80,13 @@ class InsightsScreen extends ConsumerWidget {
                       _CongratsBanner(requiredCount: state.requiredCount),
 
                     // Period selector + weekly delta
-                    Row(
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Expanded(child: _PeriodSelector(period: state.period)),
+                        _PeriodSelector(period: state.period),
                         if (state.weeklyDelta != null) ...[
-                          const SizedBox(width: 12),
                           _WeeklyDeltaBadge(delta: state.weeklyDelta!),
                         ],
                       ],
@@ -112,49 +114,65 @@ class InsightsScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
 
                     // Stats grid
-                    GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: 1.3,
-                      children: [
-                        StaggeredFadeIn(
-                          index: 1,
-                          child: StatCard(
-                            title: '평균 감정',
-                            value:
-                                state.averageEmotion?.toStringAsFixed(1) ??
-                                '기록 없음',
-                            icon: Icons.favorite_rounded,
-                          ),
-                        ),
-                        StaggeredFadeIn(
-                          index: 2,
-                          child: StatCard(
-                            title: '현재 스트릭',
-                            value: '${state.currentStreak}일',
-                            icon: Icons.local_fire_department_rounded,
-                          ),
-                        ),
-                        StaggeredFadeIn(
-                          index: 3,
-                          child: StatCard(
-                            title: '총 기록',
-                            value: '${state.totalCount}개',
-                            icon: Icons.description_outlined,
-                          ),
-                        ),
-                        StaggeredFadeIn(
-                          index: 4,
-                          child: StatCard(
-                            title: '선택 기간 기록',
-                            value: '${state.emotionTrend.length}일',
-                            icon: Icons.calendar_today_rounded,
-                          ),
-                        ),
-                      ],
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final columns =
+                            constraints.maxWidth >= 360 &&
+                                MediaQuery.textScalerOf(context).scale(14) <= 20
+                            ? 2
+                            : 1;
+                        final width =
+                            (constraints.maxWidth - (columns - 1) * 10) /
+                            columns;
+                        return Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children:
+                              [
+                                    StaggeredFadeIn(
+                                      index: 1,
+                                      child: StatCard(
+                                        title: '평균 감정',
+                                        value:
+                                            state.averageEmotion
+                                                ?.toStringAsFixed(1) ??
+                                            '기록 없음',
+                                        icon: Icons.favorite_rounded,
+                                      ),
+                                    ),
+                                    StaggeredFadeIn(
+                                      index: 2,
+                                      child: StatCard(
+                                        title: '현재 스트릭',
+                                        value: '${state.currentStreak}일',
+                                        icon:
+                                            Icons.local_fire_department_rounded,
+                                      ),
+                                    ),
+                                    StaggeredFadeIn(
+                                      index: 3,
+                                      child: StatCard(
+                                        title: '총 기록',
+                                        value: '${state.totalCount}개',
+                                        icon: Icons.description_outlined,
+                                      ),
+                                    ),
+                                    StaggeredFadeIn(
+                                      index: 4,
+                                      child: StatCard(
+                                        title: '선택 기간 기록',
+                                        value: '${state.emotionTrend.length}일',
+                                        icon: Icons.calendar_today_rounded,
+                                      ),
+                                    ),
+                                  ]
+                                  .map(
+                                    (card) =>
+                                        SizedBox(width: width, child: card),
+                                  )
+                                  .toList(),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 16),
@@ -216,7 +234,7 @@ class InsightsScreen extends ConsumerWidget {
 
                     // Monthly PDF report button
                     const SizedBox(height: 20),
-                    StaggeredFadeIn(index: 10, child: const _PdfReportButton()),
+                    const StaggeredFadeIn(index: 10, child: _PdfReportButton()),
 
                     const SizedBox(height: 32),
                   ],
@@ -257,7 +275,7 @@ class _SectionCard extends StatelessWidget {
           Text(
             title,
             style: theme.textTheme.titleSmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 14),
@@ -354,7 +372,7 @@ class _CongratsBannerState extends State<_CongratsBanner>
               Text(
                 '${widget.requiredCount}일 기록을 축하해요',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -405,7 +423,7 @@ class _PeriodSelector extends ConsumerWidget {
   }
 }
 
-/// Custom period chip for a more refined look than ChoiceChip.
+/// Native focusable period control with explicit selected semantics.
 class _PeriodChip extends StatelessWidget {
   const _PeriodChip({
     required this.label,
@@ -420,47 +438,29 @@ class _PeriodChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final ts = Theme.of(context).textTheme;
-    final duration = AppMotion.durationFor(context, AppMotion.micro);
 
     return Semantics(
       container: true,
       button: true,
       selected: selected,
       label: '인사이트 기간: $label${selected ? ', 선택됨' : ''}',
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () {
-            HapticService.selection();
-            onTap();
-          },
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 48),
-            child: AnimatedContainer(
-              duration: duration,
-              curve: AppMotion.standardCurve,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: selected ? cs.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: selected ? cs.primary : cs.outlineVariant,
-                ),
-              ),
-              child: Text(
-                label,
-                style: ts.labelMedium?.copyWith(
-                  color: selected
-                      ? cs.onPrimary
-                      : cs.onSurface.withValues(alpha: 0.6),
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                ),
-              ),
-            ),
+      child: OutlinedButton(
+        onPressed: () {
+          HapticService.selection();
+          onTap();
+        },
+        style: OutlinedButton.styleFrom(
+          animationDuration: AppMotion.durationFor(context, AppMotion.micro),
+          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          backgroundColor: selected ? cs.primary : Colors.transparent,
+          foregroundColor: selected ? cs.onPrimary : cs.onSurfaceVariant,
+          side: BorderSide(color: selected ? cs.primary : cs.outlineVariant),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
         ),
+        child: Text(label),
       ),
     );
   }
@@ -478,11 +478,7 @@ class _WeeklyDeltaBadge extends StatelessWidget {
     final isPositive = delta > 0;
     final isNeutral = delta.abs() < 0.1;
 
-    final color = isNeutral
-        ? theme.colorScheme.onSurface.withValues(alpha: 0.4)
-        : isPositive
-        ? const Color(0xFF5B8A6A)
-        : const Color(0xFFC4736A);
+    final color = theme.colorScheme.onSurfaceVariant;
 
     final icon = isNeutral
         ? Icons.remove_rounded
@@ -601,20 +597,14 @@ class _PdfReportButtonState extends ConsumerState<_PdfReportButton> {
       button: true,
       enabled: !_generating,
       label: '월간 리포트 PDF 만들기',
-      child: GestureDetector(
-        onTap: _generating ? null : _generateReport,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton(
+          onPressed: _generating ? null : _generateReport,
+          child: Wrap(
+            spacing: 8,
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               if (_generating)
                 SizedBox(
@@ -631,7 +621,6 @@ class _PdfReportButtonState extends ConsumerState<_PdfReportButton> {
                   size: 18,
                   color: theme.colorScheme.primary,
                 ),
-              const SizedBox(width: 8),
               Text(
                 _generating ? '리포트 생성 중...' : '월간 리포트 PDF',
                 style: theme.textTheme.labelLarge?.copyWith(
