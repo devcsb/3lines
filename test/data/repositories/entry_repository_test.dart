@@ -46,6 +46,94 @@ void main() {
   final allEnd = DateTime(2030, 12, 31);
 
   group('getTodayEntry', () {
+    test('겹치는 유예 구간의 최장은 네 기록이다', () async {
+      repo = EntryRepository(db, clock: _FixedClock(DateTime(2026, 3, 7)));
+      for (final day in [1, 3, 4, 6, 7]) {
+        await repo.saveEntry(
+          makeEntry('2026-03-${day.toString().padLeft(2, '0')}'),
+        );
+      }
+      expect(await repo.getLongestStreak(), 4);
+    });
+
+    test('이력 끝은 유예가 아니고 실제 중간 하루만 유예다', () async {
+      repo = EntryRepository(db, clock: _FixedClock(DateTime(2026, 3, 7)));
+      for (final day in [5, 6, 7]) {
+        await repo.saveEntry(makeEntry('2026-03-0$day'));
+      }
+      expect(await repo.getCurrentStreakWithGrace(), (
+        count: 3,
+        usedGraceDay: false,
+      ));
+      await repo.saveEntry(makeEntry('2026-03-03'));
+      expect(await repo.getCurrentStreakWithGrace(), (
+        count: 4,
+        usedGraceDay: true,
+      ));
+    });
+
+    test('400일과 3년 이전 기록도 최장과 현재 계산에 포함한다', () async {
+      final today = DateTime(2026, 3, 7);
+      repo = EntryRepository(db, clock: _FixedClock(today));
+      for (var i = 0; i < 410; i++) {
+        await repo.saveEntry(
+          makeEntry(du.dateToString(today.subtract(Duration(days: i)))),
+        );
+      }
+      expect((await repo.getCurrentStreakWithGrace()).count, 410);
+      expect(await repo.getLongestStreak(), 410);
+      await repo.deleteAllEntries();
+      for (final day in [1, 2, 3]) {
+        await repo.saveEntry(makeEntry('2020-03-0$day'));
+      }
+      expect(await repo.getLongestStreak(), 3);
+    });
+
+    test('주간 회고는 오늘 포함 일곱 날짜만 집계한다', () async {
+      repo = EntryRepository(db, clock: _FixedClock(DateTime(2026, 10, 11)));
+      await repo.saveEntry(makeEntry('2026-10-04', emotion: 5));
+      for (var day = 5; day <= 11; day++) {
+        await repo.saveEntry(
+          makeEntry('2026-10-${day.toString().padLeft(2, '0')}', emotion: 1),
+        );
+      }
+      final retrospective = (await repo.getWeeklyRetrospective())!;
+      expect(retrospective.entryCount, 7);
+      expect(retrospective.averageEmotion, 1);
+    });
+
+    test('오늘 미작성은 어제부터 세고 어제도 없으면 0이다', () async {
+      repo = EntryRepository(db, clock: _FixedClock(DateTime(2024, 3, 1)));
+      await repo.saveEntry(makeEntry('2024-02-29'));
+      await repo.saveEntry(makeEntry('2024-02-28'));
+      expect(await repo.getCurrentStreakWithGrace(), (
+        count: 2,
+        usedGraceDay: false,
+      ));
+      expect(await repo.getLongestStreak(), 2);
+      await repo.deleteEntry('2024-02-29');
+      expect(await repo.getCurrentStreakWithGrace(), (
+        count: 0,
+        usedGraceDay: false,
+      ));
+    });
+
+    test('윤년과 월 경계의 실제 중간 공백 한 번만 센다', () async {
+      repo = EntryRepository(db, clock: _FixedClock(DateTime(2024, 3, 2)));
+      for (final date in [
+        '2024-02-26',
+        '2024-02-28',
+        '2024-02-29',
+        '2024-03-02',
+      ]) {
+        await repo.saveEntry(makeEntry(date));
+      }
+      expect(await repo.getCurrentStreakWithGrace(), (
+        count: 3,
+        usedGraceDay: true,
+      ));
+      expect(await repo.getLongestStreak(), 3);
+    });
     test('returns null when no entry exists', () async {
       final result = await repo.getTodayEntry();
       expect(result, isNull);
@@ -165,10 +253,8 @@ void main() {
         );
       }
       final result = await repo.getCurrentStreakWithGrace();
-      // Grace day is consumed at the natural end-of-history boundary,
-      // so usedGraceDay is true even for a gap-free streak.
       expect(result.count, 3);
-      expect(result.usedGraceDay, isTrue);
+      expect(result.usedGraceDay, isFalse);
     });
 
     test('returns usedGraceDay=true when one day gap is bridged', () async {
@@ -193,8 +279,7 @@ void main() {
 
       final result = await repo.getCurrentStreakWithGrace();
       expect(result.count, 1);
-      // Grace consumed at trailing end of single-day streak
-      expect(result.usedGraceDay, isTrue);
+      expect(result.usedGraceDay, isFalse);
     });
 
     test('breaks on two-day gap even with grace day already used', () async {
@@ -861,7 +946,7 @@ void main() {
       }
       final retro = await repo.getWeeklyRetrospective();
       expect(retro, isNotNull);
-      expect(retro!.trendDescription, contains('좋아지는'));
+      expect(retro!.trendDescription, contains('후반 평균이 전반보다 높았어요'));
     });
   });
 

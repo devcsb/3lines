@@ -247,52 +247,36 @@ class EntryRepository {
   /// without breaking the streak.
   Future<({int count, bool usedGraceDay})> getCurrentStreakWithGrace() async {
     final now = _clock.now();
-    final cutoff = now.subtract(const Duration(days: 400));
-    final cutoffStr = du.dateToString(cutoff);
 
     // 스트릭 계산은 날짜 집합만 필요하다 → date 컬럼만 읽는다.
     final dateCol = _db.entries.date;
     final recentRows =
         await (_db.selectOnly(_db.entries)
               ..addColumns([dateCol])
-              ..where(_db.entries.date.isBiggerOrEqualValue(cutoffStr))
+              ..where(
+                _db.entries.date.isSmallerOrEqualValue(du.dateToString(now)),
+              )
               ..orderBy([OrderingTerm.desc(dateCol)]))
             .get();
 
     if (recentRows.isEmpty) return (count: 0, usedGraceDay: false);
 
-    final dateSet = {for (final r in recentRows) r.read(dateCol)!};
     int streak = 0;
     bool usedGraceDay = false;
-    var checkDate = now;
-
-    // If today not written, start from yesterday
-    if (!dateSet.contains(du.dateToString(checkDate))) {
-      checkDate = DateTime(checkDate.year, checkDate.month, checkDate.day - 1);
-    }
-
-    // Cap iterations to prevent runaway loops (400 days of data + 1 grace)
-    const maxIterations = 402;
-    for (var i = 0; i < maxIterations; i++) {
-      final dateStr = du.dateToString(checkDate);
-      if (dateSet.contains(dateStr)) {
-        streak++;
-        checkDate = DateTime(
-          checkDate.year,
-          checkDate.month,
-          checkDate.day - 1,
-        );
-      } else if (!usedGraceDay && streak > 0) {
-        // Allow one grace day (skip this gap, continue checking)
+    var previous = DateTime.utc(now.year, now.month, now.day);
+    for (final row in recentRows) {
+      final parsed = DateTime.parse(row.read(dateCol)!);
+      final date = DateTime.utc(parsed.year, parsed.month, parsed.day);
+      final gap = previous.difference(date).inDays;
+      if (streak == 0) {
+        if (gap > 1) break;
+      } else if (gap == 2 && !usedGraceDay) {
         usedGraceDay = true;
-        checkDate = DateTime(
-          checkDate.year,
-          checkDate.month,
-          checkDate.day - 1,
-        );
-      } else {
+      } else if (gap != 1) {
         break;
       }
+      streak++;
+      previous = date;
     }
 
     return (count: streak, usedGraceDay: usedGraceDay);
@@ -304,41 +288,38 @@ class EntryRepository {
   }
 
   Future<int> getLongestStreak() async {
-    // Bound to last 3 years for performance
-    final cutoff = _clock.daysAgo(1095);
-    final cutoffStr = du.dateToString(cutoff);
     // 최장 스트릭도 날짜 시퀀스만 필요하다 → date 컬럼만 읽는다.
     final dateCol = _db.entries.date;
     final rows =
         await (_db.selectOnly(_db.entries)
               ..addColumns([dateCol])
-              ..where(_db.entries.date.isBiggerOrEqualValue(cutoffStr))
               ..orderBy([OrderingTerm.asc(dateCol)]))
             .get();
 
     if (rows.isEmpty) return 0;
 
-    final dates = [for (final r in rows) r.read(dateCol)!];
-
     int longest = 1;
     int current = 1;
-    bool graceUsed = false;
+    int contiguous = 1;
+    DateTime dateOf(int index) {
+      final date = DateTime.parse(rows[index].read(dateCol)!);
+      return DateTime.utc(date.year, date.month, date.day);
+    }
 
-    for (int i = 1; i < dates.length; i++) {
-      final prev = DateTime.parse(dates[i - 1]);
-      final curr = DateTime.parse(dates[i]);
+    for (int i = 1; i < rows.length; i++) {
+      final prev = dateOf(i - 1);
+      final curr = dateOf(i);
       final diff = curr.difference(prev).inDays;
 
       if (diff == 1) {
         current++;
-      } else if (diff == 2 && !graceUsed) {
-        // Grace day: 스트릭당 1일 공백을 1회만 허용(현재 스트릭 로직과 일치).
-        // 기존 코드는 횟수 제한이 없어 격일 기록도 무한 연속으로 셌다.
-        current++;
-        graceUsed = true;
+        contiguous++;
+      } else if (diff == 2) {
+        current = contiguous + 1;
+        contiguous = 1;
       } else {
         current = 1;
-        graceUsed = false;
+        contiguous = 1;
       }
       if (current > longest) longest = current;
     }
@@ -434,7 +415,7 @@ class EntryRepository {
     int? currentStreak,
   }) async {
     final now = _clock.now();
-    final start = now.subtract(const Duration(days: 7));
+    final start = DateTime(now.year, now.month, now.day - 6);
     final entries = await _queryByDateRange(start, now);
 
     if (entries.length < 2) return null;
@@ -463,11 +444,11 @@ class EntryRepository {
 
     String trendDescription;
     if (diff > 0.3) {
-      trendDescription = '감정이 점점 좋아지는 추세예요';
+      trendDescription = '기록한 날 기준 후반 평균이 전반보다 높았어요';
     } else if (diff < -0.3) {
-      trendDescription = '감정이 조금 내려가는 흐름이에요';
+      trendDescription = '기록한 날 기준 후반 평균이 전반보다 낮았어요';
     } else {
-      trendDescription = '감정이 안정적으로 유지되고 있어요';
+      trendDescription = '기록한 날 기준 전반과 후반 평균이 비슷했어요';
     }
 
     // Top keyword

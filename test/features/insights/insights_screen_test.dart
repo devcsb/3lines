@@ -19,7 +19,7 @@ final class _GateInsightsController extends InsightsController {
     if (buildCount > 1) await gate.future;
     return InsightsState(
       isUnlocked: true,
-      totalCount: 7,
+      totalCount: 1,
       averageEmotion: 4,
       currentStreak: 1,
       bestDayOfWeek: '월요일',

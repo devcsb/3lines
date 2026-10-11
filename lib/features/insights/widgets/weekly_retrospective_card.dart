@@ -35,9 +35,11 @@ class WeeklyRetrospectiveCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome_rounded,
-                  size: 16,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+              Icon(
+                Icons.auto_awesome_rounded,
+                size: 16,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
               const SizedBox(width: 6),
               Text(
                 '주간 회고',
@@ -63,7 +65,7 @@ class WeeklyRetrospectiveCard extends StatelessWidget {
                 if (retrospective.bestDay != null)
                   Expanded(
                     child: _DayHighlight(
-                      label: '최고의 날',
+                      label: '기록 중 가장 높은 감정',
                       date: retrospective.bestDay!.date,
                       emotion: retrospective.bestDay!.emotion,
                     ),
@@ -74,13 +76,14 @@ class WeeklyRetrospectiveCard extends StatelessWidget {
                     width: 1,
                     height: 32,
                     margin: const EdgeInsets.symmetric(horizontal: 8),
-                    color: theme.colorScheme.outlineVariant
-                        .withValues(alpha: 0.3),
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.3,
+                    ),
                   ),
                 if (retrospective.worstDay != null)
                   Expanded(
                     child: _DayHighlight(
-                      label: '힘들었던 날',
+                      label: '기록 중 가장 낮은 감정',
                       date: retrospective.worstDay!.date,
                       emotion: retrospective.worstDay!.emotion,
                     ),
@@ -108,14 +111,12 @@ class _DayHighlight extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color =
-        AppColors.emotionColors[emotion] ?? theme.colorScheme.outline;
+    final color = AppColors.emotionColors[emotion] ?? theme.colorScheme.outline;
     final emotionLabel = AppColors.emotionLabels[emotion] ?? '';
 
     // Parse yyyy-MM-dd to get month/day
     final parsed = DateTime.tryParse(date);
-    final dateLabel =
-        parsed != null ? '${parsed.month}/${parsed.day}' : date;
+    final dateLabel = parsed != null ? '${parsed.month}/${parsed.day}' : date;
 
     return Column(
       children: [
@@ -133,10 +134,7 @@ class _DayHighlight extends StatelessWidget {
             Container(
               width: 8,
               height: 8,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             const SizedBox(width: 4),
             Text(

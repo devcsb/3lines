@@ -6,9 +6,7 @@ import 'package:three_lines/features/insights/widgets/day_of_week_chart.dart';
 void main() {
   Widget buildChart(Map<int, double> data) {
     return MaterialApp(
-      home: Scaffold(
-        body: DayOfWeekChart(data: data),
-      ),
+      home: Scaffold(body: DayOfWeekChart(data: data)),
     );
   }
 

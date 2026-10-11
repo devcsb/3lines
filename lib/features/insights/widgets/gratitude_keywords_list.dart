@@ -43,12 +43,7 @@ class GratitudeKeywordsList extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  keyword,
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ),
+              Expanded(child: Text(keyword, style: theme.textTheme.bodyMedium)),
               Text(
                 '$count회',
                 style: theme.textTheme.bodySmall?.copyWith(

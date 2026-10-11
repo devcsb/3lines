@@ -5,6 +5,8 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/services/haptic_service.dart';
 import '../../core/services/pdf_report_service.dart';
+import '../../core/time/app_clock.dart';
+import '../../core/utils/text_analysis.dart';
 import '../../core/theme/app_motion.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../shared/widgets/staggered_fade_in.dart';
@@ -89,6 +91,14 @@ class InsightsScreen extends ConsumerWidget {
                     ),
 
                     const SizedBox(height: 28),
+                    Text(
+                      '${state.emotionTrend.length}일 기록 · ${state.periodStart?.toIso8601String().substring(0, 10) ?? ""} ~ ${state.periodEnd?.toIso8601String().substring(0, 10) ?? ""}',
+                    ),
+                    if (state.averageEmotion == null)
+                      const Text('이 기간에는 기록이 없어요. 기간을 바꿔보세요.'),
+                    Text(
+                      '주간 비교 표본: 이번 7일 ${state.thisWeekCount}일, 이전 7일 ${state.lastWeekCount}일. 각 3일 이상일 때 평균 차이를 표시해요.',
+                    ),
 
                     // Emotion trend chart
                     StaggeredFadeIn(
@@ -114,7 +124,9 @@ class InsightsScreen extends ConsumerWidget {
                           index: 1,
                           child: StatCard(
                             title: '평균 감정',
-                            value: state.averageEmotion.toStringAsFixed(1),
+                            value:
+                                state.averageEmotion?.toStringAsFixed(1) ??
+                                '기록 없음',
                             icon: Icons.favorite_rounded,
                           ),
                         ),
@@ -137,8 +149,8 @@ class InsightsScreen extends ConsumerWidget {
                         StaggeredFadeIn(
                           index: 4,
                           child: StatCard(
-                            title: '최고의 요일',
-                            value: state.bestDayOfWeek,
+                            title: '선택 기간 기록',
+                            value: '${state.emotionTrend.length}일',
                             icon: Icons.calendar_today_rounded,
                           ),
                         ),
@@ -151,7 +163,7 @@ class InsightsScreen extends ConsumerWidget {
                     StaggeredFadeIn(
                       index: 5,
                       child: _SectionCard(
-                        title: '요일별 감정',
+                        title: '요일별 감정 (기록한 날 기준 평균)',
                         child: DayOfWeekChart(data: state.dayOfWeekEmotions),
                       ),
                     ),
@@ -204,12 +216,7 @@ class InsightsScreen extends ConsumerWidget {
 
                     // Monthly PDF report button
                     const SizedBox(height: 20),
-                    StaggeredFadeIn(
-                      index: 10,
-                      child: _PdfReportButton(
-                        monthlySummary: state.monthlySummary,
-                      ),
-                    ),
+                    StaggeredFadeIn(index: 10, child: const _PdfReportButton()),
 
                     const SizedBox(height: 32),
                   ],
@@ -516,9 +523,7 @@ class _WeeklyDeltaBadge extends StatelessWidget {
 
 /// Button to generate and share a monthly PDF report.
 class _PdfReportButton extends ConsumerStatefulWidget {
-  const _PdfReportButton({required this.monthlySummary});
-
-  final MonthlySummary? monthlySummary;
+  const _PdfReportButton();
 
   @override
   ConsumerState<_PdfReportButton> createState() => _PdfReportButtonState();
@@ -532,7 +537,7 @@ class _PdfReportButtonState extends ConsumerState<_PdfReportButton> {
     setState(() => _generating = true);
 
     try {
-      final now = DateTime.now();
+      final now = ref.read(appClockProvider).now();
       final repo = ref.read(entryRepositoryProvider);
       final entries = await repo.getMonthlyEntries(now.year, now.month);
 
@@ -545,14 +550,21 @@ class _PdfReportButtonState extends ConsumerState<_PdfReportButton> {
         return;
       }
 
-      final summary = widget.monthlySummary;
+      final average =
+          entries.fold(0, (sum, entry) => sum + entry.emotion) / entries.length;
+      final keywords = extractKeywords(
+        entries
+            .expand((entry) => [entry.answer1, entry.answer2, entry.answer3])
+            .toList(),
+        limit: 1,
+      );
       final service = ref.read(pdfReportServiceProvider);
       final pdfBytes = await service.generateMonthlyReport(
         year: now.year,
         month: now.month,
         entries: entries,
-        averageEmotion: summary?.averageEmotion ?? 0.0,
-        topKeyword: summary?.topKeyword ?? '',
+        averageEmotion: average,
+        topKeyword: keywords.isEmpty ? '' : keywords.keys.first,
       );
 
       if (!mounted) return;

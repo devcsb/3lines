@@ -61,8 +61,9 @@ class DayOfWeekChart extends StatelessWidget {
                       ? AppColors.emotionColors[colorIndex]
                       : theme.colorScheme.outlineVariant,
                   width: 24,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(6)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(6),
+                  ),
                 ),
               ],
             );

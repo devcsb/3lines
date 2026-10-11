@@ -27,7 +27,11 @@ class InsightsState {
   final bool isUnlocked;
   final int totalCount;
   final int requiredCount;
-  final double averageEmotion;
+  final double? averageEmotion;
+  final int thisWeekCount;
+  final int lastWeekCount;
+  final DateTime? periodStart;
+  final DateTime? periodEnd;
   final int currentStreak;
   final String bestDayOfWeek;
   final List<({DateTime date, int emotion})> emotionTrend;
@@ -42,8 +46,12 @@ class InsightsState {
   const InsightsState({
     this.isUnlocked = false,
     this.totalCount = 0,
-    this.requiredCount = 7,
-    this.averageEmotion = 0.0,
+    this.requiredCount = 1,
+    this.averageEmotion,
+    this.thisWeekCount = 0,
+    this.lastWeekCount = 0,
+    this.periodStart,
+    this.periodEnd,
     this.currentStreak = 0,
     this.bestDayOfWeek = '',
     this.emotionTrend = const [],
@@ -77,6 +85,10 @@ class InsightsState {
       totalCount: totalCount ?? this.totalCount,
       requiredCount: requiredCount ?? this.requiredCount,
       averageEmotion: averageEmotion ?? this.averageEmotion,
+      thisWeekCount: thisWeekCount,
+      lastWeekCount: lastWeekCount,
+      periodStart: periodStart,
+      periodEnd: periodEnd,
       currentStreak: currentStreak ?? this.currentStreak,
       bestDayOfWeek: bestDayOfWeek ?? this.bestDayOfWeek,
       emotionTrend: emotionTrend ?? this.emotionTrend,

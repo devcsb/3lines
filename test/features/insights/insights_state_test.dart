@@ -7,8 +7,8 @@ void main() {
       const state = InsightsState();
       expect(state.isUnlocked, isFalse);
       expect(state.totalCount, 0);
-      expect(state.requiredCount, 7);
-      expect(state.averageEmotion, 0.0);
+      expect(state.requiredCount, 1);
+      expect(state.averageEmotion, isNull);
       expect(state.currentStreak, 0);
       expect(state.bestDayOfWeek, isEmpty);
       expect(state.emotionTrend, isEmpty);
