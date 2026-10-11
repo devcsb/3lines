@@ -124,6 +124,34 @@ void main() {
     await tester.pumpAndSettle();
     expect(container.read(todayControllerProvider).value!.answer1, '어제 입력');
   });
+  testWidgets('managed reload 동안 이전 입력 대신 loading 화면을 표시한다', (tester) async {
+    await show(tester);
+    repo.queryEntered = Completer();
+    repo.queryRelease = Completer();
+    await tester.runAsync(() async {
+      container.invalidate(todayControllerProvider);
+      container.read(todayControllerProvider.notifier);
+      await repo.queryEntered!.future;
+    });
+    await tester.pump();
+    final loading = find
+        .byType(CircularProgressIndicator)
+        .evaluate()
+        .isNotEmpty;
+    final inputCount = find.byType(PromptCard).evaluate().length;
+    var loaded = false;
+    container.read(todayControllerProvider.future).then((_) => loaded = true);
+    repo.queryRelease!.complete();
+    for (var i = 0; i < 30 && !loaded; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    expect(loaded, isTrue);
+    expect(loading, isTrue);
+    expect(inputCount, 0);
+  });
   testWidgets('날짜 조회 중 화면 입력과 저장 및 날짜 버튼을 잠근다', (tester) async {
     await show(tester);
     repo.queryEntered = Completer();

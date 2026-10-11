@@ -116,6 +116,136 @@ void main() {
     container.dispose();
     await db.close();
   });
+  for (final retry in [false, true]) {
+    test(
+      '${retry ? '재시도' : '최초'} managed build가 reset 뒤 새 입력을 덮지 않는다',
+      () async {
+        container.dispose();
+        final gate = GateRepository(db, clock: clock);
+        entries = gate;
+        if (retry) {
+          container = open();
+          await container.read(todayControllerProvider.future);
+          await container
+              .read(todayControllerProvider.notifier)
+              .resetAfterDelete();
+        }
+        gate.snapshotListBeforeGate = true;
+        gate.listStarted = Completer();
+        gate.listRelease = Completer();
+        if (retry) {
+          final before = container.read(todayControllerProvider.notifier);
+          container.invalidate(todayControllerProvider);
+          expect(
+            identical(container.read(todayControllerProvider.notifier), before),
+            isTrue,
+          );
+        } else {
+          container = open();
+        }
+        await gate.listStarted!.future;
+        final c = container.read(todayControllerProvider.notifier);
+        if (retry) {
+          c.setAnswer(0, '관리 reload 중 거부할 입력');
+          c.setEmotion(4);
+          c.toggleEdit();
+          expect(c.capturePhotoSession(), isNull);
+          expect(await c.save(), isFalse);
+          expect(await c.retryDraftStorage(), isFalse);
+          await c.selectDate('2026-10-10');
+          await c.attachPhoto('/unattached_reload.jpg');
+          await c.removePhoto();
+          await c.cancelEdit();
+          await c.reopenSavedEntry();
+          await c.refresh();
+          expect(container.read(todayControllerProvider).isLoading, isTrue);
+        }
+        var resetCompleted = false;
+        final resetting = c.resetAfterDelete().then(
+          (_) => resetCompleted = true,
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        final completedBeforeInitial = resetCompleted;
+        if (completedBeforeInitial) {
+          c.setEmotion(4);
+          c.setAnswer(0, 'reset 이후 새 입력');
+          expect(await c.retryDraftStorage(), isTrue);
+        }
+        gate.listRelease!.complete();
+        await resetting;
+        if (!completedBeforeInitial) {
+          c.setEmotion(4);
+          c.setAnswer(0, 'reset 이후 새 입력');
+          expect(await c.retryDraftStorage(), isTrue);
+        }
+        await Future<void>.delayed(Duration.zero);
+        await container.pump();
+        expect(completedBeforeInitial, isFalse);
+        expect(
+          container.read(todayControllerProvider).value!.answer1,
+          'reset 이후 새 입력',
+        );
+        expect(
+          (await gate.loadDraft('2026-10-11'))!.answers.first,
+          'reset 이후 새 입력',
+        );
+      },
+    );
+  }
+  test('최초 managed build 대기 중 중첩 reset은 최신 epoch 요청만 완료한다', () async {
+    container.dispose();
+    final gate = GateRepository(db, clock: clock);
+    entries = gate;
+    gate.snapshotListBeforeGate = true;
+    gate.listStarted = Completer();
+    gate.listRelease = Completer();
+    container = open();
+    await gate.listStarted!.future;
+    final c = container.read(todayControllerProvider.notifier);
+    final first = c.resetAfterDelete();
+    await gate.deleteAllEntries();
+    final second = c.resetAfterDelete();
+    gate.listRelease!.complete();
+    await Future.wait([first, second]).timeout(const Duration(seconds: 3));
+    expect(
+      container.read(todayControllerProvider).value!.epoch,
+      gate.journalEpoch,
+    );
+    c.setEmotion(4);
+    c.setAnswer(0, '최신 reset');
+    expect(await c.retryDraftStorage(), isTrue);
+    expect(container.read(todayControllerProvider).value!.answer1, '최신 reset');
+  });
+  test('최초 managed build 오류도 settle한 뒤 명시 회복과 중첩 reset을 진행한다', () async {
+    container.dispose();
+    final gate = GateRepository(db, clock: clock);
+    entries = gate;
+    await db.customStatement(
+      "INSERT INTO settings(key,value) VALUES ('draft_v1:2026-10-09','broken')",
+    );
+    gate.metadataStarted = Completer();
+    final release = gate.metadataRelease = Completer<void>();
+    gate.gateMetadataOnce = true;
+    container = open();
+    await gate.metadataStarted!.future;
+    final c = container.read(todayControllerProvider.notifier);
+    final resetting = c.resetAfterDelete();
+    release.complete();
+    await resetting.timeout(const Duration(seconds: 3));
+    final damaged =
+        container.read(todayControllerProvider).error as CorruptDraft;
+    expect(container.read(todayControllerProvider).isLoading, isFalse);
+    expect(await c.discardCorruptDraft(damaged), isTrue);
+    await Future.wait([
+      c.resetAfterDelete(),
+      c.resetAfterDelete(),
+    ]).timeout(const Duration(seconds: 3));
+    expect(container.read(todayControllerProvider).hasValue, isTrue);
+    c.setEmotion(4);
+    c.setAnswer(0, '오류 후 회복 입력');
+    expect(await c.retryDraftStorage(), isTrue);
+    expect((await gate.loadDraft('2026-10-11'))!.answers.first, '오류 후 회복 입력');
+  });
   for (final cancelling in [false, true]) {
     test('${cancelling ? '취소' : '저장'} 중 날짜 조회 실패가 작업 완료 뒤 busy를 남기지 않는다', () async {
       container.dispose();

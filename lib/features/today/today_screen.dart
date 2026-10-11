@@ -62,7 +62,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     return Scaffold(
       resizeToAvoidBottomInset: true,
       body: asyncState.when(
-        skipLoadingOnRefresh: true,
+        skipLoadingOnRefresh: false,
+        skipLoadingOnReload: false,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
           child: Column(

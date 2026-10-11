@@ -29,16 +29,30 @@ class TodayController extends AsyncNotifier<TodayState> {
   static int _nextSession = 0;
   int _session = ++_nextSession;
   int _selectionRequest = 0;
+  Future<void>? _managedInitialization;
+  // Retained AsyncData during managed reload is a snapshot, not active input.
+  TodayState? get _activeState => state.isLoading ? null : state.value;
 
   @override
-  Future<TodayState> build() async {
+  Future<TodayState> build() {
+    // Invalidation keeps this notifier; only framework builds reset the managed barrier.
+    _managedInitialization = null;
+    _selectionRequest++;
     ref.onDispose(() {
       _midnightTimer?.cancel();
     });
+    return _load(
+      ref.watch(entryRepositoryProvider),
+      ref.watch(settingsRepositoryProvider),
+      ref.watch(appClockProvider),
+    );
+  }
 
-    final entryRepo = ref.watch(entryRepositoryProvider);
-    final settingsRepo = ref.watch(settingsRepositoryProvider);
-    final clock = ref.watch(appClockProvider);
+  Future<TodayState> _load(
+    EntryRepository entryRepo,
+    SettingsRepository settingsRepo,
+    AppClock clock,
+  ) async {
     final scheduledDate = _scheduledDate = clock.todayString();
     final session = _session = ++_nextSession;
     _scheduleMidnightRefresh();
@@ -97,6 +111,7 @@ class TodayController extends AsyncNotifier<TodayState> {
           photoPath: todayEntry.photoPath,
           recentEmotions: recentTrend,
         ),
+        entryRepo,
       );
     }
 
@@ -113,11 +128,15 @@ class TodayController extends AsyncNotifier<TodayState> {
         oneMonthAgoEntry: oneMonthAgo,
         recentEmotions: recentTrend,
       ),
+      entryRepo,
     );
   }
 
-  Future<TodayState> _restoreDraft(TodayState initial) async {
-    final drafts = await ref.read(entryRepositoryProvider).listDrafts();
+  Future<TodayState> _restoreDraft(
+    TodayState initial,
+    EntryRepository entryRepo,
+  ) async {
+    final drafts = await entryRepo.listDrafts();
     final matching = drafts.where((d) => d.date == initial.draftDate);
     final draft = matching.isNotEmpty ? matching.first : drafts.firstOrNull;
     if (draft == null) return initial.copyWith(draftDates: const []);
@@ -154,7 +173,7 @@ class TodayController extends AsyncNotifier<TodayState> {
   );
 
   bool _matches(TodayState started) {
-    if (!ref.mounted) return false;
+    if (!ref.mounted || state.isLoading) return false;
     final live = state.value;
     return ref.mounted &&
         live != null &&
@@ -210,7 +229,7 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   Future<bool> retryDraftStorage() async {
-    final current = state.value;
+    final current = _activeState;
     if (current == null ||
         current.draftRevision == 0 ||
         current.isSaving ||
@@ -224,10 +243,10 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   /// Captured before launching a picker. Late results never attach to another session.
-  TodayState? capturePhotoSession() => state.value;
+  TodayState? capturePhotoSession() => _activeState;
 
   Future<void> selectDate(String date) async {
-    final started = state.value;
+    final started = _activeState;
     if (started == null ||
         started.isSwitchingDate ||
         started.isSaving ||
@@ -241,6 +260,7 @@ class TodayController extends AsyncNotifier<TodayState> {
     } catch (e, stack) {
       developer.log('Failed to open draft date', error: e, stackTrace: stack);
       if (ref.mounted &&
+          !state.isLoading &&
           request == _selectionRequest &&
           state.value?.session == started.session &&
           state.value?.draftRevision == started.draftRevision &&
@@ -255,6 +275,8 @@ class TodayController extends AsyncNotifier<TodayState> {
       }
     } finally {
       if (ref.mounted &&
+          !state.isLoading &&
+          request == _selectionRequest &&
           state.value?.session == started.session &&
           state.value?.draftRevision == started.draftRevision &&
           state.value?.epoch == started.epoch &&
@@ -329,7 +351,7 @@ class TodayController extends AsyncNotifier<TodayState> {
       selectDate(ref.read(appClockProvider).todayString());
 
   Future<bool> reopenSavedEntry() async {
-    final current = state.value;
+    final current = _activeState;
     if (current == null ||
         current.isSaving ||
         current.isCancelling ||
@@ -356,12 +378,25 @@ class TodayController extends AsyncNotifier<TodayState> {
   Future<void> resetAfterDelete() async {
     final retain = ref.keepAlive();
     try {
-      _session = ++_nextSession;
       final request = ++_selectionRequest;
       final repo = ref.read(entryRepositoryProvider);
+      final settings = ref.read(settingsRepositoryProvider);
+      final clock = ref.read(appClockProvider);
       final epoch = repo.journalEpoch;
+      // Capture before changing state: Riverpod's initial subscription must settle once.
+      // Re-reading future during a manual reset would wait on that reset's loading state.
+      final initialized = _managedInitialization ??= future.then<void>(
+        (_) {},
+        onError: (Object _, StackTrace __) {},
+      );
+      await initialized;
+      if (!ref.mounted ||
+          request != _selectionRequest ||
+          epoch != repo.journalEpoch)
+        return;
+      _session = ++_nextSession;
       state = const AsyncLoading();
-      final result = await AsyncValue.guard(build);
+      final result = await AsyncValue.guard(() => _load(repo, settings, clock));
       if (ref.mounted &&
           request == _selectionRequest &&
           epoch == repo.journalEpoch)
@@ -372,6 +407,7 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   Future<bool> discardCorruptDraft(CorruptDraft damaged) async {
+    if (state.isLoading) return false;
     final retain = ref.keepAlive();
     try {
       await ref.read(entryRepositoryProvider).discardCorruptDraft(damaged);
@@ -385,7 +421,7 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   void setEmotion(int value) {
-    final current = state.value;
+    final current = _activeState;
     if (current == null ||
         current.isSaving ||
         current.isCancelling ||
@@ -399,7 +435,7 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   void setAnswer(int index, String value) {
-    final current = state.value;
+    final current = _activeState;
     if (current == null ||
         current.isSaving ||
         current.isCancelling ||
@@ -428,7 +464,7 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   Future<bool> _save() async {
-    var current = state.value;
+    var current = _activeState;
     final emotion = current?.emotion;
     if (current == null ||
         emotion == null ||
@@ -542,7 +578,7 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   void toggleEdit() {
-    final current = state.value;
+    final current = _activeState;
     if (current == null ||
         current.isSaving ||
         current.isCancelling ||
@@ -561,7 +597,7 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   Future<void> _cancelEdit() async {
-    final current = state.value;
+    final current = _activeState;
     final saved = current?.existingEntry;
     if (current == null ||
         saved == null ||
@@ -623,7 +659,7 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   Future<void> attachPhoto(String path, {TodayState? started}) async {
-    final current = state.value;
+    final current = _activeState;
     if (current == null || (started != null && !_matches(started))) {
       await _discardUnattachedPhoto(path);
       return;
@@ -649,7 +685,7 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   Future<void> removePhoto() async {
-    final current = state.value;
+    final current = _activeState;
     if (current == null ||
         current.isSaving ||
         current.isCancelling ||
@@ -690,7 +726,7 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   Future<void> refresh() async {
-    final current = state.value;
+    final current = _activeState;
     if (current == null) return;
     _scheduleMidnightRefresh();
     try {
