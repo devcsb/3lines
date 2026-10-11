@@ -83,7 +83,12 @@ class _PhotoThumbnail extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.fromLTRB(
+                  12,
+                  12,
+                  !readOnly && onRemove != null ? 60 : 12,
+                  12,
+                ),
                 child: Text(
                   '사진을 불러올 수 없어요',
                   style: theme.textTheme.bodySmall?.copyWith(

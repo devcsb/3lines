@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -122,49 +124,100 @@ void main() {
     await captureUi(tester, boundary, 'writing-photo-320x640-200pct');
   });
 
-  testWidgets('사진 실패 안내 320px 200% 실제 errorBuilder 대비와 잘림', (tester) async {
-    final boundary = GlobalKey();
-    await mount(
-      tester,
-      Builder(
-        builder: (context) {
-          // Only a designated missing fixture path, never a user's photo.
-          const photo = PhotoAttachment(photoPath: '/tmp/r6-missing-photo.png');
-          return photo;
-        },
-      ),
-      AppTheme.dark(),
-      scale: 2,
-      boundary: boundary,
-    );
-    final image = tester.widget<Image>(find.byType(Image));
-    final context = tester.element(find.byType(Image));
-    final error = image.errorBuilder!(context, StateError('fixture'), null);
-    await mount(tester, error, AppTheme.dark(), scale: 2, boundary: boundary);
-    expectReadableText(tester);
-    final text = find.text('사진을 불러올 수 없어요');
-    expect(text, findsOneWidget);
-    final paragraph = tester.renderObject<RenderParagraph>(
-      find.descendant(of: text, matching: find.byType(RichText)),
-    );
-    expect(
-      paragraph.computeMaxIntrinsicHeight(paragraph.size.width),
-      lessThanOrEqualTo(paragraph.size.height),
-    );
-    expect(tester.takeException(), isNull);
-    await captureUi(tester, boundary, 'writing-photo-error-320x640-200pct');
+  Future<void> resolvePhoto(WidgetTester tester) async {
+    // The initial load began in fake time; restart it in the real IO zone.
+    await tester.runAsync(() async {
+      final provider = tester.widget<Image>(find.byType(Image)).image;
+      await provider.evict();
+      final stream = provider.resolve(const ImageConfiguration());
+      final done = Completer<void>();
+      final listener = ImageStreamListener((info, _) {
+        info.dispose();
+        done.complete();
+      }, onError: (Object _, StackTrace? _) => done.complete());
+      stream.addListener(listener);
+      try {
+        await done.future;
+      } finally {
+        stream.removeListener(listener);
+      }
+    });
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('사진 실패 안내 320px 200% 제거 버튼과 겹치지 않고 읽힌다', (tester) async {
+    for (final readOnly in [false, true]) {
+      final boundary = GlobalKey();
+      await mount(
+        tester,
+        PhotoAttachment(
+          photoPath: '/tmp/r6-missing-photo.png',
+          readOnly: readOnly,
+          onRemove: () {},
+        ),
+        AppTheme.dark(),
+        scale: 2,
+        boundary: boundary,
+      );
+      await resolvePhoto(tester);
+      expectReadableText(tester);
+      final text = find.text('사진을 불러올 수 없어요');
+      expect(text, findsOneWidget);
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.descendant(of: text, matching: find.byType(RichText)),
+      );
+      await captureUi(
+        tester,
+        boundary,
+        'writing-photo-error-${readOnly ? 'readonly' : 'removable'}-320x640-200pct',
+      );
+      if (readOnly) {
+        expect(find.byType(IconButton), findsNothing);
+        expect(paragraph.size.width, 256);
+      } else {
+        final remove = tester.getRect(find.byType(IconButton));
+        final content = tester.widget<Text>(text).data!;
+        for (final box in paragraph.getBoxesForSelection(
+          TextSelection(baseOffset: 0, extentOffset: content.length),
+        )) {
+          final glyphs = Rect.fromPoints(
+            paragraph.localToGlobal(Offset(box.left, box.top)),
+            paragraph.localToGlobal(Offset(box.right, box.bottom)),
+          );
+          expect(
+            glyphs.overlaps(remove),
+            isFalse,
+            reason: 'glyphs=$glyphs remove=$remove',
+          );
+        }
+      }
+      expect(
+        paragraph.computeMaxIntrinsicHeight(paragraph.size.width),
+        lessThanOrEqualTo(paragraph.size.height),
+      );
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('사진 제거 native48dp를 큰 글씨 화면에서도 유지한다', (tester) async {
+    var removed = false;
     await mount(
       tester,
-      PhotoAttachment(photoPath: '/tmp/r6-missing-photo.png', onRemove: () {}),
+      PhotoAttachment(
+        photoPath: 'android/app/src/main/res/mipmap-mdpi/ic_launcher.png',
+        onRemove: () => removed = true,
+      ),
       AppTheme.light(),
       scale: 2,
     );
+    await resolvePhoto(tester);
+    expect(find.text('사진을 불러올 수 없어요'), findsNothing);
+    expect(tester.getSize(find.byType(Image)).height, 180);
     final target = find.byType(IconButton);
     expect(target, findsOneWidget);
     expect(tester.getSize(target).width, greaterThanOrEqualTo(48));
     expect(tester.getSize(target).height, greaterThanOrEqualTo(48));
+    await tester.tap(target);
+    expect(removed, isTrue);
   });
 }
