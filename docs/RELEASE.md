@@ -94,6 +94,8 @@ tool/release/verify_android_artifact.sh build/app/outputs/flutter-apk/app-releas
 
 Play 등록 전이라도 기존 APK 사용자 업데이트에 같은 서명이 필요합니다. 키 교체를 안전하다고 단정하지 말고 기존 배포, 설치본, Play 정책을 확인하세요. 다른 서명 때문에 앱을 삭제하면 로컬 기록과 사진을 잃을 수 있습니다. JSON은 완료 기록 텍스트만 보존하며 초안, 사진, 설정은 포함하지 않습니다.
 
+내보낸 JSON은 암호화하지 않은 평문 파일이며 파일을 읽을 수 있는 사람은 내용을 볼 수 있습니다. 민감한 JSON을 공유하지 말고 안전하게 보관하세요. 앱 잠금은 앱 진입 보호이며 저장 데이터나 내보낸 파일의 암호화가 아닙니다. OS 설정에 따라 시스템 백업에 데이터가 포함될 수 있지만, 실제 백업이 사용 중이라고 단정하지 않습니다.
+
 ## 확인한 외부 배포 상태
 
 2026-10-11 root가 GitHub CLI로 확인한 최신 공개 [v1.2.3](https://github.com/devcsb/3lines/releases/tag/v1.2.3)은 `2026-08-29T06:58:51Z`에 게시됐습니다. 첨부는 `app-release.aab` 72,099,129 bytes 하나이며 APK와 IPA는 없습니다. [실행 33239369691](https://github.com/devcsb/3lines/actions/runs/33239369691)은 성공했지만 현재 로컬 개선 소스가 배포됐다는 의미는 아닙니다. 이 작업은 push/tag/publish/secret 변경을 하지 않습니다.
