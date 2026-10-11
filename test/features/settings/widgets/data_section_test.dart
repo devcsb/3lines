@@ -129,7 +129,8 @@ void main() {
     await mount(tester, () async => null);
 
     expect(find.text('텍스트 기록 내보내기 (JSON)'), findsOneWidget);
-    expect(find.text('사진 파일은 백업에 포함되지 않아요'), findsOneWidget);
+    expect(find.text('JSON은 암호화되지 않은 평문이에요. 사진 파일, 설정, 초안은 포함되지 않아요'), findsOneWidget);
+    expect(find.text('앱 삭제나 기기 분실에 대비해 텍스트 기록을 내보내고, 파일을 안전한 곳에 보관하세요'), findsOneWidget);
   });
 
   testWidgets('사진 삭제 판정이 불명이어도 기록 삭제 결과를 과장하지 않는다', (tester) async {

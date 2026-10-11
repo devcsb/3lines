@@ -22,20 +22,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   static const _pages = [
     (
       icon: Icons.edit_rounded,
-      title: '하루 3줄로\n나를 기록하세요',
-      subtitle: '감사, 수용, 의도 — 30초면 충분해요',
+      title: '하루 3줄로\n기록해요',
+      subtitle: '감정 하나와 답변 한 개부터 저장할 수 있어요',
       accentColor: Color(0xFF5B8A6A),
     ),
     (
       icon: Icons.auto_graph_rounded,
-      title: '감정의 흐름을\n한눈에',
-      subtitle: '히트맵과 인사이트로 나를 발견해요',
+      title: '감정을\n돌아봐요',
+      subtitle: '기록한 날의 감정을 히트맵과 통계로 돌아봐요',
       accentColor: Color(0xFF6B8A8A),
     ),
     (
       icon: Icons.shield_rounded,
-      title: '당신만의\n안전한 공간',
-      subtitle: '모든 데이터는 기기에만 저장돼요',
+      title: '기록을\n보관해요',
+      subtitle: '자체 서버로 기록을 전송하지 않아요. 앱 삭제나 기기 분실에 대비해 텍스트 기록을 내보내세요',
       accentColor: Color(0xFF8A7E6B),
     ),
   ];
@@ -79,9 +79,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         '건너뛰기',
                         semanticsLabel: '온보딩 건너뛰기',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.4,
-                          ),
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     )
@@ -124,10 +122,22 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
             // Dots + button
             Padding(
-              padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
               child: Column(
                 children: [
-                  // Dot indicators
+                  Semantics(
+                    liveRegion: true,
+                    label: '온보딩 ${_currentPage + 1}페이지, 총 ${_pages.length}페이지',
+                    excludeSemantics: true,
+                    child: Text(
+                      '${_currentPage + 1} / ${_pages.length}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Decorative dots supplement the text position.
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
@@ -147,7 +157,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
 
                   // Animated button transition
                   SizedBox(
@@ -223,75 +233,89 @@ class _OnboardingPage extends StatelessWidget {
     final textOpacity = animationValue.clamp(0.0, 1.0);
     final textOffset = (1 - animationValue) * 30;
 
-    return Semantics(
-      label: '$title. $subtitle',
-      excludeSemantics: true,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Animated icon with double ring
-            Transform.scale(
-              scale: iconScale,
-              child: Opacity(
-                opacity: animationValue.clamp(0.0, 1.0),
-                child: Container(
-                  width: 104,
-                  height: 104,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: accentColor.withValues(alpha: 0.08),
-                    border: Border.all(
-                      color: accentColor.withValues(alpha: 0.15),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Center(
-                    child: Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: accentColor.withValues(alpha: 0.12),
+    return LayoutBuilder(
+      builder: (context, constraints) => Semantics(
+        label: '$title. $subtitle',
+        excludeSemantics: true,
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Animated icon with double ring
+                  Transform.scale(
+                    scale: iconScale,
+                    child: Opacity(
+                      opacity: animationValue.clamp(0.0, 1.0),
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: accentColor.withValues(alpha: 0.08),
+                          border: Border.all(
+                            color: accentColor.withValues(alpha: 0.15),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: accentColor.withValues(alpha: 0.12),
+                            ),
+                            child: Icon(
+                              icon,
+                              size: 32,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
                       ),
-                      child: Icon(icon, size: 32, color: accentColor),
                     ),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 44),
+                  const SizedBox(height: 24),
 
-            // Title with slide-up
-            Transform.translate(
-              offset: Offset(0, textOffset),
-              child: Opacity(
-                opacity: textOpacity,
-                child: Text(
-                  title,
-                  style: theme.textTheme.headlineMedium?.copyWith(height: 1.3),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Subtitle with delayed slide-up (more offset)
-            Transform.translate(
-              offset: Offset(0, textOffset * 1.3),
-              child: Opacity(
-                opacity: (textOpacity - 0.1).clamp(0.0, 1.0),
-                child: Text(
-                  subtitle,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  // Title with slide-up
+                  Transform.translate(
+                    offset: Offset(0, textOffset),
+                    child: Opacity(
+                      opacity: textOpacity,
+                      child: Text(
+                        title,
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          height: 1.3,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
+                  const SizedBox(height: 12),
+
+                  // Subtitle with delayed slide-up (more offset)
+                  Transform.translate(
+                    offset: Offset(0, textOffset * 1.3),
+                    child: Opacity(
+                      opacity: textOpacity,
+                      child: Text(
+                        subtitle,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

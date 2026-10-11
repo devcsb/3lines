@@ -73,11 +73,11 @@ class AppTheme {
       onPrimary: Colors.white,
       primaryContainer: Color(0xFFD6E5D8),
       onPrimaryContainer: Color(0xFF2A3A2C),
-      secondary: Color(0xFF8A7E6B), // warm taupe
+      secondary: Color(0xFF746957), // readable warm taupe
       onSecondary: Colors.white,
       secondaryContainer: Color(0xFFF0E8DA),
       onSecondaryContainer: Color(0xFF3E372A),
-      tertiary: Color(0xFF6B8A8A),
+      tertiary: Color(0xFF526F6F),
       onTertiary: Colors.white,
       tertiaryContainer: Color(0xFFD0E5E5),
       onTertiaryContainer: Color(0xFF253636),
@@ -250,6 +250,7 @@ class AppTheme {
           backgroundColor: colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
           elevation: 0,
+          minimumSize: const Size(48, 48),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -261,6 +262,7 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: colorScheme.primary,
+          minimumSize: const Size(48, 48),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -272,6 +274,7 @@ class AppTheme {
 
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          minimumSize: const Size(48, 48),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -282,6 +285,7 @@ class AppTheme {
 
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
+          minimumSize: const Size(48, 48),
           foregroundColor: colorScheme.primary,
           textStyle: textTheme.labelLarge,
         ),
@@ -308,7 +312,7 @@ class AppTheme {
           vertical: 14,
         ),
         hintStyle: textTheme.bodyLarge?.copyWith(
-          color: colorScheme.onSurface.withValues(alpha: 0.35),
+          color: colorScheme.onSurfaceVariant,
         ),
       ),
 
@@ -330,9 +334,7 @@ class AppTheme {
           EdgeInsets.symmetric(horizontal: 8),
         ),
         hintStyle: WidgetStatePropertyAll(
-          textTheme.bodyLarge?.copyWith(
-            color: colorScheme.onSurface.withValues(alpha: 0.35),
-          ),
+          textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant),
         ),
       ),
 
@@ -348,10 +350,7 @@ class AppTheme {
           if (states.contains(WidgetState.selected)) {
             return IconThemeData(color: colorScheme.primary, size: 22);
           }
-          return IconThemeData(
-            color: colorScheme.onSurface.withValues(alpha: 0.5),
-            size: 22,
-          );
+          return IconThemeData(color: colorScheme.onSurfaceVariant, size: 22);
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
@@ -361,7 +360,7 @@ class AppTheme {
             );
           }
           return textTheme.labelSmall?.copyWith(
-            color: colorScheme.onSurface.withValues(alpha: 0.5),
+            color: colorScheme.onSurfaceVariant,
           );
         }),
       ),
@@ -379,7 +378,7 @@ class AppTheme {
             if (states.contains(WidgetState.selected)) {
               return colorScheme.onPrimaryContainer;
             }
-            return colorScheme.onSurface.withValues(alpha: 0.6);
+            return colorScheme.onSurfaceVariant;
           }),
           side: WidgetStatePropertyAll(
             BorderSide(color: colorScheme.outlineVariant),
@@ -388,7 +387,8 @@ class AppTheme {
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           textStyle: WidgetStatePropertyAll(textTheme.labelMedium),
-          visualDensity: VisualDensity.compact,
+          minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+          visualDensity: VisualDensity.standard,
         ),
       ),
 

@@ -37,12 +37,23 @@ class _DataSectionState extends ConsumerState<DataSection> {
           ),
         ),
         const Divider(),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            '앱 삭제나 기기 분실에 대비해 텍스트 기록을 내보내고, 파일을 안전한 곳에 보관하세요',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
         Semantics(
-          label: '텍스트 기록 내보내기 (JSON), 사진 파일은 백업에 포함되지 않아요',
+          label: '텍스트 기록 내보내기 (JSON), 암호화되지 않은 평문, 사진 파일과 설정과 초안 미포함',
           child: ListTile(
             title: const Text('텍스트 기록 내보내기 (JSON)'),
-            subtitle: const Text('사진 파일은 백업에 포함되지 않아요'),
-            leading: const Icon(Icons.file_download),
+            subtitle: const Text(
+              'JSON은 암호화되지 않은 평문이에요. 사진 파일, 설정, 초안은 포함되지 않아요',
+            ),
+            leading: const ExcludeSemantics(child: Icon(Icons.file_download)),
             onTap: () => _exportData(context, ref),
           ),
         ),
