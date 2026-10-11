@@ -9,6 +9,11 @@ import 'package:three_lines/data/database/app_database.dart';
 import 'package:three_lines/data/models/daily_entry.dart';
 import 'package:three_lines/data/repositories/entry_repository.dart';
 import 'package:three_lines/data/repositories/settings_repository.dart';
+import 'package:timezone/data/latest_all.dart' as tz_data;
+import 'package:timezone/timezone.dart' as tz;
+
+import 'notification_service_test.dart'
+    show RecordingNotificationPlatform, FixedTimeZoneResolver;
 
 final class RecordingReminderScheduler implements ReminderScheduler {
   bool permissionGranted = true;
@@ -71,6 +76,15 @@ final class TrackingSettingsRepository extends SettingsRepository {
   Future<({bool enabled, int hour, int minute})> getReminderSettings() {
     getReminderSettingsCalls++;
     return super.getReminderSettings();
+  }
+}
+
+final class FailingReminderSettingsRepository extends SettingsRepository {
+  FailingReminderSettingsRepository(super.db);
+
+  @override
+  Future<void> setReminderTime(int hour, int minute) async {
+    throw StateError('settings write failed');
   }
 }
 
@@ -149,9 +163,9 @@ void main() {
     expect(scheduler.calls, ['permission']);
   });
 
-  test('활성화는 권한 예약 주간 저장 순서로 완료된다', () async {
+  test('활성화는 권한과 일일 예약 뒤 저장하며 회고를 예약하지 않는다', () async {
     expect(await coordinator.setEnabled(true), isTrue);
-    expect(scheduler.calls, ['permission', 'replace:21:0', 'weekly']);
+    expect(scheduler.calls, ['permission', 'replace:21:0']);
     expect((await settings.getReminderSettings()).enabled, isTrue);
   });
 
@@ -168,20 +182,15 @@ void main() {
     scheduler.failCancelAll = true;
 
     expect(await coordinator.setEnabled(false), isFalse);
-    expect(scheduler.calls, ['cancelAll', 'replace:20:15', 'weekly']);
+    expect(scheduler.calls, ['cancelAll', 'replace:20:15']);
     expect((await settings.getReminderSettings()).enabled, isTrue);
   });
 
-  test('활성화 중 주간 예약 실패 시 DB를 저장하지 않고 비활성 계획을 복원한다', () async {
-    scheduler.failWeekly = true;
+  test('활성화 중 일일 예약 실패 시 DB를 저장하지 않고 비활성 계획을 복원한다', () async {
+    scheduler.failReplaceOnCalls.add(1);
 
     expect(await coordinator.setEnabled(true), isFalse);
-    expect(scheduler.calls, [
-      'permission',
-      'replace:21:0',
-      'weekly',
-      'cancelAll',
-    ]);
+    expect(scheduler.calls, ['permission', 'replace:21:0', 'cancelAll']);
     expect((await settings.getReminderSettings()).enabled, isFalse);
   });
 
@@ -211,7 +220,7 @@ void main() {
     await storeReminder(enabled: true, hour: 21, minute: 0);
     scheduler.failReplaceOnCalls.add(1);
     expect(await coordinator.setTime(8, 30), isFalse);
-    expect(scheduler.calls, ['replace:8:30', 'replace:21:0', 'weekly']);
+    expect(scheduler.calls, ['replace:8:30', 'replace:21:0']);
     final stored = await settings.getReminderSettings();
     expect((stored.hour, stored.minute), (21, 0));
   });
@@ -224,13 +233,18 @@ void main() {
   test('활성 launch는 legacy 취소 후 전체 계획을 조정한다', () async {
     await storeReminder(enabled: true, hour: 20, minute: 15);
     await coordinator.reconcileOnLaunch();
-    expect(scheduler.calls, ['migrate', 'replace:20:15', 'weekly']);
+    expect(scheduler.calls, ['migrate', 'replace:20:15']);
   });
 
-  test('저널 변경은 일일과 스트릭만 조정하고 주간은 건드리지 않는다', () async {
+  test('저널 변경은 일일 계획만 조정하고 회고를 예약하지 않는다', () async {
     await storeReminder(enabled: true);
     await coordinator.reconcileAfterJournalChange();
     expect(scheduler.calls, ['replace:21:0']);
+  });
+
+  test('비활성 저널 변경도 남아 있는 기존 예약을 정리한다', () async {
+    await coordinator.reconcileAfterJournalChange();
+    expect(scheduler.calls, ['cancelAll']);
   });
 
   test('오늘 기록이 있으면 알림 context에 완료 상태만 전달한다', () async {
@@ -277,13 +291,123 @@ void main() {
 
     expect(await failed, isFalse);
     expect(await succeeding, isTrue);
-    expect(scheduler.calls, [
-      'replace:8:10',
-      'replace:21:0',
-      'weekly',
-      'replace:9:20',
-    ]);
+    expect(scheduler.calls, ['replace:8:10', 'replace:21:0', 'replace:9:20']);
     final stored = await settings.getReminderSettings();
     expect((stored.hour, stored.minute), (9, 20));
+  });
+
+  group('실제 일일 scheduler와 플랫폼 경계', () {
+    late RecordingNotificationPlatform platform;
+
+    setUp(() {
+      tz_data.initializeTimeZones();
+      final seoul = tz.getLocation('Asia/Seoul');
+      platform = RecordingNotificationPlatform();
+      entries = EntryRepository(
+        db,
+        clock: FixedAppClock(DateTime(2026, 8, 9, 12)),
+      );
+      coordinator = DefaultReminderCoordinator(
+        settingsRepository: settings,
+        entryRepository: entries,
+        scheduler: NotificationService(
+          platform: platform,
+          timeZoneResolver: const FixedTimeZoneResolver('Asia/Seoul'),
+          now: (_) => tz.TZDateTime(seoul, 2026, 8, 9, 12),
+        ),
+      );
+    });
+
+    void expectDailyPlan({
+      required int firstDay,
+      required int hour,
+      int minute = 0,
+    }) {
+      final notifications = platform.pending.values.toList();
+      expect(notifications, hasLength(30));
+      expect(
+        notifications.map((item) => item.id),
+        List<int>.generate(30, (i) => 100 + i),
+      );
+      expect(
+        notifications.first.scheduledDate,
+        tz.TZDateTime(tz.local, 2026, 8, firstDay, hour, minute),
+      );
+      expect(
+        notifications.last.scheduledDate,
+        tz.TZDateTime(tz.local, 2026, 8, firstDay + 29, hour, minute),
+      );
+      expect(
+        notifications.every((item) => item.matchDateTimeComponents == null),
+        isTrue,
+      );
+      expect(
+        notifications.every((item) => item.body == '오늘 마음을 짧게 남겨볼까요?'),
+        isTrue,
+      );
+      expect(
+        notifications
+            .map(
+              (item) =>
+                  '${item.scheduledDate.year}-${item.scheduledDate.month}-${item.scheduledDate.day}',
+            )
+            .toSet(),
+        hasLength(30),
+      );
+    }
+
+    test('일요일 launch와 시간 변경과 저장 뒤에도 날짜별 예약 한 건만 남는다', () async {
+      await storeReminder(enabled: true, hour: 20);
+      await coordinator.reconcileOnLaunch();
+      expectDailyPlan(firstDay: 9, hour: 20);
+      expect(platform.cancelled, containsAll([0, 1, 2, 200, 229, 300]));
+
+      expect(await coordinator.setTime(20, 15), isTrue);
+      expectDailyPlan(firstDay: 9, hour: 20, minute: 15);
+      await entries.saveEntry(
+        DailyEntry(
+          date: '2026-08-09',
+          emotion: 4,
+          prompt1: '감사',
+          answer1: '친구',
+          prompt2: '수용',
+          answer2: '',
+          prompt3: '의도',
+          answer3: '',
+        ),
+      );
+      await coordinator.reconcileAfterJournalChange();
+      expectDailyPlan(firstDay: 10, hour: 20, minute: 15);
+
+      expect(await coordinator.setEnabled(false), isTrue);
+      expect(platform.pending, isEmpty);
+      expect(await coordinator.setEnabled(true), isTrue);
+      expectDailyPlan(firstDay: 10, hour: 20, minute: 15);
+    });
+
+    test('권한 거부는 플랫폼 예약과 저장을 바꾸지 않는다', () async {
+      platform.permissionGranted = false;
+      expect(await coordinator.setEnabled(true), isFalse);
+      expect(platform.pending, isEmpty);
+      expect(platform.cancelled, isEmpty);
+      expect((await settings.getReminderSettings()).enabled, isFalse);
+    });
+
+    test('DB 시간 저장 실패는 이전 시각 단일 일일 계획을 복원한다', () async {
+      await storeReminder(enabled: true);
+      coordinator = DefaultReminderCoordinator(
+        settingsRepository: FailingReminderSettingsRepository(db),
+        entryRepository: entries,
+        scheduler: NotificationService(
+          platform: platform,
+          timeZoneResolver: const FixedTimeZoneResolver('Asia/Seoul'),
+          now: (_) => tz.TZDateTime(tz.local, 2026, 8, 9, 12),
+        ),
+      );
+      expect(await coordinator.setTime(20, 15), isFalse);
+      expectDailyPlan(firstDay: 9, hour: 21);
+      final stored = await settings.getReminderSettings();
+      expect((stored.hour, stored.minute), (21, 0));
+    });
   });
 }

@@ -73,7 +73,6 @@ final class DefaultReminderCoordinator implements ReminderCoordinator {
       apply: () async {
         if (enabled) {
           await _scheduler.replaceDailyAndStreak(storedContext);
-          await _scheduler.scheduleWeeklyRetrospective();
         } else {
           await _scheduler.cancelAll();
         }
@@ -129,7 +128,6 @@ final class DefaultReminderCoordinator implements ReminderCoordinator {
 
       final context = await _context(hour: stored.hour, minute: stored.minute);
       await _scheduler.replaceDailyAndStreak(context);
-      await _scheduler.scheduleWeeklyRetrospective();
     });
   }
 
@@ -137,7 +135,10 @@ final class DefaultReminderCoordinator implements ReminderCoordinator {
   Future<void> reconcileAfterJournalChange() {
     return _serialize(() async {
       final stored = await _settingsRepository.getReminderSettings();
-      if (!stored.enabled) return;
+      if (!stored.enabled) {
+        await _scheduler.cancelAll();
+        return;
+      }
 
       final context = await _context(hour: stored.hour, minute: stored.minute);
       await _scheduler.replaceDailyAndStreak(context);
@@ -162,7 +163,6 @@ final class DefaultReminderCoordinator implements ReminderCoordinator {
   ) async {
     if (stored.enabled) {
       await _scheduler.replaceDailyAndStreak(storedContext);
-      await _scheduler.scheduleWeeklyRetrospective();
     } else {
       await _scheduler.cancelAll();
     }

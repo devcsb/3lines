@@ -24,30 +24,34 @@ class NotificationsSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('알림',
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: theme.colorScheme.primary,
-            )),
+        Text(
+          '알림',
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: theme.colorScheme.primary,
+          ),
+        ),
         const Divider(),
         Semantics(
           label: enabled ? '매일 리마인더 켜짐' : '매일 리마인더 꺼짐',
           child: SwitchListTile(
             title: const Text('매일 리마인더'),
+            subtitle: const Text('설정한 시각에 하루 한 번 알려드려요. 기록한 날은 건너뛰어요.'),
             value: enabled,
             onChanged: (v) async {
               final success = await ref
                   .read(settingsControllerProvider.notifier)
                   .setReminderEnabled(v);
               if (!success && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('알림 설정에 실패했어요')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('알림 설정에 실패했어요')));
               }
             },
           ),
         ),
         Semantics(
-          label: '리마인더 시간: ${hour.toString().padLeft(2, '0')}시 ${minute.toString().padLeft(2, '0')}분',
+          label:
+              '리마인더 시간: ${hour.toString().padLeft(2, '0')}시 ${minute.toString().padLeft(2, '0')}분',
           child: ListTile(
             title: const Text('리마인더 시간'),
             trailing: Text(timeStr, style: theme.textTheme.bodyLarge),

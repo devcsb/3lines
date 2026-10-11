@@ -114,7 +114,7 @@ final class NotificationService implements ReminderScheduler {
     if (kIsWeb) return;
     await initialize();
     final current = _now(tz.local);
-    await _cancelIds([...dailyIds, ..._streakIds()]);
+    await _cancelIds([...dailyIds, ..._streakIds(), weeklyId, ...legacyIds]);
 
     var firstOffset = context.hasEntryToday ? 1 : 0;
     final todayAtTime = _dailyDate(
@@ -127,12 +127,13 @@ final class NotificationService implements ReminderScheduler {
       firstOffset = 1;
     }
 
+    // 30일 단발 예약으로 오늘 건너뛰기를 보장하며 앱 진입/기록 변경 때 범위를 갱신한다.
     for (var index = 0; index < dailyIds.length; index++) {
       await _platform.schedule(
         ScheduledLocalNotification(
           id: dailyIds[index],
           title: '3Lines',
-          body: '오늘의 3줄을 기록할 시간이에요',
+          body: '오늘 마음을 짧게 남겨볼까요?',
           scheduledDate: _dailyDate(
             now: current,
             dayOffset: firstOffset + index,
@@ -143,63 +144,13 @@ final class NotificationService implements ReminderScheduler {
         ),
       );
     }
-
-    if (context.currentStreak > 0) {
-      for (var index = 0; index < dailyIds.length; index++) {
-        final targetDaily = _dailyDate(
-          now: current,
-          dayOffset: firstOffset + index,
-          hour: context.hour,
-          minute: context.minute,
-        );
-        final riskDate = targetDaily.subtract(const Duration(hours: 1));
-        if (!riskDate.isAfter(current)) continue;
-
-        await _platform.schedule(
-          ScheduledLocalNotification(
-            id: streakId + index,
-            title: '3Lines',
-            body: '스트릭이 위험해요! 오늘의 기록을 잊지 마세요 🔥',
-            scheduledDate: riskDate,
-            notificationDetails: _streakDetails,
-          ),
-        );
-      }
-    }
   }
 
   @override
   Future<void> scheduleWeeklyRetrospective() async {
     if (kIsWeb) return;
-    await initialize();
-    final current = _now(tz.local);
-    var nextSundayAt20 = tz.TZDateTime(
-      tz.local,
-      current.year,
-      current.month,
-      current.day + (DateTime.sunday - current.weekday + 7) % 7,
-      20,
-    );
-    if (!nextSundayAt20.isAfter(current)) {
-      nextSundayAt20 = tz.TZDateTime(
-        tz.local,
-        nextSundayAt20.year,
-        nextSundayAt20.month,
-        nextSundayAt20.day + 7,
-        20,
-      );
-    }
+    // 이전 호출자와의 호환만 유지하며 opt-in 없는 회고 예약은 제거한다.
     await _cancelIds([weeklyId]);
-    await _platform.schedule(
-      ScheduledLocalNotification(
-        id: weeklyId,
-        title: '3Lines 주간 회고',
-        body: '이번 주를 돌아볼 시간이에요. 7일간의 감정 흐름을 확인해보세요.',
-        scheduledDate: nextSundayAt20,
-        notificationDetails: _weeklyDetails,
-        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
-      ),
-    );
   }
 
   @override
@@ -211,7 +162,7 @@ final class NotificationService implements ReminderScheduler {
   @override
   Future<void> migrateLegacyReminders() {
     if (kIsWeb) return Future<void>.value();
-    return _cancelIds(legacyIds);
+    return cancelAll();
   }
 
   List<int> _streakIds() =>
@@ -255,26 +206,6 @@ const _dailyDetails = NotificationDetails(
     'daily_reminder',
     '매일 리마인더',
     channelDescription: '매일 저널 작성 리마인더',
-  ),
-  iOS: DarwinNotificationDetails(),
-);
-
-const _streakDetails = NotificationDetails(
-  android: AndroidNotificationDetails(
-    'streak_at_risk',
-    '스트릭 위험 알림',
-    channelDescription: '미기록 시 스트릭 유지를 위한 사전 알림',
-    importance: Importance.high,
-    priority: Priority.high,
-  ),
-  iOS: DarwinNotificationDetails(),
-);
-
-const _weeklyDetails = NotificationDetails(
-  android: AndroidNotificationDetails(
-    'weekly_retrospective',
-    '주간 회고 알림',
-    channelDescription: '매주 일요일 저녁 주간 회고 알림',
   ),
   iOS: DarwinNotificationDetails(),
 );

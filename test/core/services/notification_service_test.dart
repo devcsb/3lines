@@ -1,4 +1,3 @@
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:three_lines/core/services/device_time_zone_resolver.dart';
 import 'package:three_lines/core/services/notification_platform.dart';
@@ -9,6 +8,7 @@ import 'package:timezone/timezone.dart' as tz;
 final class RecordingNotificationPlatform implements NotificationPlatform {
   final scheduled = <ScheduledLocalNotification>[];
   final cancelled = <int>[];
+  final pending = <int, ScheduledLocalNotification>{};
   var initializeCount = 0;
   var permissionCount = 0;
   var permissionGranted = true;
@@ -34,12 +34,14 @@ final class RecordingNotificationPlatform implements NotificationPlatform {
       throw StateError('schedule failed');
     }
     scheduled.add(notification);
+    pending[notification.id] = notification;
   }
 
   @override
   Future<void> cancel(int id) async {
     cancelled.add(id);
     if (cancelFailures.contains(id)) throw StateError('cancel failed: $id');
+    pending.remove(id);
   }
 }
 
@@ -151,20 +153,18 @@ void main() {
         .where((item) => item.id >= 100 && item.id <= 129)
         .toList();
     expect(daily.first.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 7, 21));
-    expect(daily.first.body, '오늘의 3줄을 기록할 시간이에요');
+    expect(daily.first.body, '오늘 마음을 짧게 남겨볼까요?');
     expect(
-      daily.skip(1).every((item) => item.body == '오늘의 3줄을 기록할 시간이에요'),
+      daily.skip(1).every((item) => item.body == '오늘 마음을 짧게 남겨볼까요?'),
       isTrue,
     );
     final risks = platform.scheduled
         .where((item) => item.id >= 200 && item.id <= 229)
         .toList();
-    expect(risks, hasLength(30));
-    expect(risks.first.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 7, 20));
-    expect(risks.last.scheduledDate, tz.TZDateTime(tz.local, 2026, 9, 5, 20));
+    expect(risks, isEmpty);
   });
 
-  test('활성 스트릭은 앱을 열지 않아도 30일치 위험 알림을 만든다', () async {
+  test('활성 스트릭도 일일 알림 외 추가 알림을 만들지 않는다', () async {
     await service.replaceDailyAndStreak(
       const ReminderContext(
         hour: 21,
@@ -176,10 +176,8 @@ void main() {
     final risks = platform.scheduled
         .where((item) => item.id >= 200 && item.id <= 229)
         .toList();
-    expect(risks, hasLength(30));
-    expect(risks.first.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 6, 20));
-    expect(risks.last.scheduledDate, tz.TZDateTime(tz.local, 2026, 9, 4, 20));
-    expect(risks.every((item) => item.matchDateTimeComponents == null), isTrue);
+    expect(risks, isEmpty);
+    expect(platform.scheduled, hasLength(30));
   });
 
   test('스트릭이 없으면 위험 ID만 취소한다', () async {
@@ -201,7 +199,7 @@ void main() {
     );
   });
 
-  test('일일 교체는 주간 ID를 취소하지 않는다', () async {
+  test('일일 교체는 기존 주간 ID도 취소한다', () async {
     await service.replaceDailyAndStreak(
       const ReminderContext(
         hour: 21,
@@ -210,15 +208,12 @@ void main() {
         currentStreak: 0,
       ),
     );
-    expect(platform.cancelled, isNot(contains(300)));
+    expect(platform.cancelled, contains(300));
   });
 
-  test('주간 회고는 일요일 20시에 요일 시간 반복으로 예약한다', () async {
+  test('기존 주간 회고 API는 예약을 정리하며 추가 예약을 만들지 않는다', () async {
     await service.scheduleWeeklyRetrospective();
-    final weekly = platform.scheduled.single;
-    expect(weekly.id, 300);
-    expect(weekly.scheduledDate, tz.TZDateTime(tz.local, 2026, 8, 9, 20));
-    expect(weekly.matchDateTimeComponents, DateTimeComponents.dayOfWeekAndTime);
+    expect(platform.scheduled, isEmpty);
     expect(platform.cancelled, [300]);
   });
 
@@ -249,9 +244,16 @@ void main() {
     expect(platform.cancelled, containsAll([200, 300, 0, 1, 2]));
   });
 
-  test('legacy migration은 기존 ID만 취소한다', () async {
+  test('legacy migration은 기존 단발 일일과 위험 회고 ID도 정리한다', () async {
     await service.migrateLegacyReminders();
-    expect(platform.cancelled, [0, 1, 2]);
+    expect(platform.cancelled.toSet(), {
+      ...List<int>.generate(30, (i) => 100 + i),
+      ...List<int>.generate(30, (i) => 200 + i),
+      300,
+      0,
+      1,
+      2,
+    });
   });
 
   test('DST 전환에서도 일일 예약은 달력 날짜를 30일 보존한다', () async {
