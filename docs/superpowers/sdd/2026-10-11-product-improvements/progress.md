@@ -12,17 +12,18 @@
 
 ## 현재 진행
 
-### 최신 재개 지점
+### 최신 완료 대조
 
-- 최신 확정 구현은 `d4208ee`이고 진행 기록 HEAD는 `1efc718`이다. 아래 단계별 기록은 시간순 이력이며 가장 아래의 후속 판정을 우선한다. Task3 독립 검토는 종료됐고 Task4b/Task6 최종 UI 작업과 전체 검증이 남았다.
-- Task1/2/5는 후속 독립 검토에서 기존 지적이 모두 닫혔다. 전체 gate와 실제 OS 동작은 별도다.
-- Task3 초기 구현은 `fc19521`이며 관련394개 PASS 뒤 독립 검토에서 Important5/Minor1을 발견했다. 날짜 조회 중 입력 덮어쓰기, 손상 초안의 사용자 복구 경로 부재, 취소 중 재시도로 초안 재등장, 미구독 Today의 전체삭제 수명, nullable key 누락 수용, 회고 metadata 유실을 고치는 중이다. `.superpowers/sdd/2026-10-11-product-improvements/task-3-review-fixes.md`에 판정을 기록했다. 기존394개 PASS를 수정 후 결과로 재사용하지 않는다.
-- Task6a는 `89db6c0`에 커밋했다. target27개, Data 보관 안내1개 PASS 및 target analyze0issues다. 독립 xhigh 검토는 Critical/Important/Minor 모두0으로 인계 가능을 보고했고 실제 한글 렌더18장을 확인했다. DataSection의 기존 사진삭제 시험에서 드러난 Today 수명 결함은 Task3 소유로 인계했다. Task6b 하위 화면 대비/48dp/렌더는 아직 남았다.
-- Task7의 독립 검토는 JSON 평문/OS 백업/앱 잠금 범위 문서 누락을 지적했고 `e5043ef`로 고쳤다. Task6a 독립 검토자가 이 문서 지적도 닫았다. 실제 Android 컴파일, 서명 배포, 설치는 아직 미검증이다.
-- Task4는 미실행 RED 시험만 준비했다. Task4a QuestionsSection/LockScreen을 먼저 진행하고 Task4b Today/Prompt/Photo/SettingsController는 Task3 재검토 종료까지 보류한다. Task4의 새 RED 파일 때문에 Task3 시험에서 Today 디렉터리 전체를 무심코 실행하지 않는다.
-- 현재 Flutter 단독 실행 슬롯은 Task3 구현자가 소유한다. 종료 확인 후 다른 task에 인계한다. 전체 analyze/test, Android gate/build, R1~R6 최종 대조는 아직 실행하지 않았다.
+- 최종 Dart/UI 소스는 `5468c00`이다. Task1~7의 독립 검토 지적을 모두 닫았고 R1~R6 근거는 [완료 대조](completion.md)에 연결했다. 아래 기록은 당시의 중간 상태를 보존한 이력이며 현재 판정은 이 절과 완료 대조 문서를 우선한다.
+- root 최종 `flutter analyze --no-pub`는 No issues/exit0, 전체 `flutter test --no-pub --reporter expanded`는807PASS/exit0이다. 사진 겹침 후속 수정까지 포함한 결과다. 로그 `/tmp/3lines-product-final-tests-5468c00.log`.
+- 실제 Android APK 컴파일도 일반 release 명령과 로컬 unsigned 허용으로51초/exit0이다. APK75,244,034bytes, SHA256 `096cf186101b68588c6f1bf696fcce8583b792ab5c065e04b0e723411fd064ef`. 서명검사는`DOES NOT VERIFY`로실패하므로배포/설치용서명APK가아니다. 로그 `/tmp/3lines-product-android-build-with-pub.log`.
+- 첫 `--no-pub` 빌드의 stale integration_test registrant 실패는 SDK 재생성 조건을 확인하고 그 옵션만 빼서 해소했다. 자동 추가 Android 호환 옵션을 유지했고 생성 Kotlin 캐시만 ignore한다. 의존성 버전과 `pubspec.lock`은 바꾸지 않았다. Gradle/AGP/Kotlin 향후 지원 중단 경고는 완료 문서에 남겼다.
+- root release 보조 검사3개와 실제 Gradle CI unsigned 거부 gate가 통과했다. 현재 GitHub 공개v1.2.3에는AAB만있으며새APK/IPA나개선본은게시하지않았다. Android repository secret 이름4개는등록확인했고값은읽지않았다. Apple계정/다른secret범위는확인불가다.
+- 남은 범위는 외부 소스 통합·새 버전/태그·서명 CI·실기기 설치/OS 동작과 베타 관찰이다. 이 작업에서 push/merge/tag/publish/계정/secret 변경은 하지 않는다. 실행 프로세스와 Flutter 슬롯은 모두 반환됐다.
 
-후속 진행은 다음과 같다.
+### 당시 진행 이력
+
+다음은 중간 검증과 인계 당시의 기록이다.
 
 - Task3의 6건 보완을 `af58a9a` 11파일에 커밋했다. 새 반례45개와 최종 관련 소비자344개 PASS(exit0), format0changed다. DataSection 기존 삭제 시험은 Today 강제 listener 없이 실제 사진 참조 gate/DB0/unknown 사진 보존/event/안내 assertion을 유지했다. 원래 xhigh 검토자에게 재검토를 넘겼으며 Task4b 소유권은 아직 보류했다.
 - Task4a는 `9b7c4c9`다. 질문 저장 await/inline 오류/입력 유지/기기 인증 재시도 및 작은 화면 스크롤을 구현했다. 실제 RED6FAIL 후 새 질문4+새Lock2+기존Lock8=14PASS다. 독립 검토는 신규 Critical0/Important0, 시험Minor1이다. 영구 listener와30ms wait가 수명/완료 검증을 가리는 시험을 보강 중이다. 기존 resetPrompts 순차 write의 부분 실패/화면 불일치는 Important로 확인했으며 Task4b에서 기존 repository transaction으로 원자화한다.
@@ -80,6 +81,14 @@
 - root최초전체analyze의13info를`c2b1573`의5파일에서타입명시/braces/underscore/기존then의unawaited표시만으로정리했다. 독립검토가의미보존/새반례없음을확인했다. root전체`flutter analyze --no-pub`는Noissues/exit0이며`flutter test --no-pub --reporter expanded`는807PASS/exit0(34초)이다. 로그`/tmp/3lines-product-final-tests.log`. 사진후속변경전결과이므로그수정뒤최종전체gate를갱신한다.
 - root가 GitHub Release를다시읽었고최신공개v1.2.3/published2026-08-29/AAB한개72,099,129bytes는그대로였다. APK/IPA나현재개선본은게시되지않았다.
 - 현재Flutter슬롯은사진Minor반례/보완을위해Task6에인계했다. 종료후root전체gate/로컬unsignedAndroidcompile/최종요구대조문서와독립완료검토를실행한다. 이때까지goal은active다.
+
+### 최종 판정 갱신
+
+사진Minor는`5468c00`에서실제부모Stack+제거버튼시험과조건부여백으로닫았다.
+root최종전체807PASS/분석0/Androidunsigned컴파일성공은맨위최신완료대조와
+`completion.md`를따른다. 이전절의대기/미완료표현은당시이력이며현재판정이아니다.
+독립완료검토에서기능·검증주장의새차단반례는없었고최신진행헤더의오래된상태
+표시Minor를이갱신으로해소했다. 외부서명배포와실기기검증은여전히미실행이다.
 
 | 책임 | 독립 리뷰어 | 상태 |
 |---|---|---|

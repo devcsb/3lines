@@ -118,4 +118,10 @@ flutter build apk --release --split-per-abi \
   --android-project-arg=allowUnsignedRelease=true
 ```
 
+릴리스 빌드에는 `--no-pub`를 추가하지 않습니다. Flutter 3.47.1에서는 이
+옵션이 플랫폼 플러그인 등록 파일 재생성도 건너뜁니다. 테스트용 등록 파일이
+남아 있으면 Gradle이 릴리스에서 제외한 `integration_test` 클래스를 Java에서
+참조하여 컴파일에 실패할 수 있습니다. 생성 파일을 직접 고치거나 테스트
+의존성을 배포 의존성으로 옮기지 말고 위 일반 빌드 명령으로 재생성합니다.
+
 로컬 iOS archive는 Apple 인증서·프로필과 `pod install --deployment`가 필요합니다. CI 스크립트는 `tool/release/prepare_ios_signing.sh`와 `tool/release/generate_export_options.sh`를 사용합니다.
