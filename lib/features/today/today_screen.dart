@@ -37,7 +37,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
   int? _completionSession;
   final _answerFocusNodes = List.generate(3, (_) => FocusNode());
   int _exampleAction = 0;
-  bool _photoErrorShowing = false;
 
   Future<void> _pickPhoto({required bool camera, TodayState? retryFor}) async {
     final controller = ref.read(todayControllerProvider.notifier);
@@ -86,10 +85,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
       return;
     }
     if (result.status == PhotoPickStatus.cancelled) {
-      if (_photoErrorShowing) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      }
-      _photoErrorShowing = false;
+      // A cancelled picker must not close an unrelated Undo notice.
       return;
     }
     final message = switch (result.status) {
@@ -99,7 +95,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
         '사진을 보관하지 못했어요. 글과 기존 사진은 유지했어요. 다시 시도해주세요.',
       _ => '사진을 선택하지 못했어요. 글과 기존 사진은 유지했어요. 다시 시도해주세요.',
     };
-    _photoErrorShowing = true;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -109,7 +104,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
             label: '다시 시도',
             onPressed: () {
               // SnackBarAction closes this notice itself before retrying.
-              _photoErrorShowing = false;
               _pickPhoto(camera: camera, retryFor: started);
             },
           ),
@@ -185,12 +179,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                       final success = await ref
                           .read(todayControllerProvider.notifier)
                           .discardCorruptDraft(error);
-                      if (!success && context.mounted)
+                      if (!success && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('초안이 바뀌었거나 폐기하지 못했어요. 다시 불러와주세요.'),
                           ),
                         );
+                      }
                     }
                   },
                   child: const Text('읽지 못한 초안 폐기'),
@@ -671,8 +666,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                         .read(todayControllerProvider)
                                         .value;
                                     if (live?.session != state.session ||
-                                        live?.draftDate != state.draftDate)
+                                        live?.draftDate != state.draftDate) {
                                       return;
+                                    }
                                     if (success) {
                                       FocusScope.of(context).unfocus();
                                     }

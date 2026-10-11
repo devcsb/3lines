@@ -235,8 +235,9 @@ class TodayController extends AsyncNotifier<TodayState> {
         current.draftRevision == 0 ||
         current.isSaving ||
         current.isCancelling ||
-        current.isSwitchingDate)
+        current.isSwitchingDate) {
       return false;
+    }
     state = AsyncData(
       current.copyWith(storageStatus: DraftStorageStatus.storing),
     );
@@ -251,8 +252,9 @@ class TodayController extends AsyncNotifier<TodayState> {
     if (started == null ||
         started.isSwitchingDate ||
         started.isSaving ||
-        started.isCancelling)
+        started.isCancelling) {
       return;
+    }
     final request = _selectionRequest + 1;
     final retain = ref.keepAlive();
     state = AsyncData(started.copyWith(isSwitchingDate: true));
@@ -305,8 +307,9 @@ class TodayController extends AsyncNotifier<TodayState> {
         live == null ||
         live.session != current.session ||
         live.draftRevision != current.draftRevision ||
-        ref.read(entryRepositoryProvider).journalEpoch != current.epoch)
+        ref.read(entryRepositoryProvider).journalEpoch != current.epoch) {
       return;
+    }
     final session = _session = ++_nextSession;
     final repo = ref.read(entryRepositoryProvider);
     final epoch = repo.journalEpoch;
@@ -322,8 +325,9 @@ class TodayController extends AsyncNotifier<TodayState> {
         epoch != repo.journalEpoch ||
         state.value?.session != current.session ||
         state.value?.draftRevision != current.draftRevision ||
-        request != _selectionRequest)
+        request != _selectionRequest) {
       return;
+    }
     var next = TodayState(
       draftDate: date,
       session: session,
@@ -356,8 +360,9 @@ class TodayController extends AsyncNotifier<TodayState> {
     if (current == null ||
         current.isSaving ||
         current.isCancelling ||
-        current.isSwitchingDate)
+        current.isSwitchingDate) {
       return false;
+    }
     try {
       await ref
           .read(entryRepositoryProvider)
@@ -388,20 +393,22 @@ class TodayController extends AsyncNotifier<TodayState> {
       // Re-reading future during a manual reset would wait on that reset's loading state.
       final initialized = _managedInitialization ??= future.then<void>(
         (_) {},
-        onError: (Object _, StackTrace __) {},
+        onError: (Object _, StackTrace _) {},
       );
       await initialized;
       if (!ref.mounted ||
           request != _selectionRequest ||
-          epoch != repo.journalEpoch)
+          epoch != repo.journalEpoch) {
         return;
+      }
       _session = ++_nextSession;
       state = const AsyncLoading();
       final result = await AsyncValue.guard(() => _load(repo, settings, clock));
       if (ref.mounted &&
           request == _selectionRequest &&
-          epoch == repo.journalEpoch)
+          epoch == repo.journalEpoch) {
         state = result;
+      }
     } finally {
       retain.close();
     }
@@ -458,13 +465,17 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   int? _answerLimitSession;
+  DailyEntry? _answerLimitBaseline;
   List<int> _answerLimits = const [200, 200, 200];
 
   int answerLimit(int index) {
     final current = _activeState;
     if (current == null || index < 0 || index > 2) return 200;
-    if (_answerLimitSession != current.session) {
+    // Refresh may import a new immutable baseline without replacing the draft session.
+    if (_answerLimitSession != current.session ||
+        _answerLimitBaseline != current.existingEntry) {
       _answerLimitSession = current.session;
+      _answerLimitBaseline = current.existingEntry;
       _answerLimits = [
         current.answer1,
         current.answer2,
@@ -524,8 +535,9 @@ class TodayController extends AsyncNotifier<TodayState> {
       entryRepo = ref.read(entryRepositoryProvider);
 
       if (!await _store(current)) {
-        if (_matches(current))
+        if (_matches(current)) {
           state = AsyncData(state.value!.copyWith(isSaving: false));
+        }
         return false;
       }
       entry = await entryRepo.commitDraft(
@@ -534,7 +546,7 @@ class TodayController extends AsyncNotifier<TodayState> {
       );
     } catch (e, stack) {
       developer.log('Failed to save entry', error: e, stackTrace: stack);
-      if (_matches(current))
+      if (_matches(current)) {
         state = AsyncData(
           state.value!.copyWith(
             isSaving: false,
@@ -544,6 +556,7 @@ class TodayController extends AsyncNotifier<TodayState> {
                 : '저장하지 못했어요. 입력은 그대로 남아 있어요.',
           ),
         );
+      }
       return false;
     }
 
@@ -590,7 +603,7 @@ class TodayController extends AsyncNotifier<TodayState> {
       );
     }
 
-    if (_matches(current))
+    if (_matches(current)) {
       state = AsyncData(
         current.copyWith(
           isCompleted: true,
@@ -607,6 +620,7 @@ class TodayController extends AsyncNotifier<TodayState> {
           draftDates: current.draftDates.where((d) => d != entry.date).toList(),
         ),
       );
+    }
 
     ref.read(journalChangesProvider.notifier).markChanged();
     return true;
@@ -617,8 +631,9 @@ class TodayController extends AsyncNotifier<TodayState> {
     if (current == null ||
         current.isSaving ||
         current.isCancelling ||
-        current.isSwitchingDate)
+        current.isSwitchingDate) {
       return;
+    }
     state = AsyncData(current.copyWith(isEditing: !current.isEditing));
   }
 
@@ -654,13 +669,14 @@ class TodayController extends AsyncNotifier<TodayState> {
             epoch: current.epoch,
           );
     } catch (_) {
-      if (_matches(current))
+      if (_matches(current)) {
         state = AsyncData(
           current.copyWith(
             isCancelling: false,
             draftError: () => '초안을 취소하지 못했어요. 다시 시도해주세요.',
           ),
         );
+      }
       return;
     }
 
@@ -675,7 +691,7 @@ class TodayController extends AsyncNotifier<TodayState> {
           );
     }
 
-    if (_matches(current))
+    if (_matches(current)) {
       state = AsyncData(
         current.copyWith(
           emotion: () => saved.emotion,
@@ -691,6 +707,7 @@ class TodayController extends AsyncNotifier<TodayState> {
           hasConflict: false,
         ),
       );
+    }
   }
 
   Future<void> attachPhoto(String path, {TodayState? started}) async {

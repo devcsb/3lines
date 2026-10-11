@@ -212,6 +212,26 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('사진 실패 뒤 예시 Undo 안내는 새 picker 취소가 닫지 않는다', (tester) async {
+    picker.error = PlatformException(code: 'photo_access_denied');
+    await show(tester);
+    await pick(tester, '갤러리');
+    expect(find.text('다시 시도'), findsOneWidget);
+    await tester.ensureVisible(find.text('맑은 날씨').first);
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.text('맑은 날씨').first);
+      await entries.listDrafts().timeout(const Duration(seconds: 3));
+    });
+    await tester.pumpAndSettle();
+    final inserted = container.read(todayControllerProvider).value!.answer1;
+    expect(find.text('되돌리기'), findsOneWidget);
+    picker.error = null;
+    await pick(tester, '갤러리');
+    expect(find.text('되돌리기'), findsOneWidget);
+    expect(container.read(todayControllerProvider).value!.answer1, inserted);
+  });
+
   testWidgets('늦은 picker 결과는 다른 날짜의 글과 기존 사진을 덮지 않고 미사용 파일만 정리한다', (
     tester,
   ) async {

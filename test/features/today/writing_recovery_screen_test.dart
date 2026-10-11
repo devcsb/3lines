@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,10 +10,12 @@ import 'package:three_lines/core/services/photo_service.dart';
 import 'package:three_lines/core/time/app_clock.dart';
 import 'package:three_lines/data/database/app_database.dart';
 import 'package:three_lines/data/models/journal_draft.dart';
+import 'package:three_lines/data/models/daily_entry.dart';
 import 'package:three_lines/data/repositories/entry_repository.dart';
 import 'package:three_lines/data/repositories/settings_repository.dart';
 import 'package:three_lines/features/today/today_controller.dart';
 import 'package:three_lines/features/today/today_screen.dart';
+import 'package:three_lines/features/settings/settings_controller.dart';
 
 import '../../helpers/fake_photo_service.dart';
 
@@ -49,22 +53,25 @@ void main() {
     String answer = '',
     String? question,
     double textScale = 1,
+    bool seedDraft = true,
   }) async {
     await tester.runAsync(() async {
-      await repository.storeDraft(
-        JournalDraft(
-          date: '2026-10-11',
-          revision: 1,
-          emotion: 3,
-          prompts: [
-            question ?? defaultPromptQuestions[0],
-            defaultPromptQuestions[1],
-            defaultPromptQuestions[2],
-          ],
-          answers: [answer, '', ''],
-        ),
-        epoch: 0,
-      );
+      if (seedDraft) {
+        await repository.storeDraft(
+          JournalDraft(
+            date: '2026-10-11',
+            revision: 1,
+            emotion: 3,
+            prompts: [
+              question ?? defaultPromptQuestions[0],
+              defaultPromptQuestions[1],
+              defaultPromptQuestions[2],
+            ],
+            answers: [answer, '', ''],
+          ),
+          epoch: 0,
+        );
+      }
       container.listen(todayControllerProvider, (_, _) {});
       await container.read(todayControllerProvider.future);
     });
@@ -84,6 +91,67 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('빈 Today를 연 뒤 오늘 장문을 가져오고 수정해도 220자를 보존한다', (tester) async {
+    await show(tester, seedDraft: false);
+    final controller = container.read(todayControllerProvider.notifier);
+    final session = container.read(todayControllerProvider).value!.session;
+    expect(controller.answerLimit(0), 200);
+    final imported = List.filled(230, '가').join();
+    final reduced = List.filled(220, '가').join();
+    await tester.runAsync(() async {
+      final subscription = container.listen(
+        settingsControllerProvider,
+        (_, _) {},
+      );
+      try {
+        await container.read(settingsControllerProvider.future);
+        final settings = container.read(settingsControllerProvider.notifier);
+        final preview = await settings.previewImport(
+          jsonEncode([
+            DailyEntry(
+              date: '2026-10-11',
+              emotion: 3,
+              prompt1: defaultPromptQuestions[0],
+              prompt2: defaultPromptQuestions[1],
+              prompt3: defaultPromptQuestions[2],
+              answer1: imported,
+            ).toJson(),
+          ]),
+        );
+        final result = await settings.applyImport(preview);
+        expect(result.changedCount, 1);
+      } finally {
+        subscription.close();
+      }
+    });
+    await tester.pumpAndSettle();
+    expect(container.read(todayControllerProvider).value!.session, session);
+    expect(container.read(todayControllerProvider).value!.answer1, imported);
+    await tester.tap(find.text('수정하기'));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.enterText(find.byType(TextField).first, reduced);
+      await repository.listDrafts();
+    });
+    await tester.pump();
+    expect(container.read(todayControllerProvider).value!.answer1, reduced);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      reduced,
+    );
+    expect(controller.answerLimit(0), 230);
+    await tester.runAsync(() async {
+      controller.setAnswer(0, List.filled(231, '가').join());
+      await repository.listDrafts();
+    });
+    expect(container.read(todayControllerProvider).value!.answer1, reduced);
+    expect(controller.answerLimit(0), 230);
+    expect(
+      (await tester.runAsync(repository.listDrafts))!.single.answers[0],
+      reduced,
+    );
+  });
 
   Future<void> addExample(WidgetTester tester) async {
     final suggestion = find.text('맑은 날씨').first;
