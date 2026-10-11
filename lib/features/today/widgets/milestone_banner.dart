@@ -7,11 +7,7 @@ class MilestoneBanner extends StatefulWidget {
   final int milestone;
   final VoidCallback? onDismiss;
 
-  const MilestoneBanner({
-    super.key,
-    required this.milestone,
-    this.onDismiss,
-  });
+  const MilestoneBanner({super.key, required this.milestone, this.onDismiss});
 
   @override
   State<MilestoneBanner> createState() => _MilestoneBannerState();
@@ -28,20 +24,20 @@ class _MilestoneBannerState extends State<MilestoneBanner> {
   VoidCallback? get onDismiss => widget.onDismiss;
 
   String get _message => switch (milestone) {
-        7 => '7일 연속 기록 달성!',
-        30 => '30일 기록 달성!',
-        100 => '100일 기록을 축하해요!',
-        365 => '1년, 365일의 기록!',
-        _ => '$milestone일 기록 달성!',
-      };
+    7 => '7일 연속 기록 달성!',
+    30 => '30일 기록 달성!',
+    100 => '100일 기록을 축하해요!',
+    365 => '1년, 365일의 기록!',
+    _ => '$milestone일 기록 달성!',
+  };
 
   String get _subtitle => switch (milestone) {
-        7 => '꾸준함의 시작이에요',
-        30 => '한 달의 습관이 되었어요',
-        100 => '대단한 여정이에요',
-        365 => '당신의 1년이 여기 담겨 있어요',
-        _ => '멋진 기록이에요',
-      };
+    7 => '꾸준함의 시작이에요',
+    30 => '한 달의 습관이 되었어요',
+    100 => '대단한 여정이에요',
+    365 => '당신의 1년이 여기 담겨 있어요',
+    _ => '멋진 기록이에요',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +63,7 @@ class _MilestoneBannerState extends State<MilestoneBanner> {
           Text(
             _message,
             style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.primary,
+              color: theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -75,17 +71,17 @@ class _MilestoneBannerState extends State<MilestoneBanner> {
           Text(
             _subtitle,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           if (onDismiss != null) ...[
             const SizedBox(height: 12),
-            GestureDetector(
-              onTap: onDismiss,
+            TextButton(
+              onPressed: onDismiss,
               child: Text(
                 '확인',
                 style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.primary,
+                  color: theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                 ),
               ),

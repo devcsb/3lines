@@ -182,13 +182,6 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
       );
     }).toList();
 
-    // Bottom title interval based on total day span
-    final bottomInterval = totalDays > 14
-        ? (totalDays / 4).ceilToDouble()
-        : totalDays > 0
-        ? 1.0
-        : 1.0;
-
     // FadeTransition 은 자식(LineChart)을 재빌드하지 않고 레이어 알파만 갱신한다.
     // 기존 AnimatedBuilder+Opacity 는 페이드 1초 동안 매 프레임 차트 전체를
     // 재구성(fl_chart painter 재계산)해 낭비였다.
@@ -196,93 +189,137 @@ class _EmotionTrendChartState extends State<EmotionTrendChart>
       opacity: _drawAnimation,
       child: SizedBox(
         height: 200,
-        child: LineChart(
-          LineChartData(
-            minX: 0,
-            maxX: totalDays.toDouble(),
-            minY: 0.5,
-            maxY: 5.5,
-            gridData: FlGridData(
-              show: true,
-              horizontalInterval: 1,
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-                strokeWidth: 1,
-              ),
-              drawVerticalLine: false,
-            ),
-            titlesData: FlTitlesData(
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize:
-                      MediaQuery.textScalerOf(context).scale(12) * 2.5 + 8,
-                  interval: 1,
-                  getTitlesWidget: (value, _) {
-                    if (value < 1 || value > 5) return const SizedBox();
-                    return Text(
-                      AppColors.emotionLabels[value.toInt()] ?? '',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    );
-                  },
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final scaler = MediaQuery.textScalerOf(context);
+            final leftReservedSize = scaler.scale(12) * 2.5 + 8;
+            final plotWidth = (constraints.maxWidth - leftReservedSize)
+                .clamp(1.0, double.infinity)
+                .toDouble();
+            final painter = TextPainter(
+              textDirection: Directionality.of(context),
+              textScaler: scaler,
+            );
+            var maxDateWidth = 0.0;
+            // Insights periods cap this scan at three months; wider ranges should
+            // measure representative month/day labels instead of every day.
+            for (var offset = 0; offset <= totalDays; offset++) {
+              final date = firstDate.add(Duration(days: offset));
+              painter.text = TextSpan(
+                text: '${date.month}/${date.day}',
+                style: theme.textTheme.bodySmall,
+              );
+              painter.layout();
+              if (painter.width > maxDateWidth) maxDateWidth = painter.width;
+            }
+            painter.dispose();
+            // fitInside moves endpoint labels inward by half their width.
+            final minimumTickSpace = maxDateWidth * 1.5 + 8;
+            final bottomInterval = (totalDays * minimumTickSpace / plotWidth)
+                .ceil()
+                .clamp(1, totalDays)
+                .toDouble();
+            return LineChart(
+              LineChartData(
+                minX: 0,
+                maxX: totalDays.toDouble(),
+                minY: 0.5,
+                maxY: 5.5,
+                gridData: FlGridData(
+                  show: true,
+                  horizontalInterval: 1,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.3,
+                    ),
+                    strokeWidth: 1,
+                  ),
+                  drawVerticalLine: false,
+                ),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: leftReservedSize,
+                      interval: 1,
+                      getTitlesWidget: (value, _) {
+                        if (value < 1 || value > 5) return const SizedBox();
+                        return Text(
+                          AppColors.emotionLabels[value.toInt()] ?? '',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize:
+                          MediaQuery.textScalerOf(context).scale(12) * 1.5 + 8,
+                      interval: bottomInterval,
+                      getTitlesWidget: (value, meta) {
+                        final dayOffset = value.toInt();
+                        if (dayOffset < 0 || dayOffset > totalDays) {
+                          return const SizedBox();
+                        }
+                        if (dayOffset > 0 &&
+                            dayOffset < totalDays &&
+                            ((totalDays - dayOffset) * plotWidth / totalDays <
+                                    minimumTickSpace ||
+                                dayOffset * plotWidth / totalDays <
+                                    minimumTickSpace)) {
+                          return const SizedBox();
+                        }
+                        final date = firstDate.add(Duration(days: dayOffset));
+                        return SideTitleWidget(
+                          meta: meta,
+                          space: 4,
+                          fitInside: SideTitleFitInsideData.fromTitleMeta(meta),
+                          child: Text(
+                            '${date.month}/${date.day}',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                lineBarsData: lineBars,
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (_) =>
+                        theme.colorScheme.surfaceContainerHighest,
+                    getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        final dayOffset = spot.x.toInt();
+                        final entry = dataByOffset[dayOffset];
+                        if (entry == null) return null;
+                        final label =
+                            AppColors.emotionLabels[entry.emotion] ?? '';
+                        return LineTooltipItem(
+                          '$label ${entry.date.month}/${entry.date.day}',
+                          TextStyle(
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 12,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
                 ),
               ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize:
-                      MediaQuery.textScalerOf(context).scale(12) * 1.5 + 8,
-                  interval: bottomInterval,
-                  getTitlesWidget: (value, _) {
-                    final dayOffset = value.toInt();
-                    if (dayOffset < 0 || dayOffset > totalDays) {
-                      return const SizedBox();
-                    }
-                    final date = firstDate.add(Duration(days: dayOffset));
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        '${date.month}/${date.day}',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    );
-                  },
-                ),
-              ),
-              topTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-            ),
-            borderData: FlBorderData(show: false),
-            lineBarsData: lineBars,
-            lineTouchData: LineTouchData(
-              touchTooltipData: LineTouchTooltipData(
-                getTooltipColor: (_) =>
-                    theme.colorScheme.surfaceContainerHighest,
-                getTooltipItems: (touchedSpots) {
-                  return touchedSpots.map((spot) {
-                    final dayOffset = spot.x.toInt();
-                    final entry = dataByOffset[dayOffset];
-                    if (entry == null) return null;
-                    final label = AppColors.emotionLabels[entry.emotion] ?? '';
-                    return LineTooltipItem(
-                      '$label ${entry.date.month}/${entry.date.day}',
-                      TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontSize: 12,
-                      ),
-                    );
-                  }).toList();
-                },
-              ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );

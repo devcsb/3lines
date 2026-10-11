@@ -306,6 +306,77 @@ void main() {
     });
   }
 
+  for (final days in [7, 14, 30]) {
+    for (final size in [const Size(320, 640), const Size(640, 320)]) {
+      testWidgets('연속 날짜 $days일 $size 200% 축 라벨 겹침과 끝점 클리핑 없음', (tester) async {
+        final boundary = GlobalKey();
+        await mount(
+          tester,
+          _fixture().copyWith(
+            emotionTrend: [
+              for (var day = 1; day <= days; day++)
+                (date: DateTime(2026, 10, day), emotion: 3),
+            ],
+          ),
+          AppTheme.light(),
+          size: size,
+          scale: 2,
+          boundary: boundary,
+        );
+        final chartFinder = find.byType(EmotionTrendChart);
+        await tester.ensureVisible(chartFinder);
+        await tester.pumpAndSettle();
+        await captureUi(
+          tester,
+          boundary,
+          'insights-dates-$days-${size.width.toInt()}x${size.height.toInt()}-200pct',
+        );
+        final labels = find.descendant(
+          of: chartFinder,
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Text &&
+                RegExp(r'^10/\d+$').hasMatch(widget.data ?? ''),
+          ),
+        );
+        final rectangles =
+            labels
+                .evaluate()
+                .map((element) => tester.getRect(find.byWidget(element.widget)))
+                .toList()
+              ..sort((a, b) => a.left.compareTo(b.left));
+        expect(rectangles.length, greaterThanOrEqualTo(2));
+        expect(
+          find.descendant(of: chartFinder, matching: find.text('10/1')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: chartFinder, matching: find.text('10/$days')),
+          findsOneWidget,
+        );
+        final chartBounds = tester.getRect(chartFinder);
+        expect(rectangles.first.left, greaterThanOrEqualTo(chartBounds.left));
+        expect(rectangles.last.right, lessThanOrEqualTo(chartBounds.right));
+        for (var index = 1; index < rectangles.length; index++) {
+          expect(
+            rectangles[index - 1].right + 4,
+            lessThanOrEqualTo(rectangles[index].left),
+            reason: '$days일 날짜 라벨 ${index - 1}/$index 실제 렌더 겹침',
+          );
+        }
+        final chart = tester.widget<LineChart>(find.byType(LineChart));
+        expect(
+          chart.data.lineBarsData.fold<int>(
+            0,
+            (count, bar) => count + bar.spots.length,
+          ),
+          days,
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   testWidgets('월간 PDF는 기본 글씨에서도 48dp native 버튼이다', (tester) async {
     await mount(tester, _fixture(), AppTheme.light());
     final target = find.ancestor(

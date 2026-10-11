@@ -149,9 +149,7 @@ class _ProgressRing extends StatelessWidget {
               '$filledCount/3',
               key: ValueKey(filledCount),
               style: theme.textTheme.labelMedium?.copyWith(
-                color: filledCount > 0
-                    ? color
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w700,
               ),
             ),

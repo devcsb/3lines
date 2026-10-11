@@ -93,24 +93,24 @@ class _StreakPulseBadgeState extends State<StreakPulseBadge>
             child: child,
           );
         },
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+        child: Wrap(
+          spacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
               '${widget.streak}일 연속 기록 중',
               style: theme.textTheme.labelSmall?.copyWith(
-                color: color,
+                color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
             ),
             if (widget.usedGraceDay) ...[
-              const SizedBox(width: 6),
               Tooltip(
                 message: '유예일이 적용되었어요',
                 child: Icon(
                   Icons.shield_rounded,
                   size: 14,
-                  color: color.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],

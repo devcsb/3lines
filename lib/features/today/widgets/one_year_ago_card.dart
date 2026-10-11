@@ -20,8 +20,7 @@ class OneYearAgoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Collect all available past entries
     final pastEntries = <({String label, DailyEntry entry})>[
-      if (oneMonthAgoEntry != null)
-        (label: '1개월 전', entry: oneMonthAgoEntry!),
+      if (oneMonthAgoEntry != null) (label: '1개월 전', entry: oneMonthAgoEntry!),
       if (sixMonthsAgoEntry != null)
         (label: '6개월 전', entry: sixMonthsAgoEntry!),
       if (entry != null) (label: '1년 전', entry: entry!),
@@ -29,13 +28,12 @@ class OneYearAgoCard extends StatelessWidget {
 
     return Column(
       children: pastEntries
-          .map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _PastEntryCard(
-                  label: item.label,
-                  entry: item.entry,
-                ),
-              ))
+          .map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _PastEntryCard(label: item.label, entry: item.entry),
+            ),
+          )
           .toList(),
     );
   }
@@ -69,24 +67,23 @@ class _PastEntryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.history_rounded,
-                  size: 16,
-                  color:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+              Icon(
+                Icons.history_rounded,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: theme.textTheme.labelMedium?.copyWith(
-                  color:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  color: theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const Spacer(),
               // Emotion badge with color dot
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: emotionColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -106,7 +103,7 @@ class _PastEntryCard extends StatelessWidget {
                     Text(
                       emotionLabel,
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: emotionColor,
+                        color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -123,23 +120,27 @@ class _PastEntryCard extends StatelessWidget {
   }
 
   List<Widget> _buildAnswerPreviews(ThemeData theme) {
-    final answers = [entry.answer1, entry.answer2, entry.answer3]
-        .where((a) => a.isNotEmpty)
-        .take(2);
+    final answers = [
+      entry.answer1,
+      entry.answer2,
+      entry.answer3,
+    ].where((a) => a.isNotEmpty).take(2);
 
     return answers
-        .map((a) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                a,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  fontStyle: FontStyle.italic,
-                ),
+        .map(
+          (a) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              a,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontStyle: FontStyle.italic,
               ),
-            ))
+            ),
+          ),
+        )
         .toList();
   }
 }

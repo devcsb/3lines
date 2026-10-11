@@ -191,70 +191,95 @@ class _CompletionAnimationState extends State<CompletionAnimation>
               ),
 
               // Checkmark + text column
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Checkmark
-                  ScaleTransition(
-                    scale: _checkScale,
-                    child: AnimatedBuilder(
-                      animation: _checkDraw,
-                      builder: (context, _) => CustomPaint(
-                        size: const Size(72, 72),
-                        painter: _CheckmarkPainter(
-                          progress: _checkDraw.value,
-                          color: color,
-                        ),
+              Positioned.fill(
+                bottom: 80 + MediaQuery.paddingOf(context).bottom,
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
                       ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // Motivational message
-                  SlideTransition(
-                    position: _textSlide,
-                    child: FadeTransition(
-                      opacity: _textOpacity,
-                      child: Column(
-                        children: [
-                          Text(
-                            _message,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.8,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Checkmark
+                            ScaleTransition(
+                              scale: _checkScale,
+                              child: AnimatedBuilder(
+                                animation: _checkDraw,
+                                builder: (context, _) => CustomPaint(
+                                  size: const Size(72, 72),
+                                  painter: _CheckmarkPainter(
+                                    progress: _checkDraw.value,
+                                    color: color,
+                                  ),
+                                ),
                               ),
-                              fontWeight: FontWeight.w600,
-                              height: 1.4,
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                          if (widget.streak > 0) ...[
-                            const SizedBox(height: 10),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                '${widget.streak}일 연속 기록 중',
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: color,
-                                  fontWeight: FontWeight.w600,
+
+                            const SizedBox(height: 28),
+
+                            // Motivational message
+                            SlideTransition(
+                              position: _textSlide,
+                              child: FadeTransition(
+                                opacity: _textOpacity,
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      _message,
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                            fontWeight: FontWeight.w600,
+                                            height: 1.4,
+                                          ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    if (widget.streak > 0) ...[
+                                      const SizedBox(height: 10),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: color.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${widget.streak}일 연속 기록 중',
+                                          style: theme.textTheme.labelMedium
+                                              ?.copyWith(
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 20),
+                                  ],
                                 ),
                               ),
                             ),
                           ],
-                          const SizedBox(height: 20),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
               // A visible, high-contrast action keeps dismissal discoverable
               // without waiting for the automatic fallback timer.
