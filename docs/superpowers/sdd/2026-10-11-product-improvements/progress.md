@@ -29,6 +29,19 @@
 - Task6b는 Timeline/Insights부터 진행한다. 실제 한글 렌더와 대비/48dp target25개에서 RED22FAIL/3PASS를 관찰했다. StatCard의 일반크기 한글 잘림, 200% 고정 grid 넘침, Timeline 3.277:1 및 detail dark2.850:1의 낮은 대비, PDF native button 부재를 고치는 중이다. Today/Prompt/Emotion은 Task4b 이후 인계한다.
 - Flutter 슬롯은 Task3 consumer 종료 후 Task4a 질문 시험에 양도했다. 이후 Task6b GREEN을 실행한다. 전체 gate/Android build/전체 요구 대조는 여전히 남았다.
 
+### af58a9a 재검토 후 진행
+
+- 원래 Task3 검토자가 이전 지적의 직접 수정은 확인했지만 새 Important2건을 보고했다. 저장/취소 중 날짜전환을 허용한 뒤 원래 작업 완료→날짜조회 실패가 오면 busy 상태가 남는다. 저장/취소 중 날짜전환 자체를 UI/controller에서 거부하는 정책으로 정리한다. 손상 row2개 중 하나를 폐기한 뒤 build가 session을 바꾸고 두 번째 손상에서 실패하면 reset이 AsyncError를 버려 loading이 남는다. reset 완료 조건을 해당 요청/epoch 기준으로 고친다. Task3 구현자가 Today controller/screen와 durable 시험만 소유하여 보완한다.
+- Task4a 보강 질문 시험은 외부 영구 listener와30ms완료추정을 제거한 뒤5PASS/원자초기화1RED다. 사용자지정3질문에서 두 번째 write 실패가 첫 질문만 DB에서 바꾸는 것을 확인했다. Task4 구현자에게 SettingsController의 prompt 부분, SettingsRepository, QuestionsSection을 먼저 인계했다. Task3 삭제/import 로직을 건드리지 않고 transaction/실패카피를 구현한다. Today/Prompt/Photo는 여전히 인계 전이다.
+- Task6b 첫 GREEN은22PASS/3FAIL이다. 세로 SegmentedButton 무한 높이와 Insights200% 레이아웃 실패를 보완 중이며 Flutter 단독 슬롯을 소유한다. 이 중간 결과를 최종 통과로 간주하지 않는다.
+
+### b294d6f 이후 인계 대기
+
+- Task3의 추가2건은 `b294d6f`에 커밋했다. 실제 RED5건 후 Today 명시5파일102PASS/exit0,4파일format0changed다. busy 중 날짜전환 거부와 reset 요청/epoch 검사에 더해 build의 session/date를 await 전에 고정한다. 원래 검토자가 재검토 중이다. Task4b Today 인계는 이 결과를 기다린다.
+- 질문 reset은 `63efff5`에서 원자화했다. 실제SQLite rollback/재시도/기존초안과기타설정보존을 포함해64PASS이며 독립 검토가 이전 Important/Minor를 모두 닫고 새 지적0으로 인계 가능을 보고했다.
+- Task6b Timeline/Insights는35PASS 뒤 실제 렌더에서 단일 감정 숫자64px/원48px 잘림과 툴팁 대비3.0176:1을 추가 RED로 확인했다. 이를 보완하고 최종40개/회귀/렌더/analyze를 수행 중이며 Flutter 슬롯을 소유한다. LockScreen은 수정하지 않았고 여기의 잠금 표시 개선은 InsightsLockedView다.
+- Task4b의 작성도움5+실Today복구/키보드6+사진회복4=15시험을 준비했다. 아직 실행/컴파일하지 않았고 운영 Today/Prompt/Photo 코드는 편집하지 않았다. 사진은 실 PhotoService/임시File/memoryDB로 취소/권한/복사실패/재시도/late결과 보호를 검사하도록 준비했다.
+
 | 책임 | 독립 리뷰어 | 상태 |
 |---|---|---|
 | 작성/초안/자정/앱 수명 | audit_writing_continuity | 조사 완료, 날짜 혼합 저장과 invalidate/늦은 응답/사진 초안 유실 반례를 R1에 반영 |
