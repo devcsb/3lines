@@ -65,6 +65,14 @@
 - 원본 checkout은 `codex/data-safety-import`에서 clean임을 다시 확인했다. 외부 배포, secret 값 조회 또는 사용자 자료 접근은 하지 않았다.
 - root 최종 release 보조 검사로 `ruby test/tool/release/launcher_assets_test.rb`, `ruby test/tool/release/android_beta_pipeline_test.rb`, `bash test/tool/release/ios_release_config_test.sh`를 실행해 모두 exit0을 확인했다. launcher 크기/불투명 Apple PNG/ICO/safe zone/대비5.2와 APK·AAB build/verify/flat staging, Apple32설정/release조건 및 iOS누락secret gate가 통과했다. pipeline 시험의 외부 도구는 fake이며 실제서명/배포의 증거가 아니다.
 
+### 5c72a98 이후 최종 UI와 통합 검증
+
+- Task6 보조/날짜10파일은 `7159faa`에 커밋했다. 독립 검토가 기존 날짜 Important를 닫고 신규 Critical/Important/Minor 모두0을 보고했다. 신규66개와 날짜6개, 최종 Insights/기존보조 회귀63개 PASS, target10개 analyze0issues다. root가 회귀/분석 로그를 대조했다.
+- Task4b 독립검토의 추가 Important는 최초 짧은답변의200상한을 캐시한 뒤 같은session에서 장문 import/refresh를 하면220자수정이200자로잘리는 경로다. Minor는 사진실패→예시Undo안내→새picker취소가 무관한Undo안내를닫는 경로다. 두 실제RED 후 `5c72a98`에서 session+immutable baseline으로 상한을 갱신하고 취소가SnackBar를건드리지않도록수정했다. 신규17PASS, scoped12파일analyze0issues/format0changed다. 기존lint16개도 의미변경없는braces/underscore정리로해소했다. 독립재검토는두지적닫힘/새접점반례없음을보고했다.
+- Task4의 넓은 Today/PhotoService/photo_cleanup/SettingsController 실행은320PASS/10FAIL이다. 준비된 Task6 writing_readability의낮은대비 RED가포함됐으므로 전체PASS로쓰지않고 제외재실행도하지않았다. 최종root전체gate는R6수정뒤실행한다.
+- 잔여R6는 writing11/Today복구7/전체Settings2개의 신규20개다. writing의최초결과는1PASS/10FAIL이며 category3.77:1/counter2.35:1/사진오류3.217:1와사진추가native버튼부재였다. 사진추가200% overflow를관찰한것은아니다. PhotoAttachment는native버튼과Wrap/정보색으로보완중이다. Task4검토종료후 Prompt/TodayScreen표시계층도Task6에인계했다. controller/서비스/Undo/사진결과/managedloading/저장조건은더이상수정하지않는다.
+- 현재 Flutter단독슬롯은Task6다. 잔여20개실제RED→GREEN/관련회귀/analyze/render 및독립검토뒤 root전체analyze/test/Android컴파일, R1~R6최종대조가남았다. 외부배포와실기기검증은수행하지않았다.
+
 | 책임 | 독립 리뷰어 | 상태 |
 |---|---|---|
 | 작성/초안/자정/앱 수명 | audit_writing_continuity | 조사 완료, 날짜 혼합 저장과 invalidate/늦은 응답/사진 초안 유실 반례를 R1에 반영 |
