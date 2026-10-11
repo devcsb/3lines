@@ -1,6 +1,16 @@
 import '../../data/models/daily_entry.dart';
 
+enum DraftStorageStatus { idle, storing, stored, failed }
+
 class TodayState {
+  final String draftDate;
+  final int draftRevision;
+  final int session;
+  final int epoch;
+  final List<String> draftDates;
+  final DraftStorageStatus storageStatus;
+  final String? draftError;
+  final bool hasConflict;
   final int? emotion;
   final String answer1;
   final String answer2;
@@ -21,6 +31,14 @@ class TodayState {
   final List<({DateTime date, int emotion})> recentEmotions;
 
   const TodayState({
+    this.draftDate = '',
+    this.draftRevision = 0,
+    this.session = 0,
+    this.epoch = 0,
+    this.draftDates = const [],
+    this.storageStatus = DraftStorageStatus.idle,
+    this.draftError,
+    this.hasConflict = false,
     this.emotion,
     this.answer1 = '',
     this.answer2 = '',
@@ -43,6 +61,20 @@ class TodayState {
 
   bool get canSave => emotion != null && filledAnswerCount > 0;
 
+  bool get isDirty {
+    final saved = existingEntry;
+    if (saved == null) {
+      return emotion != null ||
+          photoPath != null ||
+          [answer1, answer2, answer3].any((a) => a.isNotEmpty);
+    }
+    return emotion != saved.emotion ||
+        photoPath != saved.photoPath ||
+        answer1 != saved.answer1 ||
+        answer2 != saved.answer2 ||
+        answer3 != saved.answer3;
+  }
+
   int get filledAnswerCount => [
     answer1,
     answer2,
@@ -56,6 +88,14 @@ class TodayState {
   }
 
   TodayState copyWith({
+    String? draftDate,
+    int? draftRevision,
+    int? session,
+    int? epoch,
+    List<String>? draftDates,
+    DraftStorageStatus? storageStatus,
+    String? Function()? draftError,
+    bool? hasConflict,
     int? Function()? emotion,
     String? answer1,
     String? answer2,
@@ -76,6 +116,14 @@ class TodayState {
     List<({DateTime date, int emotion})>? recentEmotions,
   }) {
     return TodayState(
+      draftDate: draftDate ?? this.draftDate,
+      draftRevision: draftRevision ?? this.draftRevision,
+      session: session ?? this.session,
+      epoch: epoch ?? this.epoch,
+      draftDates: draftDates ?? this.draftDates,
+      storageStatus: storageStatus ?? this.storageStatus,
+      draftError: draftError != null ? draftError() : this.draftError,
+      hasConflict: hasConflict ?? this.hasConflict,
       emotion: emotion != null ? emotion() : this.emotion,
       answer1: answer1 ?? this.answer1,
       answer2: answer2 ?? this.answer2,

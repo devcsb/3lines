@@ -170,7 +170,7 @@ class TimelineController extends AsyncNotifier<TimelineState> {
     await _reload();
 
     ref.read(journalChangesProvider.notifier).markChanged();
-    ref.invalidate(todayControllerProvider);
+    await ref.read(todayControllerProvider.notifier).refresh();
   }
 
   Iterable<String> _retainedTodayDraftPaths() {

@@ -632,7 +632,7 @@ void main() {
       expect(container.read(journalChangesProvider), before + 1);
     });
 
-    test('전체 삭제 정리 사이 활성화된 Today 수정 사진은 보존한다', () async {
+    test('전체 삭제 정리 사이 새 초안이 참조한 사진은 보존한다', () async {
       await entryRepo.saveEntry(
         DailyEntry(
           date: '2026-09-29',
@@ -657,6 +657,7 @@ void main() {
       (fakePhoto as _AfterDeletePhotoService).afterDelete = (path) async {
         if (path != '/first.jpg') return;
         today.toggleEdit();
+        await today.attachPhoto('/second.jpg');
         expect(
           container.read(todayControllerProvider).value!.isEditing,
           isTrue,
@@ -674,7 +675,7 @@ void main() {
     });
 
     for (final editing in [false, true]) {
-      test('전체 삭제 후 ${editing ? '수정' : '작성'} Today draft 별칭을 보호한다', () async {
+      test('전체 삭제 후 ${editing ? '수정' : '작성'} Today draft도 제거한다', () async {
         await entryRepo.saveEntry(
           DailyEntry(
             date: editing ? '2026-09-30' : '2026-09-29',
@@ -699,7 +700,12 @@ void main() {
           isTrue,
         );
         expect(await entryRepo.getTotalCount(), 0);
-        expect(fakePhoto.deletedPaths, isEmpty);
+        expect(fakePhoto.deletedPaths.toSet(), {'/real.jpg', '/draft.jpg'});
+        expect(await entryRepo.listDrafts(), isEmpty);
+        expect(
+          container.read(todayControllerProvider).value!.photoPath,
+          isNull,
+        );
         expect(container.read(journalChangesProvider), before + 1);
       });
     }
@@ -847,7 +853,7 @@ void main() {
 
       final success = await notifier.deleteAllData();
       expect(success, isTrue);
-      expect(container.read(journalChangesProvider), changesBefore);
+      expect(container.read(journalChangesProvider), changesBefore + 1);
     });
 
     test('사진 정리 실패 후에도 DB 삭제와 저널 이벤트를 완료한다', () async {

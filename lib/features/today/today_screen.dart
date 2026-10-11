@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -7,6 +8,7 @@ import '../../core/time/app_clock.dart';
 import '../../core/utils/date_utils.dart' as du;
 import '../../shared/widgets/staggered_fade_in.dart';
 import 'today_controller.dart';
+import 'today_state.dart';
 import '../../core/services/photo_service.dart';
 import 'widgets/animated_save_button.dart';
 import 'widgets/completion_animation.dart';
@@ -29,6 +31,7 @@ class TodayScreen extends ConsumerStatefulWidget {
 class _TodayScreenState extends ConsumerState<TodayScreen>
     with WidgetsBindingObserver {
   bool _showCompletionAnimation = false;
+  int? _completionSession;
 
   @override
   void initState() {
@@ -74,7 +77,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
           ),
         ),
         data: (state) {
-          if (_showCompletionAnimation) {
+          if (_showCompletionAnimation && _completionSession == state.session) {
             return CompletionAnimation(
               streak: state.currentStreak,
               emotion: state.emotion ?? 3,
@@ -101,7 +104,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                         const SizedBox(height: 8),
                         // Date
                         Text(
-                          du.formatKoreanDate(now),
+                          du.formatKoreanDate(
+                            DateTime.tryParse(state.draftDate) ?? now,
+                          ),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurface.withValues(
                               alpha: 0.45,
@@ -109,6 +114,84 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                             letterSpacing: 0.5,
                           ),
                         ),
+                        if (state.draftDate !=
+                            ref.read(appClockProvider).todayString())
+                          TextButton(
+                            onPressed: () => ref
+                                .read(todayControllerProvider.notifier)
+                                .startToday(),
+                            child: const Text('오늘 작성하기'),
+                          ),
+                        if (state.draftDates.isNotEmpty)
+                          Wrap(
+                            children: [
+                              for (final date in state.draftDates)
+                                TextButton(
+                                  onPressed: () => ref
+                                      .read(todayControllerProvider.notifier)
+                                      .selectDate(date),
+                                  child: Text('$date 보관 초안'),
+                                ),
+                            ],
+                          ),
+                        if (state.storageStatus == DraftStorageStatus.storing)
+                          const Text('초안 보관 중…'),
+                        if (state.storageStatus == DraftStorageStatus.stored)
+                          const Text('초안 보관됨'),
+                        if (state.draftError != null) ...[
+                          Text(state.draftError!),
+                          if (state.storageStatus == DraftStorageStatus.failed)
+                            TextButton(
+                              onPressed: () => ref
+                                  .read(todayControllerProvider.notifier)
+                                  .retryDraftStorage(),
+                              child: const Text('초안 보관 다시 시도'),
+                            ),
+                        ],
+                        if (state.hasConflict) ...[
+                          TextButton(
+                            onPressed: () async {
+                              await Clipboard.setData(
+                                ClipboardData(
+                                  text:
+                                      '${state.draftDate}\n${state.answer1}\n${state.answer2}\n${state.answer3}',
+                                ),
+                              );
+                            },
+                            child: const Text('입력 내용 복사'),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('현재 초안을 폐기할까요?'),
+                                  content: const Text(
+                                    '필요한 입력을 먼저 복사해주세요. 저장된 기록을 다시 엽니다.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: const Text('돌아가기'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      child: const Text('폐기하고 다시 열기'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed == true && mounted) {
+                                await ref
+                                    .read(todayControllerProvider.notifier)
+                                    .reopenSavedEntry();
+                              }
+                            },
+                            child: const Text('저장된 기록 다시 열기'),
+                          ),
+                        ],
                         const SizedBox(height: 4),
                         // Greeting
                         Text(
@@ -260,23 +343,31 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                           photoPath: state.photoPath,
                           readOnly: isInteractionLocked,
                           onPickCamera: () async {
+                            final controller = ref.read(
+                              todayControllerProvider.notifier,
+                            );
+                            final started = controller.capturePhotoSession();
                             final path = await ref
                                 .read(photoServiceProvider)
                                 .pickFromCamera();
                             if (path != null) {
                               await ref
                                   .read(todayControllerProvider.notifier)
-                                  .attachPhoto(path);
+                                  .attachPhoto(path, started: started);
                             }
                           },
                           onPickGallery: () async {
+                            final controller = ref.read(
+                              todayControllerProvider.notifier,
+                            );
+                            final started = controller.capturePhotoSession();
                             final path = await ref
                                 .read(photoServiceProvider)
                                 .pickFromGallery();
                             if (path != null) {
                               await ref
                                   .read(todayControllerProvider.notifier)
-                                  .attachPhoto(path);
+                                  .attachPhoto(path, started: started);
                             }
                           },
                           onRemove: () => ref
@@ -413,13 +504,20 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                         .read(todayControllerProvider.notifier)
                                         .save();
                                     if (!context.mounted) return;
+                                    final live = ref
+                                        .read(todayControllerProvider)
+                                        .value;
+                                    if (live?.session != state.session ||
+                                        live?.draftDate != state.draftDate)
+                                      return;
                                     if (success) {
                                       FocusScope.of(context).unfocus();
                                     }
                                     if (success && isFirstSave) {
-                                      setState(
-                                        () => _showCompletionAnimation = true,
-                                      );
+                                      setState(() {
+                                        _completionSession = state.session;
+                                        _showCompletionAnimation = true;
+                                      });
                                     } else if (!success) {
                                       messenger.showSnackBar(
                                         const SnackBar(

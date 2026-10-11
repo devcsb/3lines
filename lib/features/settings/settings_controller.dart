@@ -65,8 +65,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     final newPrompts = List<String>.from(current.prompts);
     newPrompts[index] = value;
     state = AsyncData(current.copyWith(prompts: newPrompts));
-    // Refresh Today screen so it shows the updated prompts
-    ref.invalidate(todayControllerProvider);
+    // Questions are fixed for the current session; new records read new settings.
   }
 
   Future<void> resetPrompts() async {
@@ -83,7 +82,6 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     state = AsyncData(
       current.copyWith(prompts: List.from(defaultPromptQuestions)),
     );
-    ref.invalidate(todayControllerProvider);
   }
 
   /// Enables or disables the daily reminder. Returns false if scheduling fails.
@@ -201,7 +199,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
           .applyImport(preview, policy: policy);
       if (ref.mounted && result.changedCount > 0) {
         ref.read(journalChangesProvider.notifier).markChanged();
-        ref.invalidate(todayControllerProvider);
+        await ref.read(todayControllerProvider.notifier).refresh();
       }
       return result;
     } catch (_) {
@@ -217,9 +215,6 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     final entryRepo = ref.read(entryRepositoryProvider);
     late final List<String> photoPaths;
     try {
-      final totalCount = await entryRepo.getTotalCount();
-      if (totalCount == 0) return true;
-
       // 삭제 전에 모든 사진 파일 경로를 확보한다.
       photoPaths = await entryRepo.getAllPhotoPaths();
       await entryRepo.deleteAllEntries();
@@ -227,7 +222,8 @@ class SettingsController extends AsyncNotifier<SettingsState> {
       return false;
     }
 
-    // 후보마다 현재 DB 참조와 활성 draft를 읽고, 조회 실패 시 파일을 보존한다.
+    await ref.read(todayControllerProvider.notifier).resetAfterDelete();
+    // 삭제한 live 초안은 더 이상 정리 후보를 보호하지 않는다.
     final photoService = ref.read(photoServiceProvider);
     for (final path in photoPaths) {
       await photoService.deleteUnreferencedPhoto(
@@ -238,17 +234,16 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     }
 
     ref.read(journalChangesProvider.notifier).markChanged();
-    ref.invalidate(todayControllerProvider);
     return true;
   }
 
   Iterable<String> _retainedTodayDraftPaths() {
     final today = ref.read(todayControllerProvider).value;
-    if (today == null || (today.isCompleted && !today.isEditing)) {
+    if (today == null ||
+        today.epoch != ref.read(entryRepositoryProvider).journalEpoch ||
+        (today.isCompleted && !today.isEditing))
       return const [];
-    }
-    final path = today.photoPath;
-    return path == null ? const [] : [path];
+    return [?today.photoPath, ?today.existingEntry?.photoPath];
   }
 }
 

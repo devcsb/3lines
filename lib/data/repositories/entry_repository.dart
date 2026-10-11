@@ -6,12 +6,139 @@ import '../../core/time/app_clock.dart';
 import '../../core/utils/text_analysis.dart';
 import '../database/app_database.dart';
 import '../models/daily_entry.dart';
+import '../models/journal_draft.dart';
 import '../models/entry_import.dart';
 import '../models/weekly_retrospective.dart';
 
 class EntryRepository {
   final AppDatabase _db;
   final AppClock _clock;
+  Future<void> _draftQueue = Future.value();
+  int _journalEpoch = 0;
+  int get journalEpoch => _journalEpoch;
+  static const _draftPrefix = 'draft_v1:';
+
+  Future<T> _queueDraft<T>(Future<T> Function() action) {
+    final result = _draftQueue.then((_) => action());
+    _draftQueue = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace __) {},
+    );
+    return result;
+  }
+
+  void _checkEpoch(int epoch) {
+    if (epoch != _journalEpoch) throw const StaleDraft();
+  }
+
+  Future<JournalDraft?> _readDraft(String date) async {
+    final row = await (_db.select(
+      _db.settings,
+    )..where((t) => t.key.equals('$_draftPrefix$date'))).getSingleOrNull();
+    return row == null ? null : JournalDraft.decode(row.value, date: date);
+  }
+
+  Future<JournalDraft?> loadDraft(String date) =>
+      _queueDraft(() => _readDraft(date));
+
+  Future<List<JournalDraft>> listDrafts() => _queueDraft(_listDrafts);
+
+  Future<List<JournalDraft>> _listDrafts() async {
+    final rows =
+        await (_db.select(_db.settings)..where(
+              (t) =>
+                  t.key.isBiggerOrEqualValue(_draftPrefix) &
+                  t.key.isSmallerThanValue('draft_v1;'),
+            ))
+            .get();
+    final drafts = rows
+        .map(
+          (row) => JournalDraft.decode(
+            row.value,
+            date: row.key.substring(_draftPrefix.length),
+          ),
+        )
+        .toList();
+    drafts.sort((a, b) => b.date.compareTo(a.date));
+    return drafts;
+  }
+
+  Future<void> storeDraft(JournalDraft draft, {required int epoch}) =>
+      _queueDraft(() async {
+        _checkEpoch(epoch);
+        final previous = await _readDraft(draft.date);
+        if (previous != null && previous.revision >= draft.revision) {
+          if (previous.encode() == draft.encode()) return;
+          throw const StaleDraft();
+        }
+        await _db
+            .into(_db.settings)
+            .insertOnConflictUpdate(
+              SettingsCompanion.insert(
+                key: '$_draftPrefix${draft.date}',
+                value: draft.encode(),
+              ),
+            );
+      });
+
+  Future<void> discardDraft(
+    String date, {
+    required int revision,
+    required int epoch,
+  }) => _queueDraft(() async {
+    _checkEpoch(epoch);
+    final current = await _readDraft(date);
+    if (current != null && current.revision != revision)
+      throw const StaleDraft();
+    await (_db.delete(
+      _db.settings,
+    )..where((t) => t.key.equals('$_draftPrefix$date'))).go();
+  });
+
+  Future<DailyEntry> commitDraft(JournalDraft draft, {required int epoch}) =>
+      _queueDraft(() async {
+        _checkEpoch(epoch);
+        return _db.transaction(() async {
+          final stored = await _readDraft(draft.date);
+          if (stored == null ||
+              stored.revision != draft.revision ||
+              stored.encode() != draft.encode()) {
+            throw const StaleDraft();
+          }
+          final current = await getEntryByDate(draft.date);
+          final baseline = draft.baseline;
+          if ((baseline == null) != (current == null) ||
+              (baseline != null &&
+                  current != null &&
+                  !sameImportSnapshot(baseline, current))) {
+            throw const DraftConflict();
+          }
+          if (draft.emotion == null ||
+              draft.answers.every((a) => a.trim().isEmpty)) {
+            throw StateError('완료할 내용이 없어요');
+          }
+          await saveEntry(
+            DailyEntry(
+              id: baseline?.id,
+              date: draft.date,
+              emotion: draft.emotion!,
+              prompt1: draft.prompts[0],
+              prompt2: draft.prompts[1],
+              prompt3: draft.prompts[2],
+              answer1: draft.answers[0],
+              answer2: draft.answers[1],
+              answer3: draft.answers[2],
+              photoPath: draft.photoPath,
+              createdAt: baseline?.createdAt ?? _clock.now(),
+              updatedAt: _clock.now(),
+            ),
+          );
+          await (_db.delete(
+            _db.settings,
+          )..where((t) => t.key.equals('$_draftPrefix${draft.date}'))).go();
+          return (await getEntryByDate(draft.date))!;
+        });
+      });
 
   EntryRepository(this._db, {AppClock clock = const AppClock()})
     : _clock = clock;
@@ -95,20 +222,41 @@ class EntryRepository {
   }
 
   Future<void> deleteAllEntries() async {
-    await _db.delete(_db.entries).go();
+    await _queueDraft(() async {
+      await _db.transaction(() async {
+        await _db.delete(_db.entries).go();
+        await (_db.delete(_db.settings)..where(
+              (t) =>
+                  t.key.isBiggerOrEqualValue(_draftPrefix) &
+                  t.key.isSmallerThanValue('draft_v1;'),
+            ))
+            .go();
+      });
+      _journalEpoch++;
+    });
   }
 
   Future<void> deleteEntry(String date) async {
     await (_db.delete(_db.entries)..where((t) => t.date.equals(date))).go();
   }
 
-  /// Returns all non-null photo paths stored in entries.
-  Future<List<String>> getAllPhotoPaths() async {
-    final query = _db.select(_db.entries)
-      ..where((t) => t.photoPath.isNotNull());
-    final results = await query.get();
-    return results.map((e) => e.photoPath).whereType<String>().toList();
-  }
+  /// Completed entries and every draft's current/baseline photos, in one DB snapshot.
+  /// A damaged draft aborts the read so cleanup preserves uncertain files.
+  Future<List<String>> getAllPhotoPaths() => _queueDraft(
+    () => _db.transaction(() async {
+      final query = _db.select(_db.entries)
+        ..where((t) => t.photoPath.isNotNull());
+      final results = await query.get();
+      final drafts = await _listDrafts();
+      return [
+        ...results.map((e) => e.photoPath).whereType<String>(),
+        for (final draft in drafts) ...[
+          ?draft.photoPath,
+          ?draft.baseline?.photoPath,
+        ],
+      ];
+    }),
+  );
 
   /// Returns the entry immediately before [currentDate], or null.
   Future<DailyEntry?> getPreviousEntry(String currentDate) async {
