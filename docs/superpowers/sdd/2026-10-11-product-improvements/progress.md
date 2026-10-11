@@ -14,7 +14,7 @@
 
 ### 최신 재개 지점
 
-- 최신 구현 HEAD는 `af58a9a`이다. 아래 초기 인계 기록보다 이 절을 우선한다.
+- 최신 확정 구현은 `d4208ee`이고 진행 기록 HEAD는 `1efc718`이다. 아래 단계별 기록은 시간순 이력이며 가장 아래의 후속 판정을 우선한다. Task3 독립 검토는 종료됐고 Task4b/Task6 최종 UI 작업과 전체 검증이 남았다.
 - Task1/2/5는 후속 독립 검토에서 기존 지적이 모두 닫혔다. 전체 gate와 실제 OS 동작은 별도다.
 - Task3 초기 구현은 `fc19521`이며 관련394개 PASS 뒤 독립 검토에서 Important5/Minor1을 발견했다. 날짜 조회 중 입력 덮어쓰기, 손상 초안의 사용자 복구 경로 부재, 취소 중 재시도로 초안 재등장, 미구독 Today의 전체삭제 수명, nullable key 누락 수용, 회고 metadata 유실을 고치는 중이다. `.superpowers/sdd/2026-10-11-product-improvements/task-3-review-fixes.md`에 판정을 기록했다. 기존394개 PASS를 수정 후 결과로 재사용하지 않는다.
 - Task6a는 `89db6c0`에 커밋했다. target27개, Data 보관 안내1개 PASS 및 target analyze0issues다. 독립 xhigh 검토는 Critical/Important/Minor 모두0으로 인계 가능을 보고했고 실제 한글 렌더18장을 확인했다. DataSection의 기존 사진삭제 시험에서 드러난 Today 수명 결함은 Task3 소유로 인계했다. Task6b 하위 화면 대비/48dp/렌더는 아직 남았다.
@@ -56,6 +56,14 @@
 - Task4b 실제15개에서 제품RED8개를 확인했다. 장문230→220편집이200으로잘림, 자유질문라벨/native예시/빈값Undo/199ZWJ경계, 권한/복사실패안내가 빠졌다. 유효PASS4개다. 직접편집/날짜Undo2건은SnackBar hit miss, latepicker1건은fixturetimeout으로분리하고보완했지만재실행전이다. Task4b 운영Today/Prompt/Photo 소유권을이제인계했다. 이미관찰한RED부터구현하며3개보완fixture는다음슬롯에서먼저확인한다.
 - Task6b Timeline/Insights 독립검토는새Important1개, 연속7일200% 날짜축라벨겹침/끝점잘림을보고했다. 2일fixture가놓친경계이며 실제7/14/30일×2화면 RED6개를관찰했다. LayoutBuilder/TextPainter로라벨간격을정하고원본데이터점을유지하는후속수정중이다.
 - Task6b Today보조위젯66개는12PASS/54FAIL 실제RED였다. 선택감정white아이콘2.568:1, 정보대비/스트릭Row넘침/native확인부재/가로완료문구겹침을보완중이다. Task6는보조6위젯과차트만, Task4는TodayScreen/Prompt/Photo와최소controller입력API만소유한다. Flutter단독슬롯은현재Task6가사용한다.
+
+### 작성 복구와 보조 UI 최종 검증 중
+
+- Task4b는 `da9e879`에 명시12파일을 커밋했다. fixture3개 보완 후 직접 편집/날짜 이동 Undo의 실제 덮어쓰기 RED2개와 기존 latepicker PASS를 구분했다. 최초 제품RED8개와 함께 수정한 뒤 Today/PhotoService/photo_cleanup 관련269개와 신규15개가 PASS다. format12개0changed, scoped analyze는 error/warning0이나 기존 TodayController/Screen info16개로 exit1이다. 최종 전체 검사 전 이를 정리해야 하며 독립 source review 중이다.
+- Task6 날짜축은 연속7/14/30일×2화면 신규6개 PASS다. TextPainter로 라벨 폭을 측정해 간격을 정하며 실제 점7/14/30개와 첫/끝 날짜를 보존한다. Today 보조66개 최종 PASS이며 완료 화면의10개 중간실패는 fixture 종료 타이머 처리였고 운영 자동닫기2.5초는 유지했다. 소유10파일 format0changed다. 기존 회귀/target analyze는 다음 Flutter 슬롯에서 실행한다.
+- root는 `/tmp/3lines-emotion-320x640-200pct.png`, `/tmp/3lines-insights-dates-14-320x640-200pct.png`를 열어 감정3+2 wrap/선택 체크와 겹치지 않는 날짜축을 확인했다. 독립 검토자에게 안정된 Task6 소유10파일만 인계했다. TodayScreen/Prompt/Photo/전체 Settings 최종 R6 및 root 전체 analyze/test/Android 컴파일은 여전히 남았다.
+- 원본 checkout은 `codex/data-safety-import`에서 clean임을 다시 확인했다. 외부 배포, secret 값 조회 또는 사용자 자료 접근은 하지 않았다.
+- root 최종 release 보조 검사로 `ruby test/tool/release/launcher_assets_test.rb`, `ruby test/tool/release/android_beta_pipeline_test.rb`, `bash test/tool/release/ios_release_config_test.sh`를 실행해 모두 exit0을 확인했다. launcher 크기/불투명 Apple PNG/ICO/safe zone/대비5.2와 APK·AAB build/verify/flat staging, Apple32설정/release조건 및 iOS누락secret gate가 통과했다. pipeline 시험의 외부 도구는 fake이며 실제서명/배포의 증거가 아니다.
 
 | 책임 | 독립 리뷰어 | 상태 |
 |---|---|---|
