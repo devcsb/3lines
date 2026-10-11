@@ -50,6 +50,13 @@
 - root가 `bash test/tool/release/android_release_gate_test.sh`를 실제실행했다. Gradle은 `allowUnsignedRelease=true is forbidden when CI=true`로실패했고 이를기대한shellgate는exit0으로통과했다(Gradle42s). 실제서명자료를읽거나배포하지않았다. 가능한로컬Android컴파일은여전히남았다.
 - 현재 Flutter슬롯은 Androidgate종료후 Task3초기build GREEN에양도했다. 다음은Today보조위젯RED이며 전체Flutter gate는아직없다.
 
+### d4208ee 초안 인계와 남은 작성/시각 작업
+
+- Task3 managed build 보완은 `d4208ee`다. 최초 build 덮임, invalidate 후 같은 notifier의 완료barrier 재사용, retained-loading 입력으로 관리future조기완료 및 이전UI노출을 각각 actualRED로 확인했다. framework build마다 barrier/request를 갱신하고, reset은 첫관리future가성공/오류로settle된뒤 별도load를 실행한다. loading의이전값은활성입력으로취급하지않고 mutation/latewrite를거부하며 UI skipLoadingOnRefresh/Reload=false다. Today명시5파일107PASS/format0changed. 원래 독립검토자가 기존지적닫힘/새인계차단반례없음/Task4b소스인계가능을 보고했다.
+- Task4b 실제15개에서 제품RED8개를 확인했다. 장문230→220편집이200으로잘림, 자유질문라벨/native예시/빈값Undo/199ZWJ경계, 권한/복사실패안내가 빠졌다. 유효PASS4개다. 직접편집/날짜Undo2건은SnackBar hit miss, latepicker1건은fixturetimeout으로분리하고보완했지만재실행전이다. Task4b 운영Today/Prompt/Photo 소유권을이제인계했다. 이미관찰한RED부터구현하며3개보완fixture는다음슬롯에서먼저확인한다.
+- Task6b Timeline/Insights 독립검토는새Important1개, 연속7일200% 날짜축라벨겹침/끝점잘림을보고했다. 2일fixture가놓친경계이며 실제7/14/30일×2화면 RED6개를관찰했다. LayoutBuilder/TextPainter로라벨간격을정하고원본데이터점을유지하는후속수정중이다.
+- Task6b Today보조위젯66개는12PASS/54FAIL 실제RED였다. 선택감정white아이콘2.568:1, 정보대비/스트릭Row넘침/native확인부재/가로완료문구겹침을보완중이다. Task6는보조6위젯과차트만, Task4는TodayScreen/Prompt/Photo와최소controller입력API만소유한다. Flutter단독슬롯은현재Task6가사용한다.
+
 | 책임 | 독립 리뷰어 | 상태 |
 |---|---|---|
 | 작성/초안/자정/앱 수명 | audit_writing_continuity | 조사 완료, 날짜 혼합 저장과 invalidate/늦은 응답/사진 초안 유실 반례를 R1에 반영 |
