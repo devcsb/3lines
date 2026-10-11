@@ -27,8 +27,15 @@
 - Task2는 `0f76b51`에 13개 소유 파일을 커밋했다. repository/insights/PDF 최종 117개 exit0 뒤 독립 `review_insights_correctness` 검토 중이다. 중간 보고에서 build의 늦은 결과가 setPeriod를 되돌리는 반례와 기존 시험이 옛 build 완료 전에 assert하는 문제를 지적했다. 최종 보고와 수정은 아직 남아 있다. save/import/사진 API는 변경하지 않았고 EntryRepository 편집을 인계했다.
 - Task3 `implement_durable_drafts` medium을 배정했다. 브리프 `.superpowers/sdd/2026-10-11-product-improvements/task-3-brief.md`에 모델/주입 DB/직렬 쓰기/epoch/원자 commit/사진 참조/충돌 복사 및 재열기 계약을 고정했다. Task3이 현재 Flutter 단독 슬롯을 사용한다.
 - Task7 `implement_beta_entry` medium을 배정했다. 브리프 `.superpowers/sdd/2026-10-11-product-improvements/task-7-brief.md`에 벡터 세 줄 launcher, 서명 APK 추가, preflight 실패가 release에 전달되는 gate, 실제 배포와 로컬 소스 구분, 베타 관찰 계약을 담았다. 앱 기능 소스는 편집하지 않으며 Flutter 슬롯은 없다.
-- Task4의 브리프도 작성했다. Task3 인계 후에 구현한다. Task6와 전체 R1~R6 완료 대조는 남아 있다. 일부 task 성공만으로 전체 목표 완료를 선언하지 않는다.
+- Task4의 브리프도 작성했다. Task3 인계 후에 구현한다. Task6a `implement_readability_onboarding` medium은 theme/onboarding/info/security/data/daily_quote만 소유한다. 먼저 읽기/RED 시험을 작성하고 Task3 target 종료 후 공통 source를 편집한다. Task6b 하위화면은 Task4 이후 인계한다. 전체 R1~R6 완료 대조는 남아 있다. 일부 task 성공만으로 전체 목표 완료를 선언하지 않는다.
 - 상세 RED/GREEN과 미검증은 `.superpowers/sdd/2026-10-11-product-improvements/task-{1,2,5}-report.md`에 있다.
+
+## 후속 독립 검토와 현재 상태
+
+- Task2 Important는 `73ab459`에서 실제 build 완료 barrier와 최신 generation 재조회로 수정했다. 실제 month3 기대/week1 실제 RED 후 controller5개 exit0이다.
+- 독립 `review_insights_correctness`가 후속 `73ab459`, `a6ce590`, `2a4ab82`, `128f45b`를 source로 재검토하여 기존 지적 모두 닫힘/새 확정 반례 없음/인계 가능을 보고했다. 게이트는 재실행하지 않았다. Task1/2/5 기능은 전체 gate에 통합할 준비가 됐다.
+- Task7은 `1a9da95`에 53개 source/생성 asset을 커밋했다. YAML preflight32조합/release 조건/build-verify-flatstage 외부command fake 시험, launcher크기/alpha/ICO/adaptive safe zone/대비5.2, 기존 iOS shell 시험이 PASS다. 실제 Android compile/서명/Actions/설치는 미검증이다. `review_beta_entry` xhigh 독립 리뷰 중이다. root도192px와원형preview를 열어 확인했다.
+- Task3은 memoryDB/provider/기존Today/Settings111개, 넓은관련소비자392개, 충돌UI3개 PASS를 보고했다. 추가 날짜전환 조회오류를 발견하여 입력 유지/재시도 수정 후 마지막target 중이며 아직 source/검토 완료가 아니다. 사진조회는 같은queue+DBtransaction으로 묶고 같은DB의두Repository 경합을 시험했다. Task3만 현재 Flutter 슬롯을 갖는다.
 
 ## 실행 조율 판정
 

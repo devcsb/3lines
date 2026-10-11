@@ -73,6 +73,8 @@
 
 **Files:** theme/color tokens, onboarding, info/security/data copy, daily_quote, 관련 settings/onboarding/theme/widget tests. Today/Timeline/Insights 하위 UI는 Task1~4의 source 안정 후 적용한다.
 
+공통 theme/onboarding/보관 카피는 Task6a로 먼저 병렬 진행한다. Task3/4가 소유한 controller와 prompt/emotion/Today/Timeline/Insights 화면은 건드리지 않고, 해당 하위 화면의 대비/48dp/렌더는 Task6b로 인계 후 마무리한다.
+
 - [ ] 온보딩 각 페이지를 320×640/640×320/200%/reduce-motion에서 끝까지 조작하고 overflow 반례를 고친다. 페이지 텍스트 안내를 추가한다.
 - [ ] 정보 텍스트 onSurfaceVariant/의미 아이콘의 전경색을 보장하고 라이트/다크/액센트별 합성 대비를 검증한다. 알파만 낮춰 읽어야 하는 안내를 흐리게 만들지 않는다.
 - [ ] R5의 보관 안내와 검증되지 않은 효과 대신 실제 기록 계약의 카피를 적용한다. 실제 Flutter 렌더를 저장해 작은 화면/큰 글씨/테마를 눈으로 확인한다.
