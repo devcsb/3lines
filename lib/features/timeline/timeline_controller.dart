@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/events/journal_changes.dart';
@@ -9,23 +11,51 @@ import '../today/today_controller.dart';
 import 'timeline_state.dart';
 
 class TimelineController extends AsyncNotifier<TimelineState> {
+  TimelinePeriod _period = TimelinePeriod.weeks12;
+  String _query = '';
+  int _request = 0;
+
   @override
   Future<TimelineState> build() async {
     // Watch to rebuild when the repository changes (e.g. database reconnect)
     ref.watch(entryRepositoryProvider);
     ref.watch(journalChangesProvider);
-    return _loadData(TimelinePeriod.weeks12);
+    ++_request;
+    // Riverpod의 build Future도 수동 검색/기간 변경보다 늦게 끝날 수 있다.
+    // 같은 notifier의 현재 선택을 읽어 오래된 build snapshot을 반환하지 않는다.
+    while (true) {
+      final request = _request;
+      try {
+        final loaded = await _loadData(_period, _query);
+        if (!ref.mounted || request == _request) return loaded;
+      } catch (_) {
+        if (!ref.mounted) rethrow;
+        if (request == _request) {
+          final current = state.value;
+          if (current == null) rethrow;
+          return current.copyWith(
+            period: _period,
+            searchQuery: _query,
+            searchResults: const [],
+            isLoading: false,
+            loadFailed: true,
+          );
+        }
+      }
+    }
   }
 
-  Future<TimelineState> _loadData(TimelinePeriod period) async {
+  Future<TimelineState> _loadData(TimelinePeriod period, String query) async {
     final repo = ref.read(entryRepositoryProvider);
     final now = ref.read(appClockProvider).now();
-    final start = now.subtract(Duration(days: period.days));
+    final start = DateTime(now.year, now.month, now.day - period.days + 1);
 
     final results = await Future.wait([
       repo.getCurrentStreak(),
       repo.getLongestStreak(),
       repo.getEmotionMap(start, now),
+      repo.getTotalCount(),
+      if (query.isNotEmpty) repo.searchEntries(query),
     ]);
 
     return TimelineState(
@@ -33,35 +63,84 @@ class TimelineController extends AsyncNotifier<TimelineState> {
       longestStreak: results[1] as int,
       emotionMap: results[2] as Map<String, int>,
       period: period,
+      totalCount: results[3] as int,
+      searchQuery: query,
+      searchResults: query.isEmpty ? const [] : results[4] as List<DailyEntry>,
+      loadedThrough: DateTime(now.year, now.month, now.day),
     );
   }
 
   Future<void> setPeriod(TimelinePeriod period) async {
-    // AsyncLoading 전환을 생략해 이전 히트맵을 유지한 채 로드 완료 시점에만
-    // 새 데이터로 교체한다(insights 와 일관 — 전체화면 스피너 깜빡임 방지).
-    state = await AsyncValue.guard(() => _loadData(period));
+    _period = period;
+    await _reload();
   }
 
   Future<void> search(String query) async {
-    final current = state.value;
-    if (current == null) return;
-    if (query.isEmpty) {
+    if (query.trim().isEmpty) {
       clearSearch();
       return;
     }
-    final repo = ref.read(entryRepositoryProvider);
-    final results = await repo.searchEntries(query);
+    _query = query.trim();
+    await _reload();
+  }
+
+  // 입력 순간에 응답을 무효화한다. UI debounce가 끝나기 전에도 이전 검색은
+  // 새 입력의 결과로 표시할 수 없다.
+  void prepareSearch(String query) {
+    _query = query.trim();
+    ++_request;
+    final current = state.value;
+    if (current == null) return;
     state = AsyncData(
-      current.copyWith(searchQuery: query, searchResults: results),
+      current.copyWith(
+        searchQuery: _query,
+        searchResults: const [],
+        isLoading: _query.isNotEmpty,
+        loadFailed: false,
+      ),
     );
   }
 
   void clearSearch() {
+    _query = '';
+    ++_request;
     final current = state.value;
     if (current == null) return;
     state = AsyncData(
-      current.copyWith(searchQuery: '', searchResults: const []),
+      current.copyWith(
+        searchQuery: '',
+        searchResults: const [],
+        isLoading: false,
+        loadFailed: false,
+      ),
     );
+    unawaited(_reload());
+  }
+
+  Future<void> retry() => _reload();
+
+  Future<void> _reload() async {
+    final request = ++_request;
+    final current = state.value ?? const TimelineState();
+    state = AsyncData(
+      current.copyWith(
+        period: _period,
+        searchQuery: _query,
+        searchResults: const [],
+        isLoading: true,
+        loadFailed: false,
+      ),
+    );
+    try {
+      final loaded = await _loadData(_period, _query);
+      if (!ref.mounted || request != _request) return;
+      state = AsyncData(loaded);
+    } catch (_) {
+      if (!ref.mounted || request != _request) return;
+      state = AsyncData(
+        state.value!.copyWith(isLoading: false, loadFailed: true),
+      );
+    }
   }
 
   Future<DailyEntry?> getEntryByDate(String date) async {
@@ -88,9 +167,7 @@ class TimelineController extends AsyncNotifier<TimelineState> {
           );
     }
 
-    final period = state.value?.period ?? TimelinePeriod.weeks12;
-    // 삭제 후에도 이전 히트맵을 유지한 채 재로드 완료 시 교체(깜빡임 방지).
-    state = await AsyncValue.guard(() => _loadData(period));
+    await _reload();
 
     ref.read(journalChangesProvider.notifier).markChanged();
     ref.invalidate(todayControllerProvider);

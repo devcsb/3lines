@@ -62,61 +62,6 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
           ),
         ),
         data: (state) {
-          if (state.emotionMap.isEmpty && !state.isSearching) {
-            return Center(
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: AppMotion.durationFor(context, AppMotion.entrance),
-                curve: AppMotion.standardCurve,
-                builder: (context, value, child) {
-                  return Opacity(
-                    opacity: value.clamp(0.0, 1.0),
-                    child: Transform.translate(
-                      offset: Offset(0, 16 * (1 - value)),
-                      child: child,
-                    ),
-                  );
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer.withValues(
-                          alpha: 0.3,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.grid_view_rounded,
-                        size: 28,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.3,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '첫 기록을 시작해보세요',
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    FilledButton.tonal(
-                      onPressed: () => context.go('/'),
-                      child: const Text('오늘 기록하기'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
           return SafeArea(
             child: RefreshIndicator(
               onRefresh: () {
@@ -149,10 +94,12 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                         ),
                       ),
                       trailing: [
-                        if (state.isSearching)
+                        if (_searchController.text.isNotEmpty)
                           IconButton(
+                            tooltip: '검색 지우기',
                             icon: const Icon(Icons.clear_rounded),
                             onPressed: () {
+                              _debounceTimer?.cancel();
                               _searchController.clear();
                               _searchFocusNode.unfocus();
                               ref
@@ -163,12 +110,16 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                       ],
                       onChanged: (query) {
                         _debounceTimer?.cancel();
+                        setState(() {});
                         if (query.trim().isEmpty) {
                           ref
                               .read(timelineControllerProvider.notifier)
                               .clearSearch();
                           return;
                         }
+                        ref
+                            .read(timelineControllerProvider.notifier)
+                            .prepareSearch(query.trim());
                         _debounceTimer = Timer(
                           const Duration(milliseconds: 300),
                           () {
@@ -180,91 +131,104 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                       },
                     ),
                     const SizedBox(height: 20),
-                    if (state.isSearching)
-                      _buildSearchResults(theme, state)
-                    else ...[
+                    if (!state.isSearching) ...[
                       StreakBadge(
                         currentStreak: state.currentStreak,
                         longestStreak: state.longestStreak,
                       ),
                       const SizedBox(height: 24),
-                      // Period toggle
-                      Semantics(
-                        label: '타임라인 기간 선택',
-                        child: SegmentedButton<TimelinePeriod>(
-                          segments: const [
-                            ButtonSegment(
-                              value: TimelinePeriod.weeks12,
-                              label: Text('12주'),
-                            ),
-                            ButtonSegment(
-                              value: TimelinePeriod.months6,
-                              label: Text('6개월'),
-                            ),
-                            ButtonSegment(
-                              value: TimelinePeriod.year1,
-                              label: Text('1년'),
-                            ),
-                          ],
-                          selected: {state.period},
-                          onSelectionChanged: (selection) {
-                            ref
-                                .read(timelineControllerProvider.notifier)
-                                .setPeriod(selection.first);
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Stack(
-                        children: [
-                          HeatmapGrid(
-                            emotionMap: state.emotionMap,
-                            startDate: state.startDateFrom(
-                              ref.read(appClockProvider).now(),
-                            ),
-                            onCellTap: (dateStr) async {
-                              if (_loadingEntry) return;
-                              setState(() => _loadingEntry = true);
-                              try {
-                                final entry = await ref
-                                    .read(timelineControllerProvider.notifier)
-                                    .getEntryByDate(dateStr);
-                                if (!mounted) return;
-                                setState(() => _loadingEntry = false);
-                                if (entry != null) {
-                                  _showEntryDetail(entry);
-                                }
-                              } catch (_) {
-                                if (!context.mounted) return;
-                                setState(() => _loadingEntry = false);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('기록을 불러올 수 없어요'),
-                                  ),
-                                );
-                              }
-                            },
+                    ],
+                    // Period toggle
+                    Semantics(
+                      label: '타임라인 기간 선택',
+                      child: SegmentedButton<TimelinePeriod>(
+                        segments: const [
+                          ButtonSegment(
+                            value: TimelinePeriod.weeks12,
+                            label: Text('12주'),
                           ),
-                          if (_loadingEntry)
-                            Positioned.fill(
-                              child: Container(
-                                color: theme.colorScheme.surface.withValues(
-                                  alpha: 0.6,
-                                ),
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      color: theme.colorScheme.primary,
+                          ButtonSegment(
+                            value: TimelinePeriod.months6,
+                            label: Text('6개월'),
+                          ),
+                          ButtonSegment(
+                            value: TimelinePeriod.year1,
+                            label: Text('1년'),
+                          ),
+                        ],
+                        selected: {state.period},
+                        onSelectionChanged: (selection) {
+                          ref
+                              .read(timelineControllerProvider.notifier)
+                              .setPeriod(selection.first);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    if (state.isSearching)
+                      _buildSearchResults(theme, state)
+                    else ...[
+                      if (state.isLoading) const LinearProgressIndicator(),
+                      if (state.loadFailed) _buildLoadError(),
+                      if (!state.isLoading &&
+                          !state.loadFailed &&
+                          state.emotionMap.isEmpty)
+                        _buildEmptyState(theme, state)
+                      else if (state.emotionMap.isNotEmpty)
+                        Stack(
+                          children: [
+                            HeatmapGrid(
+                              emotionMap: state.emotionMap,
+                              startDate: state.startDateFrom(
+                                state.loadedThrough ??
+                                    ref.read(appClockProvider).now(),
+                              ),
+                              endDate:
+                                  state.loadedThrough ??
+                                  ref.read(appClockProvider).now(),
+                              onCellTap: (dateStr) async {
+                                if (_loadingEntry) return;
+                                setState(() => _loadingEntry = true);
+                                try {
+                                  final entry = await ref
+                                      .read(timelineControllerProvider.notifier)
+                                      .getEntryByDate(dateStr);
+                                  if (!mounted) return;
+                                  setState(() => _loadingEntry = false);
+                                  if (entry != null) {
+                                    _showEntryDetail(entry);
+                                  }
+                                } catch (_) {
+                                  if (!context.mounted) return;
+                                  setState(() => _loadingEntry = false);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('기록을 불러올 수 없어요'),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                            if (_loadingEntry)
+                              Positioned.fill(
+                                child: Container(
+                                  color: theme.colorScheme.surface.withValues(
+                                    alpha: 0.6,
+                                  ),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: theme.colorScheme.primary,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
+                          ],
+                        ),
                     ],
                   ],
                 ),
@@ -277,6 +241,12 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
   }
 
   Widget _buildSearchResults(ThemeData theme, TimelineState state) {
+    if (state.isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(semanticsLabel: '기록 검색 중'),
+      );
+    }
+    if (state.loadFailed) return _buildLoadError();
     if (state.searchResults.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 32),
@@ -381,6 +351,65 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
           );
         }),
       ],
+    );
+  }
+
+  Widget _buildLoadError() => Column(
+    children: [
+      const Text('기록을 불러올 수 없어요'),
+      TextButton(
+        onPressed: () => ref.read(timelineControllerProvider.notifier).retry(),
+        child: const Text('다시 시도'),
+      ),
+    ],
+  );
+
+  Widget _buildEmptyState(ThemeData theme, TimelineState state) {
+    return Center(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: AppMotion.durationFor(context, AppMotion.entrance),
+        curve: AppMotion.standardCurve,
+        builder: (context, value, child) => Opacity(
+          opacity: value.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(0, 16 * (1 - value)),
+            child: child,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                state.totalCount == 0 ? '첫 기록을 시작해보세요' : '이 기간에는 기록이 없어요',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 16),
+              if (state.totalCount == 0)
+                FilledButton.tonal(
+                  onPressed: () => context.go('/'),
+                  child: const Text('오늘 기록하기'),
+                )
+              else ...[
+                const Text(
+                  '기간을 바꾸거나 전체 기록에서 검색해보세요',
+                  textAlign: TextAlign.center,
+                ),
+                TextButton(
+                  onPressed: () {
+                    _searchFocusNode.requestFocus();
+                    Scrollable.ensureVisible(_searchFocusNode.context!);
+                  },
+                  child: const Text('전체 기록 검색'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 

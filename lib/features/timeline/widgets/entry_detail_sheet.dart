@@ -26,6 +26,7 @@ class _EntryDetailSheetState extends ConsumerState<EntryDetailSheet> {
   // 3-slot window: [prevEntry, currentEntry, nextEntry]
   late List<DailyEntry?> _window;
   bool _navigating = false;
+  bool _adjacentFailed = false;
 
   @override
   void initState() {
@@ -42,33 +43,55 @@ class _EntryDetailSheetState extends ConsumerState<EntryDetailSheet> {
   }
 
   Future<void> _loadAdjacent(String date) async {
-    final repo = ref.read(entryRepositoryProvider);
-    final results = await Future.wait([
-      repo.getPreviousEntry(date),
-      repo.getNextEntry(date),
-    ]);
-    if (!mounted) return;
     setState(() {
-      _window = [results[0], _window[1], results[1]];
+      _navigating = true;
+      _adjacentFailed = false;
     });
+    final repo = ref.read(entryRepositoryProvider);
+    try {
+      final results = await Future.wait([
+        repo.getPreviousEntry(date),
+        repo.getNextEntry(date),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _window = [results[0], _window[1], results[1]];
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _adjacentFailed = true);
+    } finally {
+      if (mounted) setState(() => _navigating = false);
+    }
   }
 
   Future<void> _onPageChanged(int index) async {
-    if (_navigating) return;
     if (index == 1) return; // centre — no action needed
+
+    // 끝이나 조회 중에도 빈 slot에 머물지 않는다.
+    _pageController.jumpToPage(1);
+    if (_navigating) return;
 
     final newCurrent = _window[index];
     if (newCurrent == null) return;
 
     _navigating = true;
     // Silently jump back to centre slot and shift the window
-    _pageController.jumpToPage(1);
     setState(() {
       _window = [null, newCurrent, null];
     });
 
     await _loadAdjacent(newCurrent.date);
     _navigating = false;
+  }
+
+  void _move(int index) {
+    if (_navigating || _window[index] == null) return;
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
   }
 
   @override
@@ -91,6 +114,14 @@ class _EntryDetailSheetState extends ConsumerState<EntryDetailSheet> {
           onDelete: isCurrent ? widget.onDelete : null,
           hasPrev: isCurrent && hasPrev,
           hasNext: isCurrent && hasNext,
+          onPrevious: isCurrent && hasPrev && !_navigating
+              ? () => _move(0)
+              : null,
+          onNext: isCurrent && hasNext && !_navigating ? () => _move(2) : null,
+          adjacentLoading: isCurrent && _navigating,
+          onRetry: isCurrent && _adjacentFailed
+              ? () => _loadAdjacent(_window[1]!.date)
+              : null,
         );
       },
     );
@@ -102,12 +133,20 @@ class _EntryDetailContent extends StatelessWidget {
   final ValueChanged<DailyEntry>? onDelete;
   final bool hasPrev;
   final bool hasNext;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
+  final VoidCallback? onRetry;
+  final bool adjacentLoading;
 
   const _EntryDetailContent({
     required this.entry,
     this.onDelete,
     this.hasPrev = false,
     this.hasNext = false,
+    this.onPrevious,
+    this.onNext,
+    this.onRetry,
+    this.adjacentLoading = false,
   });
 
   @override
@@ -138,19 +177,21 @@ class _EntryDetailContent extends StatelessWidget {
           const SizedBox(height: 20),
 
           // Date + emotion badge + delete row
-          Row(
+          Wrap(
+            spacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                child: Text(
-                  du.formatDateString(entry.date),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              Text(
+                du.formatDateString(entry.date),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: emotionColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
@@ -189,12 +230,46 @@ class _EntryDetailContent extends StatelessWidget {
                     size: 20,
                   ),
                   tooltip: '삭제',
-                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
                   onPressed: () => _confirmDelete(context),
                 ),
               ],
             ],
           ),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                tooltip: '이전 기록',
+                onPressed: onPrevious,
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                icon: const Icon(Icons.chevron_left_rounded),
+              ),
+              if (adjacentLoading)
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    semanticsLabel: '인접 기록 조회 중',
+                  ),
+                ),
+              IconButton(
+                tooltip: '다음 기록',
+                onPressed: onNext,
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                icon: const Icon(Icons.chevron_right_rounded),
+              ),
+            ],
+          ),
+          if (onRetry != null) ...[
+            const Text('다른 기록을 불러올 수 없어요. 현재 기록은 그대로예요.'),
+            TextButton(onPressed: onRetry, child: const Text('다시 시도')),
+          ],
 
           // Swipe hint
           if (hasPrev || hasNext) ...[
@@ -203,23 +278,24 @@ class _EntryDetailContent extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (hasPrev)
-                  Icon(Icons.chevron_left_rounded,
-                      size: 16,
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.6)),
+                  Icon(
+                    Icons.chevron_left_rounded,
+                    size: 16,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
                 Text(
                   '스와이프로 탐색',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color:
-                        theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     fontSize: 10,
                   ),
                 ),
                 if (hasNext)
-                  Icon(Icons.chevron_right_rounded,
-                      size: 16,
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.6)),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 16,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
               ],
             ),
           ],
@@ -287,9 +363,7 @@ class _EntryDetailContent extends StatelessWidget {
             },
             child: Text(
               '삭제',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-              ),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
         ],
@@ -317,9 +391,7 @@ class _EntryDetailContent extends StatelessWidget {
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: accent.withValues(alpha: 0.12),
-        ),
+        border: Border.all(color: accent.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

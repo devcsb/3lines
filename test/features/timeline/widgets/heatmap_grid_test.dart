@@ -31,6 +31,30 @@ void main() {
     expect(find.byType(HeatmapGrid), findsOneWidget);
   });
 
+  testWidgets('주입한 끝 날짜 기준 84개 날짜만 탐색한다', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: HeatmapGrid(
+            startDate: DateTime(2026, 7, 20),
+            endDate: DateTime(2026, 10, 11),
+            emotionMap: const {'2026-07-20': 4, '2026-10-11': 2},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final cells = find.byWidgetPredicate(
+      (widget) =>
+          widget is Semantics &&
+          (widget.properties.label?.contains('기록 없음') == true ||
+              widget.properties.label?.contains('감정 ') == true),
+    );
+    expect(cells, findsNWidgets(84));
+    expect(find.byTooltip('10/12 기록 없음'), findsNothing);
+    expect(find.byTooltip('7/19 기록 없음'), findsNothing);
+  });
+
   testWidgets('renders with emotion data', (tester) async {
     final today = DateTime.now();
     final dateStr =

@@ -16,6 +16,10 @@ class TimelineState {
   final TimelinePeriod period;
   final String searchQuery;
   final List<DailyEntry> searchResults;
+  final int totalCount;
+  final bool isLoading;
+  final bool loadFailed;
+  final DateTime? loadedThrough;
 
   const TimelineState({
     this.currentStreak = 0,
@@ -24,6 +28,10 @@ class TimelineState {
     this.period = TimelinePeriod.weeks12,
     this.searchQuery = '',
     this.searchResults = const [],
+    this.totalCount = 0,
+    this.isLoading = false,
+    this.loadFailed = false,
+    this.loadedThrough,
   });
 
   bool get isSearching => searchQuery.isNotEmpty;
@@ -35,6 +43,10 @@ class TimelineState {
     TimelinePeriod? period,
     String? searchQuery,
     List<DailyEntry>? searchResults,
+    int? totalCount,
+    bool? isLoading,
+    bool? loadFailed,
+    DateTime? loadedThrough,
   }) {
     return TimelineState(
       currentStreak: currentStreak ?? this.currentStreak,
@@ -43,10 +55,14 @@ class TimelineState {
       period: period ?? this.period,
       searchQuery: searchQuery ?? this.searchQuery,
       searchResults: searchResults ?? this.searchResults,
+      totalCount: totalCount ?? this.totalCount,
+      isLoading: isLoading ?? this.isLoading,
+      loadFailed: loadFailed ?? this.loadFailed,
+      loadedThrough: loadedThrough ?? this.loadedThrough,
     );
   }
 
   DateTime startDateFrom(DateTime now) {
-    return now.subtract(Duration(days: period.days));
+    return DateTime(now.year, now.month, now.day - period.days + 1);
   }
 }

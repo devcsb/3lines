@@ -14,19 +14,19 @@ void main() {
     test('startDateFrom returns exact days ago for weeks12', () {
       const state = TimelineState(period: TimelinePeriod.weeks12);
       final now = DateTime(2026, 3, 10, 12);
-      expect(state.startDateFrom(now), now.subtract(const Duration(days: 84)));
+      expect(state.startDateFrom(now), DateTime(2025, 12, 17));
     });
 
     test('startDateFrom returns exact days ago for months6', () {
       const state = TimelineState(period: TimelinePeriod.months6);
       final now = DateTime(2026, 3, 10, 12);
-      expect(state.startDateFrom(now), now.subtract(const Duration(days: 182)));
+      expect(state.startDateFrom(now), DateTime(2025, 9, 10));
     });
 
     test('startDateFrom returns exact days ago for year1', () {
       const state = TimelineState(period: TimelinePeriod.year1);
       final now = DateTime(2026, 3, 10, 12);
-      expect(state.startDateFrom(now), now.subtract(const Duration(days: 365)));
+      expect(state.startDateFrom(now), DateTime(2025, 3, 11));
     });
 
     test('copyWith preserves unspecified fields', () {

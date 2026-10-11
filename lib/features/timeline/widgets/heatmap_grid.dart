@@ -8,12 +8,14 @@ import '../../../core/utils/date_utils.dart' as du;
 class HeatmapGrid extends StatefulWidget {
   final Map<String, int> emotionMap;
   final DateTime startDate;
+  final DateTime? endDate;
   final ValueChanged<String>? onCellTap;
 
   const HeatmapGrid({
     super.key,
     required this.emotionMap,
     required this.startDate,
+    this.endDate,
     this.onCellTap,
   });
 
@@ -48,7 +50,8 @@ class _HeatmapGridState extends State<HeatmapGrid>
     super.didUpdateWidget(oldWidget);
     // Re-trigger animation when data changes (period switch)
     if (oldWidget.emotionMap != widget.emotionMap ||
-        oldWidget.startDate != widget.startDate) {
+        oldWidget.startDate != widget.startDate ||
+        oldWidget.endDate != widget.endDate) {
       if (AppMotion.reduceMotion(context)) {
         _waveController.value = 1.0;
       } else {
@@ -69,12 +72,16 @@ class _HeatmapGridState extends State<HeatmapGrid>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final brightness = theme.brightness;
-    final now = DateTime.now();
+    final reference = widget.endDate ?? DateTime.now();
+    final now = DateTime(reference.year, reference.month, reference.day);
+    final start = DateTime(
+      widget.startDate.year,
+      widget.startDate.month,
+      widget.startDate.day,
+    );
     const dayLabels = ['월', '', '수', '', '금', '', ''];
 
-    final startMonday = widget.startDate.subtract(
-      Duration(days: widget.startDate.weekday - 1),
-    );
+    final startMonday = start.subtract(Duration(days: start.weekday - 1));
     final endMonday = now.subtract(Duration(days: now.weekday - 1));
     final weeks = (endMonday.difference(startMonday).inDays ~/ 7) + 1;
 
@@ -93,7 +100,7 @@ class _HeatmapGridState extends State<HeatmapGrid>
       return Column(
         children: List.generate(7, (dayIndex) {
           final date = weekStart.add(Duration(days: dayIndex));
-          if (date.isAfter(now) || date.isBefore(widget.startDate)) {
+          if (date.isAfter(now) || date.isBefore(start)) {
             return const SizedBox(width: tapSize, height: tapSize);
           }
           final dateStr = du.dateToString(date);

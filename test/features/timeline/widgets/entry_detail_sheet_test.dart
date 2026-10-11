@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,19 @@ import 'package:three_lines/data/database/app_database.dart';
 import 'package:three_lines/data/models/daily_entry.dart';
 import 'package:three_lines/data/repositories/entry_repository.dart';
 import 'package:three_lines/features/timeline/widgets/entry_detail_sheet.dart';
+
+class _AdjacentRepository extends EntryRepository {
+  _AdjacentRepository(super.db);
+  Completer<void>? gate;
+  bool fails = false;
+  @override
+  Future<DailyEntry?> getPreviousEntry(String currentDate) async {
+    final entry = await super.getPreviousEntry(currentDate);
+    await gate?.future;
+    if (fails) throw StateError('adjacent failed');
+    return entry;
+  }
+}
 
 void main() {
   late AppDatabase db;
@@ -27,13 +42,9 @@ void main() {
 
   Widget buildApp(DailyEntry entry) {
     return ProviderScope(
-      overrides: [
-        entryRepositoryProvider.overrideWithValue(repo),
-      ],
+      overrides: [entryRepositoryProvider.overrideWithValue(repo)],
       child: MaterialApp(
-        home: Scaffold(
-          body: EntryDetailSheet(entry: entry),
-        ),
+        home: Scaffold(body: EntryDetailSheet(entry: entry)),
       ),
     );
   }
@@ -49,6 +60,96 @@ void main() {
     prompt3: '내일의 목표는?',
     answer3: '침착하게',
   );
+
+  testWidgets('단일 기록 양끝 스와이프에도 현재 본문을 유지한다', (tester) async {
+    await tester.runAsync(() async {
+      await repo.saveEntry(testEntry);
+      await tester.pumpWidget(buildApp(testEntry));
+      await tester.pump();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pumpAndSettle();
+    for (final offset in [const Offset(500, 0), const Offset(-500, 0)]) {
+      await tester.drag(find.byType(PageView), offset);
+      await tester.pumpAndSettle();
+      expect(find.text('맑은 날씨').hitTestable(), findsOneWidget);
+    }
+  });
+
+  testWidgets('인접 조회 지연 중 스와이프와 실패 뒤 재시도는 현재 기록을 보존한다', (tester) async {
+    final delayed = _AdjacentRepository(db)..gate = Completer<void>();
+    repo = delayed;
+    await tester.runAsync(() async {
+      await repo.saveEntry(testEntry);
+      await repo.saveEntry(
+        DailyEntry(
+          date: '2026-03-13',
+          emotion: 2,
+          answer1: '복구한 전날',
+          answer2: '',
+          answer3: '',
+        ),
+      );
+      await tester.pumpWidget(buildApp(testEntry));
+      await tester.pump();
+    });
+    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('맑은 날씨').hitTestable(), findsOneWidget);
+    delayed.fails = true;
+    delayed.gate!.complete();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('맑은 날씨').hitTestable(), findsOneWidget);
+    expect(find.text('다시 시도'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    delayed.fails = false;
+    delayed.gate = null;
+    await tester.tap(find.text('다시 시도'));
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('이전 기록'));
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('복구한 전날').hitTestable(), findsOneWidget);
+    expect(find.text('다시 시도'), findsNothing);
+  });
+
+  testWidgets('첫 마지막 기록은 이전 다음 버튼으로 왕복한다', (tester) async {
+    final older = DailyEntry(
+      date: '2026-03-13',
+      emotion: 2,
+      answer1: '전날 기록',
+      answer2: '',
+      answer3: '',
+    );
+    await tester.runAsync(() async {
+      await repo.saveEntry(testEntry);
+      await repo.saveEntry(older);
+      await tester.pumpWidget(buildApp(testEntry));
+      await tester.pump();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('이전 기록'));
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('전날 기록').hitTestable(), findsOneWidget);
+    await tester.tap(find.byTooltip('다음 기록'));
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('맑은 날씨').hitTestable(), findsOneWidget);
+  });
 
   testWidgets('displays date in Korean format', (tester) async {
     await tester.runAsync(() async {
@@ -79,8 +180,7 @@ void main() {
     expect(find.text('침착하게'), findsOneWidget);
   });
 
-  testWidgets('스와이프로 이전 날로 이동 후 삭제하면 현재 표시된 기록이 삭제된다 (회귀)',
-      (tester) async {
+  testWidgets('스와이프로 이전 날로 이동 후 삭제하면 현재 표시된 기록이 삭제된다 (회귀)', (tester) async {
     DailyEntry? deleted;
     // id 없이 저장(autoincrement) — fixture testEntry(id:1)와 충돌 방지.
     final mar14 = DailyEntry(
