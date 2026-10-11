@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:three_lines/core/services/notification_platform.dart';
 import 'package:three_lines/core/services/notification_service.dart';
 import 'package:three_lines/core/services/reminder_coordinator.dart';
 import 'package:three_lines/core/time/app_clock.dart';
@@ -236,7 +237,7 @@ void main() {
 
   test('비활성 launch는 일일 예약까지 정리하고 새 알림은 만들지 않는다', () async {
     await coordinator.reconcileOnLaunch();
-    expect(scheduler.calls, ['migrate', 'cancelAll']);
+    expect(scheduler.calls, ['cancelAll']);
   });
 
   test('활성 launch는 legacy 취소 후 전체 계획을 조정한다', () async {
@@ -448,6 +449,36 @@ void main() {
       await storeReminder(enabled: false);
       await coordinator.reconcileOnLaunch();
       expect(platform.pending, isEmpty);
+    });
+
+    test('비활성 launch는 회고 취소 실패에도 나머지 일일과 유산 예약을 정리한다', () async {
+      await storeReminder(enabled: true);
+      await coordinator.reconcileOnLaunch();
+      final daily = platform.pending.values.first;
+      for (final id in [0, 200, 300]) {
+        await platform.schedule(
+          ScheduledLocalNotification(
+            id: id,
+            title: '3Lines',
+            body: '이전 예약',
+            scheduledDate: daily.scheduledDate,
+            notificationDetails: daily.notificationDetails,
+          ),
+        );
+      }
+      await storeReminder(enabled: false);
+      platform.cancelled.clear();
+      platform.cancelFailures.add(300);
+
+      await expectLater(coordinator.reconcileOnLaunch(), throwsStateError);
+
+      expect(platform.pending.keys, [300]);
+      expect(
+        platform.cancelled,
+        containsAll(List<int>.generate(30, (i) => 100 + i)),
+      );
+      expect(platform.cancelled, containsAll([0, 1, 2, 200, 229, 300]));
+      expect((await settings.getReminderSettings()).enabled, isFalse);
     });
 
     test('DB 시간 저장 실패는 이전 시각 단일 일일 계획을 복원한다', () async {
