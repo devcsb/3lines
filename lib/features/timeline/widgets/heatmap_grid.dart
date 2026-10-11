@@ -81,9 +81,21 @@ class _HeatmapGridState extends State<HeatmapGrid>
     );
     const dayLabels = ['월', '', '수', '', '금', '', ''];
 
-    final startMonday = start.subtract(Duration(days: start.weekday - 1));
-    final endMonday = now.subtract(Duration(days: now.weekday - 1));
-    final weeks = (endMonday.difference(startMonday).inDays ~/ 7) + 1;
+    final startMonday = _getWeekStart(start, 0);
+    final endMonday = _getWeekStart(now, 0);
+    // 로컬 자정 사이 경과시간은 DST에서 23/25시간일 수 있으므로 달력 차이만 센다.
+    final weeks =
+        (DateTime.utc(endMonday.year, endMonday.month, endMonday.day)
+                .difference(
+                  DateTime.utc(
+                    startMonday.year,
+                    startMonday.month,
+                    startMonday.day,
+                  ),
+                )
+                .inDays ~/
+            7) +
+        1;
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final availableWidth = screenWidth - 32 - 30;
@@ -99,7 +111,11 @@ class _HeatmapGridState extends State<HeatmapGrid>
       final weekStart = _getWeekStart(now, weeks - 1 - weekIndex);
       return Column(
         children: List.generate(7, (dayIndex) {
-          final date = weekStart.add(Duration(days: dayIndex));
+          final date = DateTime(
+            weekStart.year,
+            weekStart.month,
+            weekStart.day + dayIndex,
+          );
           if (date.isAfter(now) || date.isBefore(start)) {
             return const SizedBox(width: tapSize, height: tapSize);
           }
@@ -241,9 +257,11 @@ class _HeatmapGridState extends State<HeatmapGrid>
   }
 
   DateTime _getWeekStart(DateTime reference, int weeksAgo) {
-    final date = reference.subtract(Duration(days: weeksAgo * 7));
-    final weekday = date.weekday;
-    return date.subtract(Duration(days: weekday - 1));
+    return DateTime(
+      reference.year,
+      reference.month,
+      reference.day - reference.weekday + 1 - weeksAgo * 7,
+    );
   }
 }
 

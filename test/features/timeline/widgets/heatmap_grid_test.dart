@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -7,6 +9,10 @@ import 'package:three_lines/features/timeline/widgets/heatmap_grid.dart';
 void main() {
   setUpAll(() async {
     await initializeDateFormatting('ko_KR');
+    if (Platform.environment['TZ'] == 'America/Los_Angeles') {
+      expect(DateTime(2026, 1, 15).timeZoneOffset, const Duration(hours: -8));
+      expect(DateTime(2026, 7, 15).timeZoneOffset, const Duration(hours: -7));
+    }
   });
 
   Widget buildGrid({
@@ -54,6 +60,62 @@ void main() {
     expect(find.byTooltip('10/12 기록 없음'), findsNothing);
     expect(find.byTooltip('7/19 기록 없음'), findsNothing);
   });
+
+  // TZ=America/Los_Angeles로도 실행해 VM의 실제 DST 날짜 연산을 검증한다.
+  // 기대 날짜는 DST가 없는 UTC 달력으로 생성해 production local 계산과 분리한다.
+  final dstCases = [
+    (
+      name: '봄 DST',
+      start: DateTime(2025, 12, 22),
+      end: DateTime(2026, 3, 15),
+      utcStart: DateTime.utc(2025, 12, 22),
+      last: '2026-03-15',
+    ),
+    (
+      name: '가을 DST',
+      start: DateTime(2026, 8, 17),
+      end: DateTime(2026, 11, 8),
+      utcStart: DateTime.utc(2026, 8, 17),
+      last: '2026-11-08',
+    ),
+  ];
+  for (final fixture in dstCases) {
+    testWidgets('${fixture.name} 앞뒤 84개 달력 날짜는 빠짐과 중복 없이 탐색한다', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HeatmapGrid(
+              startDate: fixture.start,
+              endDate: fixture.end,
+              emotionMap: const {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final labels = tester
+          .widgetList<Semantics>(find.byType(Semantics))
+          .map((widget) => widget.properties.label)
+          .whereType<String>()
+          .where((label) => label.endsWith(', 기록 없음'));
+      final dates = labels.map((label) {
+        final match = RegExp(r'^(\d+)년 (\d+)월 (\d+)일').firstMatch(label)!;
+        return '${match[1]}-${match[2]!.padLeft(2, '0')}-${match[3]!.padLeft(2, '0')}';
+      }).toList();
+      final expected = List.generate(
+        84,
+        (offset) => fixture.utcStart
+            .add(Duration(days: offset))
+            .toIso8601String()
+            .substring(0, 10),
+      );
+      expect(expected.last, fixture.last);
+      expect(dates.length, 84);
+      expect(dates.toSet().length, 84);
+      expect(dates, expected);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('renders with emotion data', (tester) async {
     final today = DateTime.now();
