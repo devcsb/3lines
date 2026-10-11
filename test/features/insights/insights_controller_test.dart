@@ -27,17 +27,35 @@ class DelayedRepository extends EntryRepository {
   }
 }
 
+// Provider.future는 수동 state 갱신으로 먼저 끝날 수 있으므로 실제 build의
+// 반환 완료를 따로 관찰한다. 통계 조회와 상태 구현은 그대로 실행한다.
+class ObservedInsightsController extends InsightsController {
+  Completer<InsightsState>? nextBuildCompleted;
+
+  @override
+  Future<InsightsState> build() async {
+    final completed = nextBuildCompleted;
+    nextBuildCompleted = null;
+    final result = await super.build();
+    completed?.complete(result);
+    return result;
+  }
+}
+
 void main() {
   late AppDatabase db;
   late DelayedRepository repo;
   late ProviderContainer container;
+  late ObservedInsightsController controller;
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     repo = DelayedRepository(db);
+    controller = ObservedInsightsController();
     container = ProviderContainer(
       overrides: [
         entryRepositoryProvider.overrideWithValue(repo),
         appClockProvider.overrideWithValue(FixedClock()),
+        insightsControllerProvider.overrideWith(() => controller),
       ],
     );
   });
@@ -122,12 +140,19 @@ void main() {
     await container.read(insightsControllerProvider.future);
     final gate = Completer<void>();
     repo.gate = gate;
+    final buildCompleted = Completer<InsightsState>();
+    controller.nextBuildCompleted = buildCompleted;
     final refreshed = container.refresh(insightsControllerProvider.future);
     await container
         .read(insightsControllerProvider.notifier)
         .setPeriod(InsightsPeriod.month3);
+    // 이 Future는 옛 build가 아니라 setPeriod의 state 쓰기로 이미 끝난다.
+    expect((await refreshed).period, InsightsPeriod.month3);
+    expect(buildCompleted.isCompleted, isFalse);
     gate.complete();
-    await refreshed;
+    final actualBuildResult = await buildCompleted.future;
+    await container.pump();
+    expect(actualBuildResult.period, InsightsPeriod.month3);
     expect(
       container.read(insightsControllerProvider).requireValue.period,
       InsightsPeriod.month3,

@@ -14,7 +14,17 @@ class InsightsController extends AsyncNotifier<InsightsState> {
     ref.watch(entryRepositoryProvider);
     ref.watch(journalChangesProvider);
     _generation++;
-    return _loadData(_period);
+    // build Future도 수동 기간 변경보다 늦게 끝날 수 있다.
+    // 옛 snapshot/오류는 버리고 현재 선택 세대가 끝날 때까지 다시 조회한다.
+    while (true) {
+      final generation = _generation;
+      try {
+        final loaded = await _loadData(_period);
+        if (!ref.mounted || generation == _generation) return loaded;
+      } catch (_) {
+        if (!ref.mounted || generation == _generation) rethrow;
+      }
+    }
   }
 
   Future<InsightsState> _loadData(InsightsPeriod period) async {
