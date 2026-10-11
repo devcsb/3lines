@@ -2,10 +2,25 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+
+enum PhotoPickStatus {
+  selected,
+  cancelled,
+  permissionDenied,
+  copyFailed,
+  pickerFailed,
+}
+
+class PhotoPickResult {
+  const PhotoPickResult(this.status, {this.path});
+  final PhotoPickStatus status;
+  final String? path;
+}
 
 class PhotoService {
   PhotoService({
@@ -45,13 +60,18 @@ class PhotoService {
 
   /// Pick a photo from the gallery. Returns the saved local path, or null.
   Future<String?> pickFromGallery() async {
-    return _pickAndSave(ImageSource.gallery);
+    return (await pickFromGalleryResult()).path;
   }
 
   /// Pick a photo from the camera. Returns the saved local path, or null.
   Future<String?> pickFromCamera() async {
-    return _pickAndSave(ImageSource.camera);
+    return (await pickFromCameraResult()).path;
   }
+
+  Future<PhotoPickResult> pickFromGalleryResult() =>
+      _pickAndSave(ImageSource.gallery);
+  Future<PhotoPickResult> pickFromCameraResult() =>
+      _pickAndSave(ImageSource.camera);
 
   /// Resolves an owned direct child of the trusted photos directory.
   /// Unknown ownership or an unsafe path returns null, including symlinks.
@@ -202,16 +222,33 @@ class PhotoService {
     return Directory(p.join(appDir.path, 'photos'));
   }
 
-  Future<String?> _pickAndSave(ImageSource source) async {
-    if (kIsWeb) return null;
+  Future<PhotoPickResult> _pickAndSave(ImageSource source) async {
+    if (kIsWeb) return const PhotoPickResult(PhotoPickStatus.pickerFailed);
+    XFile? picked;
     try {
-      final picked = await _picker.pickImage(
+      picked = await _picker.pickImage(
         source: source,
         maxWidth: 1024,
         imageQuality: 85,
       );
-      if (picked == null) return null;
-
+    } on PlatformException catch (error) {
+      final denied = const [
+        'camera_access_denied',
+        'camera_access_restricted',
+        'photo_access_denied',
+        'photo_access_restricted',
+      ].contains(error.code);
+      return PhotoPickResult(
+        denied
+            ? PhotoPickStatus.permissionDenied
+            : PhotoPickStatus.pickerFailed,
+      );
+    } catch (_) {
+      developer.log('Failed to pick photo', name: 'PhotoService');
+      return const PhotoPickResult(PhotoPickStatus.pickerFailed);
+    }
+    if (picked == null) return const PhotoPickResult(PhotoPickStatus.cancelled);
+    try {
       final photosDir = await _photosDir();
       if (await FileSystemEntity.type(photosDir.path, followLinks: false) ==
           FileSystemEntityType.notFound) {
@@ -219,7 +256,7 @@ class PhotoService {
       }
       if (await FileSystemEntity.type(photosDir.path, followLinks: false) !=
           FileSystemEntityType.directory) {
-        return null;
+        return const PhotoPickResult(PhotoPickStatus.copyFailed);
       }
 
       final ext = p.extension(picked.path).isNotEmpty
@@ -230,14 +267,16 @@ class PhotoService {
       final savedPath = await _canonicalPhotosChildPath(
         p.join(photosDir.path, fileName),
       );
-      if (savedPath == null) return null;
+      if (savedPath == null) {
+        return const PhotoPickResult(PhotoPickStatus.copyFailed);
+      }
 
       if (_startupCleanupActive) _startupProtected.add(savedPath);
       await _photoCopier(picked.path, savedPath);
-      return savedPath;
+      return PhotoPickResult(PhotoPickStatus.selected, path: savedPath);
     } catch (_) {
-      developer.log('Failed to pick photo', name: 'PhotoService');
-      return null;
+      developer.log('Failed to copy photo', name: 'PhotoService');
+      return const PhotoPickResult(PhotoPickStatus.copyFailed);
     }
   }
 }

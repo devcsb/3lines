@@ -9,7 +9,9 @@ import '../../core/utils/date_utils.dart' as du;
 import '../../shared/widgets/staggered_fade_in.dart';
 import 'today_controller.dart';
 import 'today_state.dart';
+import 'answer_input.dart';
 import '../../data/models/journal_draft.dart';
+import '../../data/repositories/entry_repository.dart';
 import '../../core/services/photo_service.dart';
 import 'widgets/animated_save_button.dart';
 import 'widgets/completion_animation.dart';
@@ -33,6 +35,87 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     with WidgetsBindingObserver {
   bool _showCompletionAnimation = false;
   int? _completionSession;
+  final _answerFocusNodes = List.generate(3, (_) => FocusNode());
+  int _exampleAction = 0;
+  bool _photoErrorShowing = false;
+
+  Future<void> _pickPhoto({required bool camera, TodayState? retryFor}) async {
+    final controller = ref.read(todayControllerProvider.notifier);
+    final started = controller.capturePhotoSession();
+    if (started == null ||
+        started.isSaving ||
+        started.isCancelling ||
+        started.isSwitchingDate ||
+        (started.isCompleted && !started.isEditing)) {
+      return;
+    }
+    if (retryFor != null &&
+        (started.session != retryFor.session ||
+            started.draftDate != retryFor.draftDate ||
+            started.epoch != retryFor.epoch)) {
+      return;
+    }
+    final photos = ref.read(photoServiceProvider);
+    final entries = ref.read(entryRepositoryProvider);
+    final result = camera
+        ? await photos.pickFromCameraResult()
+        : await photos.pickFromGalleryResult();
+    if (result.status == PhotoPickStatus.selected && result.path != null) {
+      if (!mounted) {
+        await photos.deleteUnreferencedPhoto(
+          result.path!,
+          readReferences: entries.getAllPhotoPaths,
+        );
+        return;
+      }
+      await ref
+          .read(todayControllerProvider.notifier)
+          .attachPhoto(result.path!, started: started);
+      return;
+    }
+    if (!mounted) return;
+    final active = ref
+        .read(todayControllerProvider.notifier)
+        .capturePhotoSession();
+    if (active == null ||
+        active.session != started.session ||
+        active.draftDate != started.draftDate ||
+        active.epoch != started.epoch ||
+        active.draftRevision != started.draftRevision ||
+        entries.journalEpoch != started.epoch) {
+      return;
+    }
+    if (result.status == PhotoPickStatus.cancelled) {
+      if (_photoErrorShowing) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      }
+      _photoErrorShowing = false;
+      return;
+    }
+    final message = switch (result.status) {
+      PhotoPickStatus.permissionDenied =>
+        '사진을 선택하지 못했어요. 기기 설정에서 사진이나 카메라 권한을 확인하고 다시 시도해주세요. 글과 기존 사진은 유지했어요.',
+      PhotoPickStatus.copyFailed =>
+        '사진을 보관하지 못했어요. 글과 기존 사진은 유지했어요. 다시 시도해주세요.',
+      _ => '사진을 선택하지 못했어요. 글과 기존 사진은 유지했어요. 다시 시도해주세요.',
+    };
+    _photoErrorShowing = true;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          action: SnackBarAction(
+            label: '다시 시도',
+            onPressed: () {
+              // SnackBarAction closes this notice itself before retrying.
+              _photoErrorShowing = false;
+              _pickPhoto(camera: camera, retryFor: started);
+            },
+          ),
+        ),
+      );
+  }
 
   @override
   void initState() {
@@ -43,6 +126,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    for (final node in _answerFocusNodes) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -401,34 +487,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                         PhotoAttachment(
                           photoPath: state.photoPath,
                           readOnly: isInteractionLocked,
-                          onPickCamera: () async {
-                            final controller = ref.read(
-                              todayControllerProvider.notifier,
-                            );
-                            final started = controller.capturePhotoSession();
-                            final path = await ref
-                                .read(photoServiceProvider)
-                                .pickFromCamera();
-                            if (path != null) {
-                              await ref
-                                  .read(todayControllerProvider.notifier)
-                                  .attachPhoto(path, started: started);
-                            }
-                          },
-                          onPickGallery: () async {
-                            final controller = ref.read(
-                              todayControllerProvider.notifier,
-                            );
-                            final started = controller.capturePhotoSession();
-                            final path = await ref
-                                .read(photoServiceProvider)
-                                .pickFromGallery();
-                            if (path != null) {
-                              await ref
-                                  .read(todayControllerProvider.notifier)
-                                  .attachPhoto(path, started: started);
-                            }
-                          },
+                          onPickCamera: () => _pickPhoto(camera: true),
+                          onPickGallery: () => _pickPhoto(camera: false),
                           onRemove: () => ref
                               .read(todayControllerProvider.notifier)
                               .removePhoto(),
@@ -450,9 +510,20 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                               child: Column(
                                 children: [
                                   PromptCard(
+                                    key: ValueKey(
+                                      'answer-${state.session}-${state.draftDate}-${state.epoch}-$index',
+                                    ),
                                     index: index,
                                     question: state.prompts[index],
                                     answer: answer,
+                                    answerLimit: ref
+                                        .read(todayControllerProvider.notifier)
+                                        .answerLimit(index),
+                                    focusNode: _answerFocusNodes[index],
+                                    onNext: index < 2
+                                        ? () => _answerFocusNodes[index + 1]
+                                              .requestFocus()
+                                        : null,
                                     readOnly: isInteractionLocked,
                                     onChanged: isInteractionLocked
                                         ? null
@@ -468,17 +539,41 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                     const SizedBox(height: 8),
                                     PromptSuggestions(
                                       promptIndex: index,
+                                      question: state.prompts[index],
                                       onTap: (suggestion) {
-                                        final prev = answer;
+                                        final action = ++_exampleAction;
+                                        final controller = ref.read(
+                                          todayControllerProvider.notifier,
+                                        );
+                                        final before = controller
+                                            .capturePhotoSession();
+                                        if (before == null) return;
+                                        final prev = [
+                                          before.answer1,
+                                          before.answer2,
+                                          before.answer3,
+                                        ][index];
                                         final next = prev.trim().isEmpty
                                             ? suggestion
                                             : '$prev $suggestion';
-                                        ref
-                                            .read(
-                                              todayControllerProvider.notifier,
-                                            )
-                                            .setAnswer(index, next);
-                                        if (prev.trim().isNotEmpty) {
+                                        if (!acceptsAnswerInput(next, 200)) {
+                                          ScaffoldMessenger.of(context)
+                                            ..hideCurrentSnackBar()
+                                            ..showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  '예시를 더하려면 답변을 200자 안으로 줄여주세요.',
+                                                ),
+                                              ),
+                                            );
+                                          return;
+                                        }
+                                        controller.setAnswer(index, next);
+                                        final inserted = controller
+                                            .capturePhotoSession();
+                                        if (inserted != null &&
+                                            inserted.draftRevision ==
+                                                before.draftRevision + 1) {
                                           ScaffoldMessenger.of(context)
                                             ..hideCurrentSnackBar()
                                             ..showSnackBar(
@@ -491,12 +586,17 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                                 ),
                                                 action: SnackBarAction(
                                                   label: '되돌리기',
-                                                  onPressed: () => ref
-                                                      .read(
-                                                        todayControllerProvider
-                                                            .notifier,
-                                                      )
-                                                      .setAnswer(index, prev),
+                                                  onPressed: () {
+                                                    if (mounted &&
+                                                        action ==
+                                                            _exampleAction) {
+                                                      controller.undoExample(
+                                                        index,
+                                                        prev,
+                                                        inserted,
+                                                      );
+                                                    }
+                                                  },
                                                 ),
                                               ),
                                             );
@@ -558,6 +658,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                       ? '변경을 취소하고 있어요'
                                       : state.saveGuidanceMessage,
                                   onPressed: () async {
+                                    _exampleAction++;
                                     final isFirstSave = !state.isCompleted;
                                     final messenger = ScaffoldMessenger.of(
                                       context,

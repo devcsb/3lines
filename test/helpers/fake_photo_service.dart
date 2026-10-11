@@ -20,6 +20,15 @@ class FakePhotoService extends PhotoService {
   Future<String?> pickFromCamera() async => nextPickResult;
 
   @override
+  Future<PhotoPickResult> pickFromGalleryResult() async =>
+      nextPickResult == null
+      ? const PhotoPickResult(PhotoPickStatus.cancelled)
+      : PhotoPickResult(PhotoPickStatus.selected, path: nextPickResult);
+
+  @override
+  Future<PhotoPickResult> pickFromCameraResult() => pickFromGalleryResult();
+
+  @override
   Future<bool?> referencesPhoto(
     String path,
     Iterable<String> references,

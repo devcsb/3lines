@@ -5,7 +5,7 @@ import 'package:three_lines/features/today/widgets/prompt_card.dart';
 void main() {
   Widget buildApp({
     int index = 0,
-    String question = '오늘 감사한 작은 것 하나는?',
+    String? question,
     String answer = '',
     bool readOnly = false,
     ValueChanged<String>? onChanged,
@@ -15,7 +15,13 @@ void main() {
         body: SingleChildScrollView(
           child: PromptCard(
             index: index,
-            question: question,
+            question:
+                question ??
+                const [
+                  '오늘 감사한 작은 것 하나는?',
+                  '오늘 불편했던 감정을, 있는 그대로 인정한다면?',
+                  '내일 내가 되고 싶은 모습은?',
+                ][index.clamp(0, 2)],
             answer: answer,
             readOnly: readOnly,
             onChanged: onChanged,

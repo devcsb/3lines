@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/default_prompts.dart';
 import '../../../core/theme/app_motion.dart';
+import '../answer_input.dart';
+import 'prompt_help.dart';
 
 class PromptCard extends StatefulWidget {
   final int index;
@@ -9,6 +10,9 @@ class PromptCard extends StatefulWidget {
   final String answer;
   final bool readOnly;
   final ValueChanged<String>? onChanged;
+  final int? answerLimit;
+  final FocusNode? focusNode;
+  final VoidCallback? onNext;
 
   const PromptCard({
     super.key,
@@ -17,6 +21,9 @@ class PromptCard extends StatefulWidget {
     this.answer = '',
     this.readOnly = false,
     this.onChanged,
+    this.answerLimit,
+    this.focusNode,
+    this.onNext,
   });
 
   @override
@@ -25,7 +32,8 @@ class PromptCard extends StatefulWidget {
 
 class _PromptCardState extends State<PromptCard> {
   late TextEditingController _controller;
-  final _focusNode = FocusNode();
+  late final FocusNode _focusNode;
+  late final int _snapshotLimit;
   bool _isFocused = false;
 
   // Accent colors per category (감사, 수용, 의도)
@@ -39,6 +47,8 @@ class _PromptCardState extends State<PromptCard> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.answer);
+    _snapshotLimit = answerInputLimit(widget.answer);
+    _focusNode = widget.focusNode ?? FocusNode();
     _focusNode.addListener(_onFocusChanged);
   }
 
@@ -58,7 +68,7 @@ class _PromptCardState extends State<PromptCard> {
   @override
   void dispose() {
     _focusNode.removeListener(_onFocusChanged);
-    _focusNode.dispose();
+    if (widget.focusNode == null) _focusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -67,11 +77,11 @@ class _PromptCardState extends State<PromptCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final standardDuration = AppMotion.durationFor(context, AppMotion.standard);
-    final category = widget.index < promptCategories.length
-        ? promptCategories[widget.index]
-        : null;
-    final label = category?.label ?? '';
-    final accent = _accentColors[widget.index.clamp(0, 2)];
+    final category = categoryForQuestion(widget.question);
+    final label = category?.label ?? '자유 질문';
+    final accent = category == null
+        ? theme.colorScheme.primary
+        : _accentColors[category.index];
 
     return AnimatedContainer(
       duration: standardDuration,
@@ -180,7 +190,7 @@ class _PromptCardState extends State<PromptCard> {
                               focusNode: _focusNode,
                               minLines: 2,
                               maxLines: 4,
-                              maxLength: 200,
+                              maxLength: widget.answerLimit ?? _snapshotLimit,
                               textCapitalization: TextCapitalization.sentences,
                               scrollPadding: const EdgeInsets.only(bottom: 120),
                               // 마지막 프롬프트는 done, 나머지는 next로 다음 필드 이동
@@ -213,7 +223,11 @@ class _PromptCardState extends State<PromptCard> {
                               onSubmitted: (_) {
                                 if (widget.index < 2) {
                                   // 다음 프롬프트 카드의 TextField로 포커스 이동
-                                  FocusScope.of(context).nextFocus();
+                                  if (widget.onNext != null) {
+                                    widget.onNext!();
+                                  } else {
+                                    FocusScope.of(context).nextFocus();
+                                  }
                                 } else {
                                   // 마지막 프롬프트: 키보드 닫기
                                   FocusScope.of(context).unfocus();

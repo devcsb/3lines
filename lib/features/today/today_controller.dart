@@ -12,6 +12,7 @@ import '../../data/models/journal_draft.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import 'today_state.dart';
+import 'answer_input.dart';
 
 typedef _TodayMetadata = ({
   ({int count, bool usedGraceDay}) streak,
@@ -440,7 +441,10 @@ class TodayController extends AsyncNotifier<TodayState> {
         current.isSaving ||
         current.isCancelling ||
         current.isSwitchingDate ||
-        (current.isCompleted && !current.isEditing)) {
+        (current.isCompleted && !current.isEditing) ||
+        index < 0 ||
+        index > 2 ||
+        !acceptsAnswerInput(value, answerLimit(index))) {
       return;
     }
     switch (index) {
@@ -451,6 +455,37 @@ class TodayController extends AsyncNotifier<TodayState> {
       case 2:
         _changed(current.copyWith(answer3: value));
     }
+  }
+
+  int? _answerLimitSession;
+  List<int> _answerLimits = const [200, 200, 200];
+
+  int answerLimit(int index) {
+    final current = _activeState;
+    if (current == null || index < 0 || index > 2) return 200;
+    if (_answerLimitSession != current.session) {
+      _answerLimitSession = current.session;
+      _answerLimits = [
+        current.answer1,
+        current.answer2,
+        current.answer3,
+      ].map(answerInputLimit).toList();
+    }
+    return _answerLimits[index];
+  }
+
+  void undoExample(int index, String previous, TodayState inserted) {
+    if (!ref.mounted || index < 0 || index > 2 || !_matches(inserted)) return;
+    final current = _activeState;
+    if (current == null) return;
+    final answers = [current.answer1, current.answer2, current.answer3];
+    final insertedAnswers = [
+      inserted.answer1,
+      inserted.answer2,
+      inserted.answer3,
+    ];
+    if (answers[index] != insertedAnswers[index]) return;
+    setAnswer(index, previous);
   }
 
   /// Saves the current entry. Returns true on success, false on failure.
