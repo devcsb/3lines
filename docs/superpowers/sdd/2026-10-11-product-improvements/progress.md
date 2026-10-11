@@ -22,11 +22,12 @@
 
 ## 구현과 검증 인계
 
-- Task5는 `b65ad82`에 명시 소유 6개 파일만 커밋했다. 서비스/플랫폼/coordinator 38개와 설정 widget 1개가 각각 exit0으로 통과했다. 독립 `review_single_reminder`가 launch migration에서 정상 일일 예약까지 먼저 제거하여 초기화 실패 때 pending0이 되는 P2를 찾았다. 실제 RED 후 `2a4ab82`에서 위험/weekly/legacy 정리와 비활성 전체 취소를 분리했다. 관련 서비스/coordinator 40개 exit0이고 재검토 중이다.
-- Task1은 `1cc4b84`에 10개 소유 파일을 커밋했다. timeline target 최종 61개 exit0이며 독립 `review_history_ux` xhigh 검토 중이다. HeatmapGrid optional `endDate`로 조회/렌더 clock을 일치시켰고 startDate 정규화 회귀도 고쳤다. 실제 한글/MaterialIcons 렌더 320×640/200% 두 장을 구현자가 열어 확인했다. 낮은 기존 기간 버튼 높이/흐린 공통 안내색은 Task6에 인계했다.
-- Task2는 `0f76b51`에 13개 소유 파일을 커밋했다. repository/insights/PDF 최종 117개 exit0이며 독립 리뷰는 대기 중이다. save/import/사진 API는 변경하지 않았고 EntryRepository 편집을 인계했다.
+- Task5는 `b65ad82`에 명시 소유 6개 파일만 커밋했다. 서비스/플랫폼/coordinator 38개와 설정 widget 1개가 각각 exit0으로 통과했다. 독립 `review_single_reminder`가 launch migration에서 정상 일일 예약까지 먼저 제거하여 초기화 실패 때 pending0이 되는 P2를 찾았다. 실제 RED 후 `2a4ab82`에서 위험/weekly/legacy 정리와 비활성 전체 취소를 분리했다. 재검토는 이 지적을 닫고 비활성 migration 실패가 후속 일일 취소를 막는 새 P2를 보고했다. root가 호출 순서를 대조하고 `128f45b`에서 비활성 분기를 먼저 처리하도록 고쳤다. 실제 cancel300 실패 RED와 서비스/coordinator 41개 exit0을 확인했다. 최종 전체 독립 검토에서 이 경계를 다시 포함한다.
+- Task1은 `1cc4b84`에 10개 소유 파일을 커밋했다. timeline target 61개 exit0 뒤 독립 `review_history_ux`가 DST 달력 날짜 누락 P2를 찾았다. 실제 LA84개 기대/77개 실제 RED 후 `a6ce590`에서 UTC 날짜 차이와 달력 셀 생성으로 고쳤다. LA/일반 환경 각각 heatmap10개 exit0이며 봄/가을84개 날짜집합과 중복0을 검사했다. 실제 한글/MaterialIcons 렌더 320×640/200% 두 장을 구현자/리뷰어/root가 열어 확인했다. 낮은 기존 기간 버튼 높이/흐린 공통 안내색은 Task6에 인계했다.
+- Task2는 `0f76b51`에 13개 소유 파일을 커밋했다. repository/insights/PDF 최종 117개 exit0 뒤 독립 `review_insights_correctness` 검토 중이다. 중간 보고에서 build의 늦은 결과가 setPeriod를 되돌리는 반례와 기존 시험이 옛 build 완료 전에 assert하는 문제를 지적했다. 최종 보고와 수정은 아직 남아 있다. save/import/사진 API는 변경하지 않았고 EntryRepository 편집을 인계했다.
 - Task3 `implement_durable_drafts` medium을 배정했다. 브리프 `.superpowers/sdd/2026-10-11-product-improvements/task-3-brief.md`에 모델/주입 DB/직렬 쓰기/epoch/원자 commit/사진 참조/충돌 복사 및 재열기 계약을 고정했다. Task3이 현재 Flutter 단독 슬롯을 사용한다.
-- Task4/6~7과 전체 R1~R6 완료 대조는 남아 있다. Task1/2/5 성공만으로 전체 목표 완료를 선언하지 않는다.
+- Task7 `implement_beta_entry` medium을 배정했다. 브리프 `.superpowers/sdd/2026-10-11-product-improvements/task-7-brief.md`에 벡터 세 줄 launcher, 서명 APK 추가, preflight 실패가 release에 전달되는 gate, 실제 배포와 로컬 소스 구분, 베타 관찰 계약을 담았다. 앱 기능 소스는 편집하지 않으며 Flutter 슬롯은 없다.
+- Task4의 브리프도 작성했다. Task3 인계 후에 구현한다. Task6와 전체 R1~R6 완료 대조는 남아 있다. 일부 task 성공만으로 전체 목표 완료를 선언하지 않는다.
 - 상세 RED/GREEN과 미검증은 `.superpowers/sdd/2026-10-11-product-improvements/task-{1,2,5}-report.md`에 있다.
 
 ## 실행 조율 판정
