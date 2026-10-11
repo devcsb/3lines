@@ -39,7 +39,8 @@ class TodayController extends AsyncNotifier<TodayState> {
     final entryRepo = ref.watch(entryRepositoryProvider);
     final settingsRepo = ref.watch(settingsRepositoryProvider);
     final clock = ref.watch(appClockProvider);
-    _scheduledDate = clock.todayString();
+    final scheduledDate = _scheduledDate = clock.todayString();
+    final session = _session = ++_nextSession;
     _scheduleMidnightRefresh();
 
     final now = clock.now();
@@ -64,8 +65,8 @@ class TodayController extends AsyncNotifier<TodayState> {
     if (todayEntry != null) {
       return _restoreDraft(
         TodayState(
-          draftDate: _scheduledDate,
-          session: _session = ++_nextSession,
+          draftDate: scheduledDate,
+          session: session,
           epoch: entryRepo.journalEpoch,
           emotion: todayEntry.emotion,
           answer1: todayEntry.answer1,
@@ -101,8 +102,8 @@ class TodayController extends AsyncNotifier<TodayState> {
 
     return _restoreDraft(
       TodayState(
-        draftDate: _scheduledDate,
-        session: _session = ++_nextSession,
+        draftDate: scheduledDate,
+        session: session,
         epoch: entryRepo.journalEpoch,
         prompts: prompts,
         currentStreak: streakResult.count,
@@ -227,7 +228,11 @@ class TodayController extends AsyncNotifier<TodayState> {
 
   Future<void> selectDate(String date) async {
     final started = state.value;
-    if (started == null || started.isSwitchingDate) return;
+    if (started == null ||
+        started.isSwitchingDate ||
+        started.isSaving ||
+        started.isCancelling)
+      return;
     final request = _selectionRequest + 1;
     final retain = ref.keepAlive();
     state = AsyncData(started.copyWith(isSwitchingDate: true));
@@ -352,11 +357,14 @@ class TodayController extends AsyncNotifier<TodayState> {
     final retain = ref.keepAlive();
     try {
       _session = ++_nextSession;
-      final resettingSession = _session;
+      final request = ++_selectionRequest;
+      final repo = ref.read(entryRepositoryProvider);
+      final epoch = repo.journalEpoch;
       state = const AsyncLoading();
       final result = await AsyncValue.guard(build);
       if (ref.mounted &&
-          (_session == resettingSession || result.value?.session == _session))
+          request == _selectionRequest &&
+          epoch == repo.journalEpoch)
         state = result;
     } finally {
       retain.close();

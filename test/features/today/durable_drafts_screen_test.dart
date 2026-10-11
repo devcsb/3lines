@@ -22,8 +22,9 @@ import 'package:three_lines/features/today/widgets/prompt_card.dart';
 import '../../helpers/fake_photo_service.dart';
 
 class Clock extends AppClock {
+  DateTime value = DateTime(2026, 10, 12, 9);
   @override
-  DateTime now() => DateTime(2026, 10, 12, 9);
+  DateTime now() => value;
 }
 
 class DelayedRepository extends EntryRepository {
@@ -55,12 +56,13 @@ void main() {
   late AppDatabase db;
   late DelayedRepository repo;
   late ProviderContainer container;
+  late Clock clock;
   setUpAll(() async {
     await initializeDateFormatting('ko_KR');
   });
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    final clock = Clock();
+    clock = Clock();
     repo = DelayedRepository(db, clock: clock);
     await repo.storeDraft(
       JournalDraft(
@@ -181,7 +183,7 @@ void main() {
     await tester.runAsync(() async {
       final switching = container
           .read(todayControllerProvider.notifier)
-          .startToday();
+          .resetAfterDelete();
       repo.release.complete();
       await switching;
       await Future<void>.delayed(const Duration(milliseconds: 30));
@@ -193,6 +195,35 @@ void main() {
     );
     expect(find.byType(CompletionAnimation), findsNothing);
     await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('저장 중 날짜 버튼은 잠기고 완료 뒤 정상 전환한다', (tester) async {
+    await show(tester);
+    late Future<bool> saving;
+    await tester.runAsync(() async {
+      saving = container.read(todayControllerProvider.notifier).save();
+      await repo.entered.future;
+    });
+    await tester.pump();
+    final todayButton = tester.widget<TextButton>(
+      find.widgetWithText(TextButton, '오늘 작성하기'),
+    );
+    final draftButton = tester.widget<TextButton>(
+      find.widgetWithText(TextButton, '2026-10-11 보관 초안'),
+    );
+    final todayEnabled = todayButton.onPressed != null;
+    final draftEnabled = draftButton.onPressed != null;
+    await tester.runAsync(() async {
+      repo.release.complete();
+      expect(await saving, isTrue);
+      await container.read(todayControllerProvider.notifier).startToday();
+    });
+    await tester.pumpAndSettle();
+    expect(todayEnabled, isFalse);
+    expect(draftEnabled, isFalse);
+    expect(
+      container.read(todayControllerProvider).value!.draftDate,
+      '2026-10-12',
+    );
   });
   testWidgets('충돌 입력은 복사하고 폐기 확인 뒤에만 최신 기록을 다시 연다', (tester) async {
     final writer = EntryRepository(db, clock: Clock());
@@ -288,6 +319,9 @@ void main() {
       await db.customStatement(
         "INSERT INTO settings(key,value) VALUES ('draft_v1:2026-10-09','RAW_PRIVATE_MARKER')",
       );
+      await db.customStatement(
+        "INSERT INTO settings(key,value) VALUES ('draft_v1:2026-10-08','SECOND_PRIVATE_MARKER')",
+      );
     });
     addTearDown(() => photoDirectory.delete(recursive: true));
     await tester.runAsync(() async {
@@ -301,7 +335,7 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.textContaining('2026-10-09'), findsOneWidget);
+    expect(find.textContaining('2026-10-08'), findsOneWidget);
     expect(find.textContaining('RAW_PRIVATE_MARKER'), findsNothing);
     await tester.runAsync(() async {
       await tester.tap(find.text('읽지 못한 초안 폐기'));
@@ -313,6 +347,15 @@ void main() {
       expect(
         (await db
                 .customSelect(
+                  "SELECT COUNT(*) AS count FROM settings WHERE key IN ('draft_v1:2026-10-08','draft_v1:2026-10-09')",
+                )
+                .getSingle())
+            .read<int>('count'),
+        2,
+      );
+      expect(
+        (await db
+                .customSelect(
                   "SELECT value FROM settings WHERE key='draft_v1:2026-10-09'",
                 )
                 .getSingle())
@@ -321,6 +364,19 @@ void main() {
       );
       expect(await preservedPhoto.exists(), isTrue);
     });
+    await tester.runAsync(() async {
+      await tester.tap(find.text('읽지 못한 초안 폐기'));
+    });
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.text('이 초안만 폐기'));
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+    });
+    await tester.pump(const Duration(milliseconds: 300));
+    // One confirmed discard must reveal the remaining error, not stay loading.
+    expect(find.textContaining('2026-10-09'), findsOneWidget);
+    expect(find.text('다시 시도'), findsOneWidget);
+    expect(find.textContaining('SECOND_PRIVATE_MARKER'), findsNothing);
     await tester.runAsync(() async {
       await tester.tap(find.text('읽지 못한 초안 폐기'));
     });

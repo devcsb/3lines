@@ -161,7 +161,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                         if (state.draftDate !=
                             ref.read(appClockProvider).todayString())
                           TextButton(
-                            onPressed: state.isSwitchingDate
+                            onPressed:
+                                state.isSwitchingDate ||
+                                    state.isSaving ||
+                                    state.isCancelling
                                 ? null
                                 : () => ref
                                       .read(todayControllerProvider.notifier)
@@ -173,7 +176,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                             children: [
                               for (final date in state.draftDates)
                                 TextButton(
-                                  onPressed: state.isSwitchingDate
+                                  onPressed:
+                                      state.isSwitchingDate ||
+                                          state.isSaving ||
+                                          state.isCancelling
                                       ? null
                                       : () => ref
                                             .read(
