@@ -15,10 +15,12 @@ class QuestionsSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('질문 설정',
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: theme.colorScheme.primary,
-            )),
+        Text(
+          '질문 설정',
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: theme.colorScheme.primary,
+          ),
+        ),
         const Divider(),
         ...List.generate(3, (index) {
           return Semantics(
@@ -30,7 +32,7 @@ class QuestionsSection extends ConsumerWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              onTap: () => _showPromptEditor(context, ref, index, prompts[index]),
+              onTap: () => _showPromptEditor(context, index, prompts[index]),
             ),
           );
         }),
@@ -39,70 +41,201 @@ class QuestionsSection extends ConsumerWidget {
           child: ListTile(
             title: const Text('기본값으로 초기화'),
             leading: const Icon(Icons.restore),
-            onTap: () => _confirmReset(context, ref),
+            onTap: () => _confirmReset(context),
           ),
         ),
       ],
     );
   }
 
-  Future<void> _confirmReset(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+  void _confirmReset(BuildContext context) {
+    showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('질문 초기화'),
-        content: const Text('모든 질문을 기본값으로 되돌릴까요?'),
+      builder: (_) => const _PromptResetDialog(),
+    );
+  }
+
+  void _showPromptEditor(BuildContext context, int index, String current) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => _PromptEditorDialog(index: index, current: current),
+    );
+  }
+}
+
+class _PromptEditorDialog extends ConsumerStatefulWidget {
+  const _PromptEditorDialog({required this.index, required this.current});
+
+  final int index;
+  final String current;
+
+  @override
+  ConsumerState<_PromptEditorDialog> createState() =>
+      _PromptEditorDialogState();
+}
+
+class _PromptEditorDialogState extends ConsumerState<_PromptEditorDialog> {
+  late final TextEditingController _controller;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.current);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    final text = _controller.text.trim();
+    if (text.isEmpty) {
+      setState(() => _error = '질문을 한 글자 이상 입력해주세요.');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(settingsControllerProvider.notifier)
+          .updatePrompt(widget.index, text);
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = '저장하지 못했어요. 입력을 유지했으니 다시 저장해주세요.';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.watch(settingsControllerProvider);
+    return PopScope(
+      canPop: !_saving,
+      child: AlertDialog(
+        scrollable: true,
+        title: Text('질문 ${widget.index + 1} 수정'),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _controller,
+              enabled: !_saving,
+              maxLength: 100,
+              minLines: 1,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: '질문',
+                border: const OutlineInputBorder(),
+                errorText: _error,
+                errorMaxLines: 4,
+              ),
+              onChanged: (_) {
+                if (_error != null) setState(() => _error = null);
+              },
+            ),
+            const SizedBox(height: 8),
+            const Text('변경한 질문은 다음 새 초안부터 사용해요. 작성 중인 초안은 그대로 유지해요.'),
+            if (_saving) ...[const SizedBox(height: 8), const Text('질문 저장 중…')],
+          ],
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+            onPressed: _saving ? null : () => Navigator.pop(context),
             child: const Text('취소'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+            onPressed: _saving ? null : _save,
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PromptResetDialog extends ConsumerStatefulWidget {
+  const _PromptResetDialog();
+
+  @override
+  ConsumerState<_PromptResetDialog> createState() => _PromptResetDialogState();
+}
+
+class _PromptResetDialogState extends ConsumerState<_PromptResetDialog> {
+  bool _saving = false;
+  String? _error;
+
+  Future<void> _reset() async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await ref.read(settingsControllerProvider.notifier).resetPrompts();
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          // 현재 API는 세 질문을 순서대로 저장하므로 일부만 바뀌었을 수 있다.
+          _error = '초기화를 끝내지 못했어요. 일부 질문은 바뀌었을 수 있으니 다시 초기화해주세요.';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.watch(settingsControllerProvider);
+    return PopScope(
+      canPop: !_saving,
+      child: AlertDialog(
+        scrollable: true,
+        title: const Text('질문 초기화'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '모든 질문을 기본값으로 되돌릴까요? 다음 새 초안부터 사용하고 작성 중인 초안은 그대로 유지해요.',
+            ),
+            if (_saving) ...[
+              const SizedBox(height: 8),
+              const Text('질문 초기화 중…'),
+            ],
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Semantics(liveRegion: true, child: Text(_error!)),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+            onPressed: _saving ? null : () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+            onPressed: _saving ? null : _reset,
             child: const Text('초기화'),
           ),
         ],
       ),
     );
-    if (confirmed == true) {
-      await ref.read(settingsControllerProvider.notifier).resetPrompts();
-    }
-  }
-
-  void _showPromptEditor(
-      BuildContext context, WidgetRef ref, int index, String current) {
-    final controller = TextEditingController(text: current);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('질문 ${index + 1} 수정'),
-        content: TextFormField(
-          controller: controller,
-          maxLength: 100,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () {
-              // 빈/공백 질문은 저장하지 않는다(빈 질문이 카드에 노출되는 것 방지).
-              final text = controller.text.trim();
-              if (text.isNotEmpty) {
-                ref
-                    .read(settingsControllerProvider.notifier)
-                    .updatePrompt(index, text);
-              }
-              Navigator.pop(ctx);
-            },
-            child: const Text('저장'),
-          ),
-        ],
-      ),
-    ).then((_) => controller.dispose());
   }
 }
