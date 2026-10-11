@@ -18,7 +18,7 @@
 
 ## Task 1 과거 기록 탐색과 조회 의도 보존
 
-**Files:** `lib/features/timeline/{timeline_controller,timeline_state,timeline_screen}.dart`, `lib/features/timeline/widgets/entry_detail_sheet.dart`, 해당 `test/features/timeline/` tests. EntryRepository는 소비만 하며 수정하지 않는다.
+**Files:** `lib/features/timeline/{timeline_controller,timeline_state,timeline_screen}.dart`, `lib/features/timeline/widgets/{entry_detail_sheet,heatmap_grid}.dart`, 해당 `test/features/timeline/` tests. EntryRepository는 소비만 하며 수정하지 않는다. Heatmap의 optional `endDate`로 조회와 렌더의 고정 시계를 일치시킨다.
 **Interfaces:** 기존 `search(String)`, `clearSearch()`, `setPeriod(TimelinePeriod)`, `deleteEntry(String)`, `getEntryByDate(String)` 호출 호환을 유지한다. TimelineState에 실제 전체 건수/조회 상태가 필요하면 기본값을 갖는 좁은 필드만 추가한다. `getTotalCount`, `searchEntries`, `getEmotionMap`을 재사용한다.
 
 - [ ] 실제 메모리 DB에 2026-03-01 한 건/clock2026-10-11을 넣어 검색→상세에 도달하는 RED를 고정한다. 전체0건과 기간0건 문구를 구분한다.
