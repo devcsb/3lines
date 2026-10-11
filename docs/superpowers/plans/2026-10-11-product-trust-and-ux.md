@@ -55,6 +55,8 @@
 
 **Files:** Today screen와 prompt widgets, Settings questions_section/controller, PhotoService/호출부, LockScreen 및 관련 tests. Task3과 source가 겹치므로 그 이후 수행한다.
 
+Task4a는 QuestionsSection/LockScreen과 해당 시험만 먼저 진행한다. Task4b의 Today/Prompt/PhotoService/SettingsController는 Task3 독립 검토 지적이 닫힌 뒤 인계한다. Flutter 실행 슬롯은 두 task 사이에서도 공유하지 않는다.
+
 - [ ] 예시→직접편집→Undo, 199 grapheme→예시, 가져온 장문→편집의 반례를 고정한다. 현재 결과가 삽입 결과와 같을 때만 Undo하고 새 예시/저장/날짜전환에서 무효화한다.
 - [ ] 검증된 질문별 예시와 자유질문 라벨/예시 숨김을 적용한다. focusable native button/명확한 접근성 이름을 사용한다.
 - [ ] 질문 편집 공백/DB 실패/느린 저장/취소를 구현하고 입력을 유지한다. 사진 cancel/error 구분과 인증 재시도 안내를 추가한다.
