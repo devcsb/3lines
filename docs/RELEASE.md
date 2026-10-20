@@ -98,7 +98,61 @@ Play 등록 전이라도 기존 APK 사용자 업데이트에 같은 서명이 �
 
 ## 확인한 외부 배포 상태
 
-2026-10-11 root가 GitHub CLI로 확인한 최신 공개 [v1.2.3](https://github.com/devcsb/3lines/releases/tag/v1.2.3)은 `2026-08-29T06:58:51Z`에 게시됐습니다. 첨부는 `app-release.aab` 72,099,129 bytes 하나이며 APK와 IPA는 없습니다. [실행 33239369691](https://github.com/devcsb/3lines/actions/runs/33239369691)은 성공했지만 현재 로컬 개선 소스가 배포됐다는 의미는 아닙니다. 이 작업은 push/tag/publish/secret 변경을 하지 않습니다.
+2026-10-20에 [v1.3.0](https://github.com/devcsb/3lines/releases/tag/v1.3.0)을
+`2026-10-20T12:15:48Z`에 공개했습니다. 앱 버전은 `1.3.0+7`, 배포 소스는
+`b6a3d6c93d9e257fb49a6dac92b950f119897754`이며 main과 태그에 반영했습니다.
+[릴리스 실행 39419518612](https://github.com/devcsb/3lines/actions/runs/39419518612)에서
+검증, Android 서명 빌드, APK/AAB 서명 검사와 GitHub 게시가 모두 성공했습니다.
+Apple secret이 없어 iOS와 TestFlight는 건너뛰었으며 IPA는 없습니다.
+Google Play나 App Store 배포는 하지 않았고 서명 키와 secret을 교체하지 않았습니다.
+
+| 공개 파일 | 크기(bytes) | SHA-256 |
+| --- | ---: | --- |
+| `app-release.apk` | 75,552,806 | `90e80c7394dbc818d83290dd2d64134456066f15eaf8ae33bdcae72382e6275e` |
+| `app-release.aab` | 73,031,968 | `af35b73f55b430db5aa68d1e9022055e0168c78af8c240666843823e373d02ad` |
+
+공개 파일을 다시 내려받아 GitHub의 digest와 위 해시가 일치함을 확인했습니다.
+APK는 apksigner v2 서명 검증, AAB는 jarsigner 검증을 통과했습니다.
+jarsigner는 자체 서명 인증서의 신뢰 체인과 타임스탬프 경고도 출력했으며,
+서명 검증 결과는 `jar verified`였습니다.
+인증서 SHA-256은
+`320c932cbc7cbc8f353f767020610caafb64f596e4762fa2266f8499271921df`로
+v1.2.3 AAB, v1.3.0 AAB와 APK가 일치합니다. 이는 다른 경로에서 설치한
+모든 APK와의 업데이트 호환성을 보장하지 않습니다.
+APK 메타데이터는 `com.threelines.three_lines`, versionCode 7,
+versionName 1.3.0, minSdk 24, targetSdk 36입니다.
+ABI는 `arm64-v8a`, `armeabi-v7a`, `x86_64`이며 debuggable 플래그가 없습니다.
+
+### 이번 배포 전후 검증
+
+- 로컬 Flutter 분석 지적 0개, 전체 테스트 807개 통과.
+- [검증 브랜치 CI](https://github.com/devcsb/3lines/actions/runs/39418631618),
+  [main CI](https://github.com/devcsb/3lines/actions/runs/39419514804),
+  [태그 CI](https://github.com/devcsb/3lines/actions/runs/39419518684) 성공.
+- actionlint, APK/AAB 파이프라인과 Apple secret 32개 조합,
+  아이콘 검사, iOS 누락-secret guard, 실제 Gradle의 CI 무서명 거부 검사 통과.
+- 마지막 네이티브 검토에서 `MainActivity`가 인증 플러그인이 요구하는
+  `FragmentActivity`가 아닌 문제를 발견했습니다. 실제 클래스 호환성 시험의
+  실패를 확인한 뒤 `3f54276`에서 `FlutterFragmentActivity`와 낮/밤 AppCompat
+  테마로 수정했습니다. Android 단위 테스트는 기존 위젯 4개와 새 회귀 1개,
+  총 5개가 통과했습니다.
+- 별도로 만든 Android 14 에뮬레이터에서 부팅 통합 시험 1개 통과.
+  디버그 앱의 실제 PIN 인증, 재시작 후 잠금 해제, 강제 종료 후 초안 복구,
+  저장과 타임라인 상세 조회를 가상 기록으로 확인했습니다.
+  실제 화면에서 기본 글씨와 200% 글씨의 기록 상세를 확인했습니다.
+- 공개된 서명 APK도 같은 전용 에뮬레이터에 새로 설치하여 버전과 정상 부팅,
+  온보딩 표시, 가상 기록 저장과 강제 종료 후 완료 기록 유지를 확인했습니다.
+  UI 자동화 중에는 예시의 '되돌리기' 알림이 저장 버튼 위에 유지되어,
+  알림을 아래로 밀어 닫은 뒤 저장했습니다. 상시 보이는 알림 닫기 조작은
+  후속 UX 개선 항목입니다.
+  디버그 설치와 가상 기록만 지웠고 사용자 기기, 실제 기록, 사진이나
+  비밀 키는 읽거나 삭제하지 않았습니다.
+
+물리 기기별 생체 센서, 화면 읽기 도구, OS 알림 도착, 백업과 이전 설치본
+업데이트는 미검증입니다. 인증 창 취소 동작도 에뮬레이터의 ADB 조작으로는
+완료를 확인하지 못했으며, 취소와 재시도 처리는 위젯 시험 결과와 구분합니다.
+Gradle/AGP/Kotlin과 GitHub Actions의 향후 지원 중단 경고가 남아 있습니다.
+이번 배포에서 도구체인 버전을 올리거나 검증을 우회하지 않았습니다.
 
 ## 로컬 검증
 

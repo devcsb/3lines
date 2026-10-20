@@ -96,11 +96,9 @@
 
 ### APK 직접 설치 (Android)
 
-2026-10-11에 확인한 공개 [v1.2.3](https://github.com/devcsb/3lines/releases/tag/v1.2.3)에는 `app-release.aab`만 있고 설치용 APK는 없습니다. AAB는 휴대폰에서 직접 설치할 수 없습니다. 이 로컬 개선은 아직 게시하지 않았습니다.
+2026-10-20에 공개한 [v1.3.0](https://github.com/devcsb/3lines/releases/tag/v1.3.0)에는 서명된 universal APK와 AAB가 있습니다. Android 7.0(API 24) 이상에서 [app-release.apk](https://github.com/devcsb/3lines/releases/download/v1.3.0/app-release.apk)를 설치하세요. AAB는 휴대폰에서 직접 설치하는 파일이 아닙니다.
 
-다음 서명 릴리스의 첨부에 `app-release.apk`가 실제로 나타나면 다음 순서로 설치합니다.
-
-1. [Releases](../../releases/latest)에서 universal `app-release.apk`를 내려받습니다.
+1. [Releases](https://github.com/devcsb/3lines/releases/latest)에서 universal `app-release.apk`를 내려받습니다.
 2. 해당 브라우저나 파일 앱에 필요한 외부 앱 설치 권한을 허용합니다.
 3. APK를 열어 설치합니다. 설치 뒤 권한을 다시 끌 수 있습니다.
 
