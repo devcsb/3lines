@@ -35,7 +35,7 @@ InitializationSettings notificationInitializationSettings() {
     requestSoundPermission: false,
   );
   return const InitializationSettings(
-    android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    android: AndroidInitializationSettings('ic_stat_3lines'),
     iOS: darwin,
     macOS: darwin,
   );

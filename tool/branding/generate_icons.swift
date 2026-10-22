@@ -7,8 +7,7 @@ struct Icon: Decodable {
     let canvas: Double
     let background: String
     let foreground: String
-    let stroke: Double
-    let lines: [[Double]]
+    let polygons: [[[Double]]]
 }
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 let icon = try JSONDecoder().decode(Icon.self, from: Data(contentsOf: root.appendingPathComponent("tool/branding/icon.json")))
@@ -35,11 +34,12 @@ func png(_ size: Int, mask: String = "none") -> Data {
     context.setFillColor(color(icon.background)); context.fill(bounds)
     context.scaleBy(x: CGFloat(size) / icon.canvas, y: CGFloat(size) / icon.canvas)
     context.translateBy(x: 0, y: icon.canvas); context.scaleBy(x: 1, y: -1)
-    context.setStrokeColor(color(icon.foreground)); context.setLineWidth(icon.stroke); context.setLineCap(.round)
-    for line in icon.lines {
-        context.move(to: CGPoint(x: line[0], y: line[1]))
-        context.addLine(to: CGPoint(x: line[2], y: line[3])); context.strokePath()
+    context.setFillColor(color(icon.foreground))
+    for polygon in icon.polygons {
+        context.addLines(between: polygon.map { CGPoint(x: $0[0], y: $0[1]) })
+        context.closePath()
     }
+    context.fillPath()
     let bitmap = NSBitmapImageRep(cgImage: context.makeImage()!)
     // Apple catalog images must be opaque. Strip alpha for unmasked launcher assets.
     if mask == "none" {
@@ -78,16 +78,35 @@ for (index, size) in sizes.enumerated() {
 }
 for data in payloads { ico += data }
 try write(ico, "windows/runner/resources/app_icon.ico")
-let paths = icon.lines.map { "<path android:strokeColor=\"#\(icon.foreground)\" android:strokeWidth=\"\(icon.stroke)\" android:strokeLineCap=\"round\" android:pathData=\"M\($0[0]),\($0[1]) L\($0[2]),\($0[3])\"/>" }.joined(separator: "\n  ")
+let pathData = icon.polygons.map { polygon in
+    polygon.enumerated().map { index, point in
+        "\(index == 0 ? "M" : "L")\(point[0]),\(point[1])"
+    }.joined(separator: " ") + " Z"
+}.joined(separator: " ")
+// 중앙 72dp를 원본 캔버스로 사용해 런처 마스크 적용 후 비례를 유지한다.
+let viewport = icon.canvas * 1.5
+let inset = icon.canvas * 0.25
 let vector = """
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-  \(paths)
+    android:width="108dp" android:height="108dp" android:viewportWidth="\(viewport)" android:viewportHeight="\(viewport)">
+  <group android:translateX="\(inset)" android:translateY="\(inset)">
+    <path android:fillColor="#\(icon.foreground)" android:pathData="\(pathData)"/>
+  </group>
 </vector>
 
 """
 try write(Data(vector.utf8), "android/app/src/main/res/drawable/ic_launcher_foreground.xml")
 try write(Data(vector.replacingOccurrences(of: "#\(icon.foreground)", with: "#FFFFFF").utf8), "android/app/src/main/res/drawable/ic_launcher_monochrome.xml")
+let notification = """
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="576" android:viewportHeight="576">
+  <group android:translateX="-224" android:translateY="-224">
+    <path android:fillColor="#FFFFFF" android:pathData="\(pathData)"/>
+  </group>
+</vector>
+
+"""
+try write(Data(notification.utf8), "android/app/src/main/res/drawable/ic_stat_3lines.xml")
 try write(Data("<resources><color name=\"ic_launcher_background\">#\(icon.background)</color></resources>\n".utf8), "android/app/src/main/res/values/ic_launcher_colors.xml")
 for version in [26,33] {
     let monochrome = version == 33 ? "  <monochrome android:drawable=\"@drawable/ic_launcher_monochrome\"/>\n" : ""

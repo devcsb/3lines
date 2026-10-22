@@ -29,9 +29,12 @@ raise 'Missing multi-size Windows icon' unless ico[0,6].unpack('vvv') == [0,1,6]
 end
 icon = JSON.parse(File.read("#{root}/tool/branding/icon.json"))
 # Adaptive foreground must stay inside Android's central 66dp safe circle.
-icon['lines'].each do |line|
-  [[line[0],line[1]], [line[2],line[3]]].each do |x,y|
-    raise 'Adaptive motif clips safe zone' if Math.hypot(x-54,y-54) + icon['stroke']/2.0 > 33
+icon['polygons'].each do |polygon|
+  polygon.each do |x,y|
+    # The 1024px canvas occupies the central 72dp of the 108dp adaptive layer.
+    dx = (x / icon['canvas'].to_f - 0.5) * 72
+    dy = (y / icon['canvas'].to_f - 0.5) * 72
+    raise 'Adaptive motif clips safe zone' if Math.hypot(dx,dy) > 33
   end
 end
 lum = ->(hex) {
