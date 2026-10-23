@@ -100,6 +100,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
       ..showSnackBar(
         SnackBar(
           content: Text(message),
+          showCloseIcon: true,
           action: SnackBarAction(
             label: '다시 시도',
             onPressed: () {
@@ -572,6 +573,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                                             ..hideCurrentSnackBar()
                                             ..showSnackBar(
                                               SnackBar(
+                                                showCloseIcon: true,
                                                 content: const Text(
                                                   '제안을 추가했어요',
                                                 ),

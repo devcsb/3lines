@@ -1,23 +1,28 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:three_lines/app/router.dart';
 import 'package:three_lines/core/constants/default_prompts.dart';
 import 'package:three_lines/core/services/photo_service.dart';
 import 'package:three_lines/core/time/app_clock.dart';
+import 'package:three_lines/core/theme/app_theme.dart';
 import 'package:three_lines/data/database/app_database.dart';
 import 'package:three_lines/data/models/journal_draft.dart';
 import 'package:three_lines/data/models/daily_entry.dart';
 import 'package:three_lines/data/repositories/entry_repository.dart';
 import 'package:three_lines/data/repositories/settings_repository.dart';
 import 'package:three_lines/features/today/today_controller.dart';
-import 'package:three_lines/features/today/today_screen.dart';
 import 'package:three_lines/features/settings/settings_controller.dart';
 
 import '../../helpers/fake_photo_service.dart';
+
+import '../../helpers/ui_render_fonts.dart';
 
 class _Clock extends AppClock {
   @override
@@ -29,13 +34,18 @@ void main() {
   late EntryRepository repository;
   late ProviderContainer container;
 
-  setUpAll(() => initializeDateFormatting('ko_KR'));
+  setUpAll(() async {
+    await loadUiRenderFonts();
+    await initializeDateFormatting('ko_KR');
+  });
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     final clock = _Clock();
     repository = EntryRepository(db, clock: clock);
     container = ProviderContainer(
       overrides: [
+        initialOnboardingDoneProvider.overrideWithValue(true),
+        onboardingDoneProvider.overrideWith((ref) async => true),
         appClockProvider.overrideWithValue(clock),
         entryRepositoryProvider.overrideWithValue(repository),
         settingsRepositoryProvider.overrideWithValue(SettingsRepository(db)),
@@ -44,6 +54,7 @@ void main() {
     );
   });
   tearDown(() async {
+    container.read(routerProvider).dispose();
     container.dispose();
     await db.close();
   });
@@ -53,6 +64,7 @@ void main() {
     String answer = '',
     String? question,
     double textScale = 1,
+    bool accessibleNavigation = false,
     bool seedDraft = true,
   }) async {
     await tester.runAsync(() async {
@@ -78,14 +90,20 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(
+        child: MaterialApp.router(
+          routerConfig: container.read(routerProvider),
+          theme: uiRenderTheme(AppTheme.light()),
+          locale: const Locale('ko', 'KR'),
+          supportedLocales: const [Locale('ko', 'KR')],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
           builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(textScale),
+              accessibleNavigation: accessibleNavigation,
+              disableAnimations: accessibleNavigation,
+            ),
             child: child!,
           ),
-          home: const TodayScreen(),
         ),
       ),
     );
@@ -191,6 +209,64 @@ void main() {
     await undo(tester);
     expect(container.read(todayControllerProvider).value!.answer1, '');
   });
+
+  for (final size in [
+    const Size(375, 812),
+    const Size(320, 640),
+    const Size(640, 320),
+  ]) {
+    testWidgets('접근성 탐색 ${size.width}x${size.height}에서 예시 알림을 닫고 글을 저장한다', (
+      tester,
+    ) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await show(tester, textScale: 2, accessibleNavigation: true);
+      await addExample(tester);
+      await tester.pump(const Duration(seconds: 10));
+      expect(find.text('되돌리기'), findsOneWidget);
+      final close = find
+          .descendant(
+            of: find.byType(SnackBar),
+            matching: find.widgetWithIcon(IconButton, Icons.close),
+          )
+          .hitTestable();
+      expect(close, findsOneWidget);
+      expect(tester.widget<IconButton>(close).tooltip, '닫기');
+      expect(tester.getSize(close).width, greaterThanOrEqualTo(48));
+      expect(tester.getSize(close).height, greaterThanOrEqualTo(48));
+      await tester.tap(close);
+      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsNothing);
+      expect(container.read(todayControllerProvider).value!.answer1, '맑은 날씨');
+      await tester.runAsync(() async {
+        final saved = Completer<void>();
+        final subscription = container.listen(todayControllerProvider, (
+          _,
+          next,
+        ) {
+          if (next.value?.isCompleted == true && !saved.isCompleted) {
+            saved.complete();
+          }
+        });
+        try {
+          await tester.tap(find.text('기록 완료').hitTestable());
+          await saved.future.timeout(const Duration(seconds: 3));
+        } finally {
+          subscription.close();
+        }
+      });
+      await tester.pumpAndSettle();
+      final entry = await tester.runAsync(
+        () => repository.getEntryByDate('2026-10-11'),
+      );
+      expect(entry?.answer1, '맑은 날씨');
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('예시 뒤 직접 편집한 글은 늦은 되돌리기가 덮지 않는다', (tester) async {
     await show(tester, answer: '처음 글');

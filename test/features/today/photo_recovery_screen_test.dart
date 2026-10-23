@@ -4,21 +4,25 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:three_lines/app/router.dart';
 import 'package:path/path.dart' as p;
 import 'package:three_lines/core/constants/default_prompts.dart';
 import 'package:three_lines/core/services/photo_service.dart';
 import 'package:three_lines/core/time/app_clock.dart';
+import 'package:three_lines/core/theme/app_theme.dart';
 import 'package:three_lines/data/database/app_database.dart';
 import 'package:three_lines/data/models/journal_draft.dart';
 import 'package:three_lines/data/repositories/entry_repository.dart';
 import 'package:three_lines/data/repositories/settings_repository.dart';
 import 'package:three_lines/features/today/today_controller.dart';
-import 'package:three_lines/features/today/today_screen.dart';
+
+import '../../helpers/ui_render_fonts.dart';
 
 class _Clock extends AppClock {
   @override
@@ -88,7 +92,10 @@ void main() {
   late ProviderContainer container;
   late _ObservedPhotoService service;
 
-  setUpAll(() => initializeDateFormatting('ko_KR'));
+  setUpAll(() async {
+    await loadUiRenderFonts();
+    await initializeDateFormatting('ko_KR');
+  });
   setUp(() async {
     temp = await Directory.systemTemp.createTemp('3lines_photo_recovery_');
     photos = await Directory(p.join(temp.path, 'photos')).create();
@@ -102,12 +109,18 @@ void main() {
     picker = _Picker();
   });
   tearDown(() async {
+    container.read(routerProvider).dispose();
     container.dispose();
     await db.close();
     await temp.delete(recursive: true);
   });
 
-  Future<void> show(WidgetTester tester, {bool copyFails = false}) async {
+  Future<void> show(
+    WidgetTester tester, {
+    bool copyFails = false,
+    bool accessibleNavigation = false,
+    double textScale = 1,
+  }) async {
     service = _ObservedPhotoService(
       documentsDirectoryProvider: () async => temp,
       picker: picker,
@@ -129,6 +142,8 @@ void main() {
       );
       container = ProviderContainer(
         overrides: [
+          initialOnboardingDoneProvider.overrideWithValue(true),
+          onboardingDoneProvider.overrideWith((ref) async => true),
           appClockProvider.overrideWithValue(_Clock()),
           entryRepositoryProvider.overrideWithValue(entries),
           settingsRepositoryProvider.overrideWithValue(SettingsRepository(db)),
@@ -141,7 +156,21 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: TodayScreen()),
+        child: MaterialApp.router(
+          routerConfig: container.read(routerProvider),
+          theme: uiRenderTheme(AppTheme.light()),
+          locale: const Locale('ko', 'KR'),
+          supportedLocales: const [Locale('ko', 'KR')],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(textScale),
+              accessibleNavigation: accessibleNavigation,
+              disableAnimations: accessibleNavigation,
+            ),
+            child: child!,
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -211,6 +240,66 @@ void main() {
     expect(find.text('다시 시도'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  for (final size in [
+    const Size(375, 812),
+    const Size(320, 640),
+    const Size(640, 320),
+  ]) {
+    testWidgets('접근성 탐색 ${size.width}x${size.height}에서 사진 실패 알림을 닫고 글만 저장한다', (
+      tester,
+    ) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      picker.error = PlatformException(code: 'photo_access_denied');
+      await show(tester, accessibleNavigation: true, textScale: 2);
+      await pick(tester, '갤러리');
+      await tester.pump(const Duration(seconds: 10));
+      expect(find.text('다시 시도'), findsOneWidget);
+      final close = find
+          .descendant(
+            of: find.byType(SnackBar),
+            matching: find.widgetWithIcon(IconButton, Icons.close),
+          )
+          .hitTestable();
+      expect(close, findsOneWidget);
+      expect(tester.widget<IconButton>(close).tooltip, '닫기');
+      expect(tester.getSize(close).width, greaterThanOrEqualTo(48));
+      expect(tester.getSize(close).height, greaterThanOrEqualTo(48));
+      await tester.tap(close);
+      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsNothing);
+      expect(service.completed, hasLength(1));
+      await tester.runAsync(() async {
+        final saved = Completer<void>();
+        final subscription = container.listen(todayControllerProvider, (
+          _,
+          next,
+        ) {
+          if (next.value?.isCompleted == true && !saved.isCompleted) {
+            saved.complete();
+          }
+        });
+        try {
+          await tester.tap(find.text('기록 완료').hitTestable());
+          await saved.future.timeout(const Duration(seconds: 3));
+        } finally {
+          subscription.close();
+        }
+      });
+      await tester.pumpAndSettle();
+      final entry = await tester.runAsync(
+        () => entries.getEntryByDate('2026-10-11'),
+      );
+      expect(entry?.answer1, '사진 없이도 남길 글');
+      expect(entry?.photoPath, isNull);
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('사진 실패 뒤 예시 Undo 안내는 새 picker 취소가 닫지 않는다', (tester) async {
     picker.error = PlatformException(code: 'photo_access_denied');
