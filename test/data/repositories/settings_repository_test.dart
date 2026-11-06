@@ -18,15 +18,19 @@ void main() {
 
   group('getSetting', () {
     test('returns default value when key does not exist', () async {
-      final result =
-          await repo.getSetting('nonexistent', defaultValue: 'fallback');
+      final result = await repo.getSetting(
+        'nonexistent',
+        defaultValue: 'fallback',
+      );
       expect(result, 'fallback');
     });
 
     test('returns stored value when key exists', () async {
       await repo.setSetting('test_key', 'test_value');
-      final result =
-          await repo.getSetting('test_key', defaultValue: 'fallback');
+      final result = await repo.getSetting(
+        'test_key',
+        defaultValue: 'fallback',
+      );
       expect(result, 'test_value');
     });
   });
@@ -34,8 +38,7 @@ void main() {
   group('setSetting', () {
     test('creates new setting', () async {
       await repo.setSetting('new_key', 'new_value');
-      final result =
-          await repo.getSetting('new_key', defaultValue: '');
+      final result = await repo.getSetting('new_key', defaultValue: '');
       expect(result, 'new_value');
     });
 
@@ -51,16 +54,16 @@ void main() {
     test('returns default prompts when none customized', () async {
       final prompts = await repo.getPrompts();
       expect(prompts.length, 3);
-      expect(prompts[0], '오늘 감사한 작은 것 하나는?');
-      expect(prompts[1], '오늘 불편했던 감정을, 있는 그대로 인정한다면?');
-      expect(prompts[2], '내일 내가 되고 싶은 모습은?');
+      expect(prompts[0], '지금 꺼내놓고 싶은 이야기가 있나요?');
+      expect(prompts[1], '지금 내 마음에 머물러 있는 것은?');
+      expect(prompts[2], '지금 나에게 필요한 것이 있다면?');
     });
 
     test('returns customized prompts', () async {
       await repo.setSetting('prompt_1', '커스텀 질문');
       final prompts = await repo.getPrompts();
       expect(prompts[0], '커스텀 질문');
-      expect(prompts[1], '오늘 불편했던 감정을, 있는 그대로 인정한다면?');
+      expect(prompts[1], '지금 내 마음에 머물러 있는 것은?');
     });
   });
 

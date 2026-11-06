@@ -7,6 +7,7 @@ import 'package:three_lines/core/utils/date_utils.dart' as du;
 import 'package:three_lines/features/today/today_controller.dart';
 import 'package:three_lines/features/today/today_screen.dart';
 import 'package:three_lines/features/today/today_state.dart';
+import 'package:three_lines/features/today/widgets/streak_pulse_badge.dart';
 
 final class _CompletedTodayController extends TodayController {
   @override
@@ -34,6 +35,27 @@ final class _FixedTodayClock extends AppClock {
 void main() {
   setUpAll(() async {
     await initializeDateFormatting('ko_KR');
+  });
+
+  testWidgets('회고를 직접 열기 전에는 연속 기록과 감정 흐름이 노출되지 않는다', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          todayControllerProvider.overrideWith(_CompletedTodayController.new),
+        ],
+        child: const MaterialApp(home: TodayScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(StreakPulseBadge), findsNothing);
+    expect(find.text('최근 7일 감정'), findsNothing);
+    final disclosure = find.text('지난 기록 돌아보기');
+    await tester.ensureVisible(disclosure);
+    await tester.tap(disclosure);
+    await tester.pumpAndSettle();
+    expect(find.byType(StreakPulseBadge), findsOneWidget);
+    expect(find.text('최근 7일 감정'), findsOneWidget);
   });
 
   testWidgets('reduce-motion에서는 완료 상태 배지가 즉시 표시된다', (tester) async {

@@ -22,7 +22,8 @@ class PdfReportService {
       // Bold 에셋(약 2.9MB)은 번들하지 않는다. PDF 는 드물게 쓰는 기능인데
       // 전 사용자가 무게를 지므로, 헤더는 Regular 두께로 렌더한다.
       final base = pw.Font.ttf(
-          await rootBundle.load('assets/fonts/NanumMyeongjo-Regular.ttf'));
+        await rootBundle.load('assets/fonts/NanumMyeongjo-Regular.ttf'),
+      );
       return pw.ThemeData.withFont(base: base, bold: base);
     } catch (_) {
       // 폰트 에셋 로드 실패 시 기본 폰트로 폴백(한글이 깨질 수 있으나 크래시는 없음).
@@ -64,7 +65,7 @@ class PdfReportService {
           pw.SizedBox(height: 24),
 
           // Daily entries
-          _buildEntriesSection(entries),
+          ..._buildEntriesSection(entries),
         ],
       ),
     );
@@ -121,8 +122,7 @@ class PdfReportService {
     final completionRate = daysInMonth > 0
         ? (entryCount / daysInMonth * 100).round()
         : 0;
-    final emotionLabel =
-        AppColors.emotionLabels[averageEmotion.round()] ?? '';
+    final emotionLabel = AppColors.emotionLabels[averageEmotion.round()] ?? '';
 
     return pw.Container(
       padding: const pw.EdgeInsets.all(16),
@@ -139,8 +139,7 @@ class PdfReportService {
             '평균 감정',
             '${averageEmotion.toStringAsFixed(1)} $emotionLabel',
           ),
-          if (topKeyword.isNotEmpty)
-            _summaryItem('핵심 키워드', topKeyword),
+          if (topKeyword.isNotEmpty) _summaryItem('핵심 키워드', topKeyword),
         ],
       ),
     );
@@ -197,10 +196,8 @@ class PdfReportService {
           ...List.generate(5, (i) {
             final level = 5 - i; // 5 → 1
             final count = counts[level] ?? 0;
-            final label =
-                AppColors.emotionLabels[level] ?? '$level';
-            final ratio =
-                entries.isNotEmpty ? count / entries.length : 0.0;
+            final label = AppColors.emotionLabels[level] ?? '$level';
+            final ratio = entries.isNotEmpty ? count / entries.length : 0.0;
             final color = _emotionPdfColor(level);
 
             return pw.Padding(
@@ -220,8 +217,7 @@ class PdfReportService {
                   pw.Expanded(
                     child: pw.LayoutBuilder(
                       builder: (context, constraints) {
-                        final barWidth =
-                            (constraints?.maxWidth ?? 200) * ratio;
+                        final barWidth = (constraints?.maxWidth ?? 200) * ratio;
                         return pw.Stack(
                           children: [
                             pw.Container(
@@ -265,41 +261,39 @@ class PdfReportService {
     );
   }
 
-  pw.Widget _buildEntriesSection(List<DailyEntry> entries) {
+  List<pw.Widget> _buildEntriesSection(List<DailyEntry> entries) {
     if (entries.isEmpty) {
-      return pw.Text(
-        '이 달에 기록이 없습니다.',
-        style: const pw.TextStyle(
-          fontSize: 11,
-          color: PdfColor.fromInt(0xFF999999),
-        ),
-      );
-    }
-
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
+      return [
         pw.Text(
-          '일별 기록',
-          style: pw.TextStyle(
-            fontSize: 14,
-            fontWeight: pw.FontWeight.bold,
-            color: const PdfColor.fromInt(0xFF444444),
+          '이 달에 기록이 없습니다.',
+          style: const pw.TextStyle(
+            fontSize: 11,
+            color: PdfColor.fromInt(0xFF999999),
           ),
         ),
-        pw.SizedBox(height: 12),
-        ...entries.map(_buildEntryCard),
-      ],
-    );
+      ];
+    }
+
+    return [
+      pw.Text(
+        '일별 기록',
+        style: pw.TextStyle(
+          fontSize: 14,
+          fontWeight: pw.FontWeight.bold,
+          color: const PdfColor.fromInt(0xFF444444),
+        ),
+      ),
+      pw.SizedBox(height: 12),
+      for (final entry in entries) ..._buildEntryContent(entry),
+    ];
   }
 
-  pw.Widget _buildEntryCard(DailyEntry entry) {
+  List<pw.Widget> _buildEntryContent(DailyEntry entry) {
     final parsed = DateTime.tryParse(entry.date);
     final dateLabel = parsed != null
         ? '${parsed.month}/${parsed.day} (${_weekdayLabel(parsed.weekday)})'
         : entry.date;
-    final emotionLabel =
-        AppColors.emotionLabels[entry.emotion] ?? '';
+    final emotionLabel = AppColors.emotionLabels[entry.emotion] ?? '';
     final color = _emotionPdfColor(entry.emotion);
 
     final prompts = <(String, String)>[
@@ -308,75 +302,72 @@ class PdfReportService {
       if (entry.answer3.isNotEmpty) (entry.prompt3, entry.answer3),
     ];
 
-    return pw.Container(
-      margin: const pw.EdgeInsets.only(bottom: 10),
-      padding: const pw.EdgeInsets.all(12),
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: const PdfColor.fromInt(0xFFE0DDD6)),
-        borderRadius: pw.BorderRadius.circular(6),
+    return [
+      pw.Container(
+        margin: const pw.EdgeInsets.only(bottom: 10),
+        padding: const pw.EdgeInsets.all(12),
+        decoration: pw.BoxDecoration(
+          border: pw.Border.all(color: const PdfColor.fromInt(0xFFE0DDD6)),
+          borderRadius: pw.BorderRadius.circular(6),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            // Date + emotion row
+            pw.Row(
+              children: [
+                pw.Container(
+                  width: 8,
+                  height: 8,
+                  decoration: pw.BoxDecoration(
+                    color: color,
+                    shape: pw.BoxShape.circle,
+                  ),
+                ),
+                pw.SizedBox(width: 6),
+                pw.Text(
+                  dateLabel,
+                  style: pw.TextStyle(
+                    fontSize: 11,
+                    fontWeight: pw.FontWeight.bold,
+                    color: const PdfColor.fromInt(0xFF444444),
+                  ),
+                ),
+                pw.SizedBox(width: 8),
+                pw.Text(
+                  emotionLabel,
+                  style: pw.TextStyle(fontSize: 10, color: color),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          // Date + emotion row
-          pw.Row(
-            children: [
-              pw.Container(
-                width: 8,
-                height: 8,
-                decoration: pw.BoxDecoration(
-                  color: color,
-                  shape: pw.BoxShape.circle,
-                ),
-              ),
-              pw.SizedBox(width: 6),
-              pw.Text(
-                dateLabel,
-                style: pw.TextStyle(
-                  fontSize: 11,
-                  fontWeight: pw.FontWeight.bold,
-                  color: const PdfColor.fromInt(0xFF444444),
-                ),
-              ),
-              pw.SizedBox(width: 8),
-              pw.Text(
-                emotionLabel,
-                style: pw.TextStyle(
-                  fontSize: 10,
-                  color: color,
-                ),
-              ),
-            ],
+      // Text must be a direct MultiPage child to continue onto the next page.
+      // Wrapping an entire answer in a card makes long stories unbreakable.
+      for (final (question, answer) in prompts) ...[
+        pw.Text(
+          question,
+          overflow: pw.TextOverflow.span,
+          style: const pw.TextStyle(
+            fontSize: 9,
+            color: PdfColor.fromInt(0xFF666666),
           ),
-          pw.SizedBox(height: 8),
-          // Answers
-          ...prompts.map((pa) => pw.Padding(
-                padding: const pw.EdgeInsets.only(bottom: 4),
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      pa.$1,
-                      style: const pw.TextStyle(
-                        fontSize: 8,
-                        color: PdfColor.fromInt(0xFFAAAAAA),
-                      ),
-                    ),
-                    pw.SizedBox(height: 1),
-                    pw.Text(
-                      pa.$2,
-                      style: const pw.TextStyle(
-                        fontSize: 10,
-                        color: PdfColor.fromInt(0xFF333333),
-                        lineSpacing: 2,
-                      ),
-                    ),
-                  ],
-                ),
-              )),
-        ],
-      ),
-    );
+        ),
+        pw.SizedBox(height: 4),
+        pw.Text(
+          answer,
+          overflow: pw.TextOverflow.span,
+          style: const pw.TextStyle(
+            fontSize: 10,
+            color: PdfColor.fromInt(0xFF333333),
+            lineSpacing: 2,
+          ),
+        ),
+        pw.SizedBox(height: 10),
+      ],
+      pw.SizedBox(height: 10),
+    ];
   }
 
   PdfColor _emotionPdfColor(int emotion) {

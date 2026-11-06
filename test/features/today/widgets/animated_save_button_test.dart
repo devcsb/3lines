@@ -25,10 +25,10 @@ void main() {
     );
   }
 
-  testWidgets('shows guidance and answer progress', (tester) async {
+  testWidgets('한 줄도 완결된 기록으로 저장하고 분수 목표를 보여주지 않는다', (tester) async {
     await tester.pumpWidget(
       buildApp(
-        filledCount: 2,
+        filledCount: 1,
         canSave: true,
         emotionSelected: true,
         guidanceMessage: '저장할 준비가 됐어요',
@@ -36,7 +36,12 @@ void main() {
     );
 
     expect(find.text('저장할 준비가 됐어요'), findsOneWidget);
-    expect(find.text('2/3'), findsOneWidget);
+    expect(find.text('1/3'), findsNothing);
+    expect(find.text('이만큼 저장하기'), findsOneWidget);
+    expect(
+      tester.widget<ElevatedButton>(find.byType(ElevatedButton)).onPressed,
+      isNotNull,
+    );
   });
 
   testWidgets('disables save until requirements are met', (tester) async {
@@ -80,7 +85,7 @@ void main() {
     );
   });
 
-  testWidgets('reduce-motion에서는 진행 링과 카운터가 즉시 갱신된다', (tester) async {
+  testWidgets('저장 안내는 동작 줄이기에서도 애니메이션을 기다리지 않는다', (tester) async {
     await tester.pumpWidget(
       MediaQuery(
         data: const MediaQueryData(disableAnimations: true),
@@ -88,14 +93,7 @@ void main() {
       ),
     );
 
-    final switcher = tester.widget<AnimatedSwitcher>(
-      find.byType(AnimatedSwitcher),
-    );
-    expect(switcher.duration, Duration.zero);
-
-    final progress = tester.widget<TweenAnimationBuilder<double>>(
-      find.byType(TweenAnimationBuilder<double>),
-    );
-    expect(progress.duration, Duration.zero);
+    expect(find.text('이만큼 저장하기'), findsOneWidget);
+    expect(find.byType(TweenAnimationBuilder<double>), findsNothing);
   });
 }

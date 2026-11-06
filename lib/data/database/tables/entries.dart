@@ -10,9 +10,8 @@ class Entries extends Table {
   TextColumn get prompt3 => text().withDefault(const Constant(''))();
   TextColumn get answer3 => text().withDefault(const Constant(''))();
   IntColumn get emotion => integer()();
-  DateTimeColumn get createdAt =>
-      dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get updatedAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   TextColumn get photoPath => text().nullable()();
+  BoolColumn get isBookmarked => boolean().withDefault(const Constant(false))();
 }

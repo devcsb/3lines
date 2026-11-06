@@ -22,8 +22,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   static const _pages = [
     (
       icon: Icons.edit_rounded,
-      title: '하루 3줄로\n기록해요',
-      subtitle: '감정 하나와 답변 한 개부터 저장할 수 있어요',
+      title: '말하지 못한 마음을\n꺼내놓는 곳',
+      subtitle: '짧아도, 길어도, 정리되지 않은 이야기여도 괜찮아요',
       accentColor: Color(0xFF5B8A6A),
     ),
     (

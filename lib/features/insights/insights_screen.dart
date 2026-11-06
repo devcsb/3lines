@@ -203,7 +203,7 @@ class InsightsScreen extends ConsumerWidget {
                     StaggeredFadeIn(
                       index: 7,
                       child: _SectionCard(
-                        title: '감사 키워드 TOP 5',
+                        title: '첫 이야기에 자주 쓴 말',
                         child: GratitudeKeywordsList(
                           keywords: state.gratitudeKeywords,
                         ),

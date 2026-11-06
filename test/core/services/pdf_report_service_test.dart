@@ -36,6 +36,25 @@ void main() {
   }
 
   group('generateMonthlyReport', () {
+    test('여러 페이지 길이의 이야기도 PDF로 내보낼 수 있다', () async {
+      final story = List.generate(
+        100,
+        (i) => '${i + 1}번째 문단. 오늘 말하지 못했던 이야기를 천천히 적어 본다.',
+      ).join('\n\n');
+      final bytes = await service.generateMonthlyReport(
+        year: 2026,
+        month: 3,
+        entries: [entry('2026-03-01', a1: story)],
+        averageEmotion: 3,
+        topKeyword: '이야기',
+      );
+      expectValidPdf(bytes);
+      final pageCount = RegExp(
+        r'/Type\s*/Page\b',
+      ).allMatches(String.fromCharCodes(bytes)).length;
+      expect(pageCount, greaterThan(1));
+    });
+
     test('빈 entries에서도 throw 없이 유효한 PDF를 반환한다', () async {
       final bytes = await service.generateMonthlyReport(
         year: 2026,
@@ -94,8 +113,11 @@ void main() {
         topKeyword: '감사',
       );
       final ascii = String.fromCharCodes(bytes);
-      expect(ascii.contains('NanumMyeongjo'), isTrue,
-          reason: '생성된 PDF에 나눔명조 폰트가 임베딩되어야 한다');
+      expect(
+        ascii.contains('NanumMyeongjo'),
+        isTrue,
+        reason: '생성된 PDF에 나눔명조 폰트가 임베딩되어야 한다',
+      );
     });
   });
 }

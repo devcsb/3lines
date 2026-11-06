@@ -63,7 +63,6 @@ void main() {
           ...importRecord('2026-09-29'),
           'prompts': [1, 2, 3],
         },
-        importRecord('2026-09-29', answer: ' \n '),
         {...importRecord('2026-09-29'), 'created_at': 4},
         {...importRecord('2026-09-29'), 'updated_at': 'broken'},
       ];

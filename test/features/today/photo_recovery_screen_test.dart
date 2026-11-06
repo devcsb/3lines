@@ -283,7 +283,7 @@ void main() {
           }
         });
         try {
-          await tester.tap(find.text('기록 완료').hitTestable());
+          await tester.tap(find.text('이만큼 저장하기').hitTestable());
           await saved.future.timeout(const Duration(seconds: 3));
         } finally {
           subscription.close();
@@ -306,10 +306,13 @@ void main() {
     await show(tester);
     await pick(tester, '갤러리');
     expect(find.text('다시 시도'), findsOneWidget);
-    await tester.ensureVisible(find.text('맑은 날씨').first);
+    await tester.ensureVisible(find.text('시작이 어렵다면 예시 보기').first);
+    await tester.tap(find.text('시작이 어렵다면 예시 보기').first);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('사실 오늘은').first);
     await tester.pumpAndSettle();
     await tester.runAsync(() async {
-      await tester.tap(find.text('맑은 날씨').first);
+      await tester.tap(find.text('사실 오늘은').first);
       await entries.listDrafts().timeout(const Duration(seconds: 3));
     });
     await tester.pumpAndSettle();

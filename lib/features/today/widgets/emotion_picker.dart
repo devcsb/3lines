@@ -77,6 +77,10 @@ class _EmotionPickerState extends State<EmotionPicker> {
                       label:
                           '감정 선택: 5단계 중 $value (${AppColors.emotionLabels[value]})',
                       selected: isSelected,
+                      excludeSemantics: true,
+                      onTap: widget.enabled
+                          ? () => widget.onSelected(value)
+                          : null,
                       child: Material(
                         color: Colors.transparent,
                         borderRadius: BorderRadius.circular(12),

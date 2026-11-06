@@ -68,7 +68,7 @@ void main() {
                 : find.widgetWithText(OutlinedButton, '다음');
             expect(tester.getSize(action).height, greaterThanOrEqualTo(48));
             if (page == 1) {
-              expect(find.text('감정 하나와 답변 한 개부터 저장할 수 있어요'), findsOneWidget);
+              expect(find.text('짧아도, 길어도, 정리되지 않은 이야기여도 괜찮아요'), findsOneWidget);
               expect(
                 tester.getSize(find.widgetWithText(TextButton, '건너뛰기')).height,
                 greaterThanOrEqualTo(48),

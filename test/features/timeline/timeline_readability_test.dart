@@ -104,6 +104,8 @@ void main() {
           theme,
         );
         expectReadableText(tester);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump(const Duration(milliseconds: 1));
       });
     }
   }
@@ -148,6 +150,8 @@ void main() {
         boundary,
         'timeline-${size.width.toInt()}x${size.height.toInt()}-empty-period-200pct',
       );
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 1));
     });
   }
 
@@ -229,6 +233,8 @@ void main() {
           );
         }
       }
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 1));
     });
   }
 }

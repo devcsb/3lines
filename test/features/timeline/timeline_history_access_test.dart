@@ -129,6 +129,8 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     await capture(tester, boundary, '/tmp/3lines-timeline-200pct.png');
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 
   for (final waitForDebounce in [false, true]) {
@@ -188,6 +190,8 @@ void main() {
           '',
         );
         expect(find.text('여행 기록'), findsNothing);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump(const Duration(milliseconds: 1));
       },
     );
   }
@@ -243,5 +247,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('여행 기록'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 }

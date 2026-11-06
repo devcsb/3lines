@@ -38,15 +38,15 @@ void main() {
     );
   });
 
-  testWidgets('200자 답변의 ZWJ 이모지는 한 글자로 유지하고 추가 붙여넣기는 막는다', (tester) async {
+  testWidgets('200자를 넘어도 ZWJ 이모지와 뒤의 글을 보존한다', (tester) async {
     final allowed = '${List.filled(199, '가').join()}👩‍👩‍👧‍👦';
     String? changed;
     await tester.pumpWidget(card(onChanged: (value) => changed = value));
     await tester.enterText(find.byType(TextField), '$allowed나');
-    expect(changed, allowed);
+    expect(changed, '$allowed나');
   });
 
-  testWidgets('한글 조합 중 값은 유지하고 조합 완료 뒤 200자 경계를 적용한다', (tester) async {
+  testWidgets('한글 조합 중과 완료 뒤에도 200자 넘는 입력을 보존한다', (tester) async {
     await tester.pumpWidget(card());
     await tester.showKeyboard(find.byType(TextField));
     final input = '${List.filled(199, '가').join()}나';
@@ -71,7 +71,7 @@ void main() {
     await tester.pump();
     expect(
       tester.widget<TextField>(find.byType(TextField)).controller!.text,
-      input,
+      '$input\uB2E4',
     );
   });
 
@@ -95,6 +95,8 @@ void main() {
         ),
       ),
     );
+    await tester.tap(find.text('시작이 어렵다면 예시 보기'));
+    await tester.pumpAndSettle();
     final button = find.widgetWithText(TextButton, '맑은 날씨');
     expect(button, findsOneWidget);
     expect(tester.getSize(button).height, greaterThanOrEqualTo(48));

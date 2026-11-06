@@ -149,6 +149,21 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _isBookmarkedMeta = const VerificationMeta(
+    'isBookmarked',
+  );
+  @override
+  late final GeneratedColumn<bool> isBookmarked = GeneratedColumn<bool>(
+    'is_bookmarked',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_bookmarked" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -163,6 +178,7 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     createdAt,
     updatedAt,
     photoPath,
+    isBookmarked,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -249,6 +265,15 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta),
       );
     }
+    if (data.containsKey('is_bookmarked')) {
+      context.handle(
+        _isBookmarkedMeta,
+        isBookmarked.isAcceptableOrUnknown(
+          data['is_bookmarked']!,
+          _isBookmarkedMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -306,6 +331,10 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         DriftSqlType.string,
         data['${effectivePrefix}photo_path'],
       ),
+      isBookmarked: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_bookmarked'],
+      )!,
     );
   }
 
@@ -328,6 +357,7 @@ class Entry extends DataClass implements Insertable<Entry> {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? photoPath;
+  final bool isBookmarked;
   const Entry({
     required this.id,
     required this.date,
@@ -341,6 +371,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     required this.createdAt,
     required this.updatedAt,
     this.photoPath,
+    required this.isBookmarked,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -359,6 +390,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     if (!nullToAbsent || photoPath != null) {
       map['photo_path'] = Variable<String>(photoPath);
     }
+    map['is_bookmarked'] = Variable<bool>(isBookmarked);
     return map;
   }
 
@@ -378,6 +410,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       photoPath: photoPath == null && nullToAbsent
           ? const Value.absent()
           : Value(photoPath),
+      isBookmarked: Value(isBookmarked),
     );
   }
 
@@ -399,6 +432,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       photoPath: serializer.fromJson<String?>(json['photoPath']),
+      isBookmarked: serializer.fromJson<bool>(json['isBookmarked']),
     );
   }
   @override
@@ -417,6 +451,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'photoPath': serializer.toJson<String?>(photoPath),
+      'isBookmarked': serializer.toJson<bool>(isBookmarked),
     };
   }
 
@@ -433,6 +468,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<String?> photoPath = const Value.absent(),
+    bool? isBookmarked,
   }) => Entry(
     id: id ?? this.id,
     date: date ?? this.date,
@@ -446,6 +482,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     photoPath: photoPath.present ? photoPath.value : this.photoPath,
+    isBookmarked: isBookmarked ?? this.isBookmarked,
   );
   Entry copyWithCompanion(EntriesCompanion data) {
     return Entry(
@@ -461,6 +498,9 @@ class Entry extends DataClass implements Insertable<Entry> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
+      isBookmarked: data.isBookmarked.present
+          ? data.isBookmarked.value
+          : this.isBookmarked,
     );
   }
 
@@ -478,7 +518,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           ..write('emotion: $emotion, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('photoPath: $photoPath')
+          ..write('photoPath: $photoPath, ')
+          ..write('isBookmarked: $isBookmarked')
           ..write(')'))
         .toString();
   }
@@ -497,6 +538,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     createdAt,
     updatedAt,
     photoPath,
+    isBookmarked,
   );
   @override
   bool operator ==(Object other) =>
@@ -513,7 +555,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           other.emotion == this.emotion &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.photoPath == this.photoPath);
+          other.photoPath == this.photoPath &&
+          other.isBookmarked == this.isBookmarked);
 }
 
 class EntriesCompanion extends UpdateCompanion<Entry> {
@@ -529,6 +572,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<String?> photoPath;
+  final Value<bool> isBookmarked;
   const EntriesCompanion({
     this.id = const Value.absent(),
     this.date = const Value.absent(),
@@ -542,6 +586,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.photoPath = const Value.absent(),
+    this.isBookmarked = const Value.absent(),
   });
   EntriesCompanion.insert({
     this.id = const Value.absent(),
@@ -556,6 +601,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.photoPath = const Value.absent(),
+    this.isBookmarked = const Value.absent(),
   }) : date = Value(date),
        emotion = Value(emotion);
   static Insertable<Entry> custom({
@@ -571,6 +617,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<String>? photoPath,
+    Expression<bool>? isBookmarked,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -585,6 +632,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (photoPath != null) 'photo_path': photoPath,
+      if (isBookmarked != null) 'is_bookmarked': isBookmarked,
     });
   }
 
@@ -601,6 +649,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<String?>? photoPath,
+    Value<bool>? isBookmarked,
   }) {
     return EntriesCompanion(
       id: id ?? this.id,
@@ -615,6 +664,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       photoPath: photoPath ?? this.photoPath,
+      isBookmarked: isBookmarked ?? this.isBookmarked,
     );
   }
 
@@ -657,6 +707,9 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     if (photoPath.present) {
       map['photo_path'] = Variable<String>(photoPath.value);
     }
+    if (isBookmarked.present) {
+      map['is_bookmarked'] = Variable<bool>(isBookmarked.value);
+    }
     return map;
   }
 
@@ -674,7 +727,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
           ..write('emotion: $emotion, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('photoPath: $photoPath')
+          ..write('photoPath: $photoPath, ')
+          ..write('isBookmarked: $isBookmarked')
           ..write(')'))
         .toString();
   }
@@ -911,6 +965,7 @@ typedef $$EntriesTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<String?> photoPath,
+      Value<bool> isBookmarked,
     });
 typedef $$EntriesTableUpdateCompanionBuilder =
     EntriesCompanion Function({
@@ -926,6 +981,7 @@ typedef $$EntriesTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<String?> photoPath,
+      Value<bool> isBookmarked,
     });
 
 class $$EntriesTableFilterComposer
@@ -994,6 +1050,11 @@ class $$EntriesTableFilterComposer
 
   ColumnFilters<String> get photoPath => $composableBuilder(
     column: $table.photoPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isBookmarked => $composableBuilder(
+    column: $table.isBookmarked,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1066,6 +1127,11 @@ class $$EntriesTableOrderingComposer
     column: $table.photoPath,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isBookmarked => $composableBuilder(
+    column: $table.isBookmarked,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$EntriesTableAnnotationComposer
@@ -1112,6 +1178,11 @@ class $$EntriesTableAnnotationComposer
 
   GeneratedColumn<String> get photoPath =>
       $composableBuilder(column: $table.photoPath, builder: (column) => column);
+
+  GeneratedColumn<bool> get isBookmarked => $composableBuilder(
+    column: $table.isBookmarked,
+    builder: (column) => column,
+  );
 }
 
 class $$EntriesTableTableManager
@@ -1154,6 +1225,7 @@ class $$EntriesTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<String?> photoPath = const Value.absent(),
+                Value<bool> isBookmarked = const Value.absent(),
               }) => EntriesCompanion(
                 id: id,
                 date: date,
@@ -1167,6 +1239,7 @@ class $$EntriesTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 photoPath: photoPath,
+                isBookmarked: isBookmarked,
               ),
           createCompanionCallback:
               ({
@@ -1182,6 +1255,7 @@ class $$EntriesTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<String?> photoPath = const Value.absent(),
+                Value<bool> isBookmarked = const Value.absent(),
               }) => EntriesCompanion.insert(
                 id: id,
                 date: date,
@@ -1195,6 +1269,7 @@ class $$EntriesTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 photoPath: photoPath,
+                isBookmarked: isBookmarked,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

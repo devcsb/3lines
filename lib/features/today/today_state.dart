@@ -61,7 +61,7 @@ class TodayState {
     this.recentEmotions = const [],
   });
 
-  bool get canSave => emotion != null && filledAnswerCount > 0;
+  bool get canSave => emotion != null;
 
   bool get isDirty {
     final saved = existingEntry;
@@ -84,9 +84,9 @@ class TodayState {
   ].where((answer) => answer.trim().isNotEmpty).length;
 
   String get saveGuidanceMessage {
-    if (emotion == null) return '오늘의 감정을 먼저 골라주세요';
-    if (filledAnswerCount == 0) return '한 줄만 적어도 저장할 수 있어요';
-    return '저장할 준비가 됐어요';
+    if (emotion == null) return '지금 마음을 하나 고르면 기록할 수 있어요';
+    if (filledAnswerCount == 0) return '글이 떠오르지 않는 날엔 감정만 남겨도 괜찮아요';
+    return '정리하지 않아도 괜찮아요. 이대로 저장할 수 있어요';
   }
 
   TodayState copyWith({

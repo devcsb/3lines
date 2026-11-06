@@ -79,6 +79,7 @@ class JournalDraft {
               baseline!.answer3,
             ],
             'photo': baseline!.photoPath,
+            'bookmarked': baseline!.isBookmarked,
             'created': baseline!.createdAt.toIso8601String(),
             'updated': baseline!.updatedAt.toIso8601String(),
           },
@@ -125,6 +126,7 @@ class JournalDraft {
           answer2: a[1],
           answer3: a[2],
           photoPath: b['photo'],
+          isBookmarked: b['bookmarked'] as bool? ?? false,
           createdAt: DateTime.parse(b['created'] as String),
           updatedAt: DateTime.parse(b['updated'] as String),
         );

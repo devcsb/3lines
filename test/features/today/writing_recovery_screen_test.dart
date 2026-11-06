@@ -114,7 +114,6 @@ void main() {
     await show(tester, seedDraft: false);
     final controller = container.read(todayControllerProvider.notifier);
     final session = container.read(todayControllerProvider).value!.session;
-    expect(controller.answerLimit(0), 200);
     final imported = List.filled(230, '가').join();
     final reduced = List.filled(220, '가').join();
     await tester.runAsync(() async {
@@ -158,21 +157,25 @@ void main() {
       tester.widget<TextField>(find.byType(TextField).first).controller!.text,
       reduced,
     );
-    expect(controller.answerLimit(0), 230);
     await tester.runAsync(() async {
       controller.setAnswer(0, List.filled(231, '가').join());
       await repository.listDrafts();
     });
-    expect(container.read(todayControllerProvider).value!.answer1, reduced);
-    expect(controller.answerLimit(0), 230);
+    expect(
+      container.read(todayControllerProvider).value!.answer1,
+      List.filled(231, '가').join(),
+    );
     expect(
       (await tester.runAsync(repository.listDrafts))!.single.answers[0],
-      reduced,
+      List.filled(231, '가').join(),
     );
   });
 
   Future<void> addExample(WidgetTester tester) async {
-    final suggestion = find.text('맑은 날씨').first;
+    await tester.ensureVisible(find.text('시작이 어렵다면 예시 보기').first);
+    await tester.tap(find.text('시작이 어렵다면 예시 보기').first);
+    await tester.pumpAndSettle();
+    final suggestion = find.text('사실 오늘은').first;
     await tester.ensureVisible(suggestion);
     await tester.pumpAndSettle();
     await tester.runAsync(() async {
@@ -204,7 +207,7 @@ void main() {
   testWidgets('빈 답변에 예시를 넣어도 되돌리기로 원래 빈값을 복구한다', (tester) async {
     await show(tester);
     await addExample(tester);
-    expect(container.read(todayControllerProvider).value!.answer1, '맑은 날씨');
+    expect(container.read(todayControllerProvider).value!.answer1, '사실 오늘은');
     expect(find.text('되돌리기'), findsOneWidget);
     await undo(tester);
     expect(container.read(todayControllerProvider).value!.answer1, '');
@@ -239,7 +242,7 @@ void main() {
       await tester.tap(close);
       await tester.pumpAndSettle();
       expect(find.byType(SnackBar), findsNothing);
-      expect(container.read(todayControllerProvider).value!.answer1, '맑은 날씨');
+      expect(container.read(todayControllerProvider).value!.answer1, '사실 오늘은');
       await tester.runAsync(() async {
         final saved = Completer<void>();
         final subscription = container.listen(todayControllerProvider, (
@@ -251,7 +254,7 @@ void main() {
           }
         });
         try {
-          await tester.tap(find.text('기록 완료').hitTestable());
+          await tester.tap(find.text('이만큼 저장하기').hitTestable());
           await saved.future.timeout(const Duration(seconds: 3));
         } finally {
           subscription.close();
@@ -261,7 +264,7 @@ void main() {
       final entry = await tester.runAsync(
         () => repository.getEntryByDate('2026-10-11'),
       );
-      expect(entry?.answer1, '맑은 날씨');
+      expect(entry?.answer1, '사실 오늘은');
       await tester.pump(const Duration(seconds: 3));
       await tester.pumpWidget(const SizedBox.shrink());
       expect(tester.takeException(), isNull);
@@ -280,18 +283,22 @@ void main() {
     expect(container.read(todayControllerProvider).value!.answer1, '직접 고친 글');
   });
 
-  testWidgets('199 grapheme 답변에 예시를 추가하면 그대로 유지하고 길이 안내를 보인다', (tester) async {
+  testWidgets('긴 답변에도 예시를 추가하고 되돌릴 수 있다', (tester) async {
     final answer = List.filled(199, '👩‍👩‍👧‍👦').join();
     await show(tester, answer: answer);
     await addExample(tester);
+    expect(
+      container.read(todayControllerProvider).value!.answer1,
+      '$answer 사실 오늘은',
+    );
+    await undo(tester);
     expect(container.read(todayControllerProvider).value!.answer1, answer);
-    expect(find.textContaining('줄여'), findsWidgets);
   });
 
   testWidgets('자유 질문에는 관련 없는 예시를 보여주지 않는다', (tester) async {
     await show(tester, question: '오늘 먹고 싶은 저녁은?');
     expect(find.text('자유 질문'), findsOneWidget);
-    expect(find.text('맑은 날씨'), findsNothing);
+    expect(find.text('사실 오늘은'), findsNothing);
   });
 
   testWidgets('날짜를 전환한 뒤 이전 예시 되돌리기는 새 초안을 바꾸지 않는다', (tester) async {
@@ -309,7 +316,7 @@ void main() {
     expect(container.read(todayControllerProvider).value!.answer1, '어제의 새 글');
   });
 
-  testWidgets('320px 200% 글씨와 키보드에서도 세 답변에 포커스하고 다음 입력으로 이동한다', (tester) async {
+  testWidgets('320px 200% 글씨와 키보드에서도 세 답변에 포커스하고 문단을 나눌 수 있다', (tester) async {
     tester.view.physicalSize = const Size(320, 640);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -329,9 +336,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<TextField>(fields.at(0)).focusNode!.hasFocus, isTrue);
     expect(tester.testTextInput.isVisible, isTrue);
-    await tester.testTextInput.receiveAction(TextInputAction.next);
-    await tester.pumpAndSettle();
-    expect(tester.widget<TextField>(fields.at(1)).focusNode!.hasFocus, isTrue);
+    expect(
+      tester.widget<TextField>(fields.at(0)).textInputAction,
+      TextInputAction.newline,
+    );
     for (var index = 1; index < 3; index++) {
       await tester.ensureVisible(fields.at(index));
       await tester.showKeyboard(fields.at(index));

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_motion.dart';
-import '../answer_input.dart';
 import 'prompt_help.dart';
+import '../../../core/theme/app_motion.dart';
 
 class PromptCard extends StatefulWidget {
   final int index;
@@ -10,9 +9,7 @@ class PromptCard extends StatefulWidget {
   final String answer;
   final bool readOnly;
   final ValueChanged<String>? onChanged;
-  final int? answerLimit;
   final FocusNode? focusNode;
-  final VoidCallback? onNext;
 
   const PromptCard({
     super.key,
@@ -21,9 +18,7 @@ class PromptCard extends StatefulWidget {
     this.answer = '',
     this.readOnly = false,
     this.onChanged,
-    this.answerLimit,
     this.focusNode,
-    this.onNext,
   });
 
   @override
@@ -33,7 +28,6 @@ class PromptCard extends StatefulWidget {
 class _PromptCardState extends State<PromptCard> {
   late TextEditingController _controller;
   late final FocusNode _focusNode;
-  late final int _snapshotLimit;
   bool _isFocused = false;
 
   // Accent colors per category (감사, 수용, 의도)
@@ -47,7 +41,6 @@ class _PromptCardState extends State<PromptCard> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.answer);
-    _snapshotLimit = answerInputLimit(widget.answer);
     _focusNode = widget.focusNode ?? FocusNode();
     _focusNode.addListener(_onFocusChanged);
   }
@@ -77,21 +70,18 @@ class _PromptCardState extends State<PromptCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final standardDuration = AppMotion.durationFor(context, AppMotion.standard);
-    final category = categoryForQuestion(widget.question);
-    final label = category?.label ?? '자유 질문';
-    final accent = category == null
-        ? theme.colorScheme.primary
-        : _accentColors[category.index];
+    final label = categoryForQuestion(widget.question)?.label ?? '자유 질문';
+    final accent = _accentColors[widget.index.clamp(0, 2)];
 
     return AnimatedContainer(
       duration: standardDuration,
       curve: AppMotion.standardCurve,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: theme.colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _isFocused
-              ? accent.withValues(alpha: 0.5)
+              ? theme.colorScheme.primary
               : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
         boxShadow: _isFocused
@@ -174,13 +164,11 @@ class _PromptCardState extends State<PromptCard> {
                             key: const ValueKey('read'),
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              widget.answer.isEmpty ? '—' : widget.answer,
+                              widget.answer.isEmpty
+                                  ? '비워둔 질문이에요'
+                                  : widget.answer,
                               style: theme.textTheme.bodyLarge?.copyWith(
-                                color: widget.answer.isEmpty
-                                    ? theme.colorScheme.onSurfaceVariant
-                                    : theme.colorScheme.onSurface.withValues(
-                                        alpha: 0.7,
-                                      ),
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
                           )
@@ -190,22 +178,22 @@ class _PromptCardState extends State<PromptCard> {
                             child: TextField(
                               controller: _controller,
                               focusNode: _focusNode,
-                              minLines: 2,
-                              maxLines: 4,
-                              maxLength: widget.answerLimit ?? _snapshotLimit,
+                              minLines: 3,
+                              maxLines: 8,
+                              keyboardType: TextInputType.multiline,
                               textCapitalization: TextCapitalization.sentences,
                               scrollPadding: const EdgeInsets.only(bottom: 120),
-                              // 마지막 프롬프트는 done, 나머지는 next로 다음 필드 이동
-                              textInputAction: widget.index < 2
-                                  ? TextInputAction.next
-                                  : TextInputAction.done,
+                              textInputAction: TextInputAction.newline,
                               style: theme.textTheme.bodyLarge?.copyWith(
                                 color: theme.colorScheme.onSurface.withValues(
                                   alpha: 0.8,
                                 ),
                               ),
                               decoration: InputDecoration(
-                                hintText: '여기에 적어주세요...',
+                                hintText: '잘 정리하지 않아도 괜찮아요',
+                                hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
                                 filled: false,
                                 border: InputBorder.none,
                                 enabledBorder: InputBorder.none,
@@ -213,27 +201,8 @@ class _PromptCardState extends State<PromptCard> {
                                 contentPadding: const EdgeInsets.symmetric(
                                   vertical: 4,
                                 ),
-                                // 포커스 시에만 글자 수 카운터 표시
-                                counterText: _isFocused ? null : '',
-                                counterStyle: theme.textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
                               ),
                               onChanged: widget.onChanged,
-                              onSubmitted: (_) {
-                                if (widget.index < 2) {
-                                  // 다음 프롬프트 카드의 TextField로 포커스 이동
-                                  if (widget.onNext != null) {
-                                    widget.onNext!();
-                                  } else {
-                                    FocusScope.of(context).nextFocus();
-                                  }
-                                } else {
-                                  // 마지막 프롬프트: 키보드 닫기
-                                  FocusScope.of(context).unfocus();
-                                }
-                              },
                             ),
                           ),
                   ),

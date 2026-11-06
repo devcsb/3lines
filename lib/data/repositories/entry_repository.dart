@@ -145,11 +145,14 @@ class EntryRepository {
           if ((baseline == null) != (current == null) ||
               (baseline != null &&
                   current != null &&
-                  !sameImportSnapshot(baseline, current))) {
+                  !sameImportSnapshot(
+                    baseline,
+                    current,
+                    includeBookmark: false,
+                  ))) {
             throw const DraftConflict();
           }
-          if (draft.emotion == null ||
-              draft.answers.every((a) => a.trim().isEmpty)) {
+          if (draft.emotion == null) {
             throw StateError('완료할 내용이 없어요');
           }
           await saveEntry(
@@ -194,6 +197,7 @@ class EntryRepository {
       createdAt: entry.createdAt,
       updatedAt: entry.updatedAt,
       photoPath: entry.photoPath,
+      isBookmarked: entry.isBookmarked,
     );
   }
 
@@ -214,6 +218,7 @@ class EntryRepository {
       createdAt: Value(entry.createdAt),
       updatedAt: Value(preserveTimestamps ? entry.updatedAt : _clock.now()),
       photoPath: Value(entry.photoPath),
+      isBookmarked: Value(entry.isBookmarked),
     );
   }
 
@@ -273,6 +278,28 @@ class EntryRepository {
 
   Future<void> deleteEntry(String date) async {
     await (_db.delete(_db.entries)..where((t) => t.date.equals(date))).go();
+  }
+
+  /// A bookmark changes only the marker, never the writing timestamps/content.
+  Future<bool> setBookmarked(String date, bool value) async {
+    final count =
+        await (_db.update(_db.entries)..where((t) => t.date.equals(date)))
+            .write(EntriesCompanion(isBookmarked: Value(value)));
+    return count > 0;
+  }
+
+  Stream<bool> watchIsBookmarked(String date) =>
+      (_db.select(_db.entries)..where((t) => t.date.equals(date)))
+          .watchSingleOrNull()
+          .map((entry) => entry?.isBookmarked ?? false);
+
+  Stream<List<DailyEntry>> watchBookmarkedEntries() {
+    // 하루 한 기록인 개인 저널 범위에서 전체 목록을 조회한다. 대규모 보관이
+    // 필요해지면 date 커서 페이지네이션으로 바꾸고 UI는 지연 렌더링을 유지한다.
+    final query = _db.select(_db.entries)
+      ..where((t) => t.isBookmarked.equals(true))
+      ..orderBy([(t) => OrderingTerm.desc(t.date)]);
+    return query.watch().map((entries) => entries.map(_fromEntry).toList());
   }
 
   /// Completed entries and every draft's current/baseline photos, in one DB snapshot.
@@ -350,6 +377,7 @@ class EntryRepository {
               createdAt: row.read<DateTime>('created_at'),
               updatedAt: row.read<DateTime>('updated_at'),
               photoPath: row.readNullable<String>('photo_path'),
+              isBookmarked: row.read<bool>('is_bookmarked'),
             ),
           ),
         )

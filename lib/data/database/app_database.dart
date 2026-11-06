@@ -16,19 +16,22 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-        },
-        onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            await m.addColumn(entries, entries.photoPath);
-          }
-        },
-      );
+    onCreate: (m) async {
+      await m.createAll();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(entries, entries.photoPath);
+      }
+      if (from < 3) {
+        await m.addColumn(entries, entries.isBookmarked);
+      }
+    },
+  );
 }
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {

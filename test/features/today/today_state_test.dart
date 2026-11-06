@@ -21,14 +21,14 @@ void main() {
         expect(state.canSave, isFalse);
       });
 
-      test('returns false when all answers are empty', () {
+      test('감정을 선택하면 글 없이도 기록할 수 있다', () {
         const state = TodayState(emotion: 3);
-        expect(state.canSave, isFalse);
+        expect(state.canSave, isTrue);
       });
 
-      test('returns false when answers only contain whitespace', () {
+      test('공백 답변도 감정만 기록할 수 있다', () {
         const state = TodayState(emotion: 3, answer1: '   ', answer2: '\n');
-        expect(state.canSave, isFalse);
+        expect(state.canSave, isTrue);
       });
 
       test('returns true when emotion set and at least one answer', () {
@@ -59,11 +59,7 @@ void main() {
 
     group('writing progress', () {
       test('counts only non-empty trimmed answers', () {
-        const state = TodayState(
-          answer1: '한 줄',
-          answer2: '  ',
-          answer3: '세 줄',
-        );
+        const state = TodayState(answer1: '한 줄', answer2: '  ', answer3: '세 줄');
 
         expect(state.filledAnswerCount, 2);
       });
@@ -71,19 +67,19 @@ void main() {
       test('asks for emotion before an answer', () {
         const state = TodayState(answer1: '한 줄');
 
-        expect(state.saveGuidanceMessage, '오늘의 감정을 먼저 골라주세요');
+        expect(state.saveGuidanceMessage, '지금 마음을 하나 고르면 기록할 수 있어요');
       });
 
       test('asks for one line after emotion is selected', () {
         const state = TodayState(emotion: 3);
 
-        expect(state.saveGuidanceMessage, '한 줄만 적어도 저장할 수 있어요');
+        expect(state.saveGuidanceMessage, '글이 떠오르지 않는 날엔 감정만 남겨도 괜찮아요');
       });
 
       test('reports ready when save condition is met', () {
         const state = TodayState(emotion: 3, answer2: '한 줄');
 
-        expect(state.saveGuidanceMessage, '저장할 준비가 됐어요');
+        expect(state.saveGuidanceMessage, '정리하지 않아도 괜찮아요. 이대로 저장할 수 있어요');
       });
     });
 

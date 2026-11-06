@@ -40,6 +40,12 @@ void main() {
     await db.close();
   });
 
+  Future<void> disposeApp(WidgetTester tester) async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    // Drift defers removal of cancelled bookmark streams to the next timer turn.
+    await tester.pump(const Duration(milliseconds: 1));
+  }
+
   Widget buildApp(DailyEntry entry) {
     return ProviderScope(
       overrides: [entryRepositoryProvider.overrideWithValue(repo)],
@@ -74,6 +80,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('맑은 날씨').hitTestable(), findsOneWidget);
     }
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 
   testWidgets('인접 조회 지연 중 스와이프와 실패 뒤 재시도는 현재 기록을 보존한다', (tester) async {
@@ -119,6 +127,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('복구한 전날').hitTestable(), findsOneWidget);
     expect(find.text('다시 시도'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 
   testWidgets('첫 마지막 기록은 이전 다음 버튼으로 왕복한다', (tester) async {
@@ -149,6 +159,8 @@ void main() {
     });
     await tester.pumpAndSettle();
     expect(find.text('맑은 날씨').hitTestable(), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 
   testWidgets('displays date in Korean format', (tester) async {
@@ -157,6 +169,9 @@ void main() {
       await tester.pump();
     });
     expect(find.textContaining('2026년 3월 14일'), findsOneWidget);
+    await disposeApp(tester);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 
   testWidgets('displays emotion label', (tester) async {
@@ -165,6 +180,9 @@ void main() {
       await tester.pump();
     });
     expect(find.text('평온'), findsOneWidget);
+    await disposeApp(tester);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 
   testWidgets('displays all three Q&A pairs', (tester) async {
@@ -178,6 +196,9 @@ void main() {
     expect(find.text('약간의 긴장'), findsOneWidget);
     expect(find.text('내일의 목표는?'), findsOneWidget);
     expect(find.text('침착하게'), findsOneWidget);
+    await disposeApp(tester);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 
   testWidgets('스와이프로 이전 날로 이동 후 삭제하면 현재 표시된 기록이 삭제된다 (회귀)', (tester) async {
@@ -234,9 +255,12 @@ void main() {
     });
     // 원본(3-14)이 아니라 스와이프해서 보고 있던 3-13 이 삭제돼야 한다.
     expect(deleted?.date, '2026-03-13');
+    await disposeApp(tester);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 
-  testWidgets('shows em dash for empty answers', (tester) async {
+  testWidgets('감정만 기록한 날은 빈 답변 대신 안내를 보여준다', (tester) async {
     final emptyEntry = DailyEntry(
       date: '2026-03-14',
       emotion: 3,
@@ -251,6 +275,10 @@ void main() {
       await tester.pumpWidget(buildApp(emptyEntry));
       await tester.pump();
     });
-    expect(find.text('—'), findsNWidgets(3));
+    expect(find.text('—'), findsNothing);
+    expect(find.text('마음만 남긴 기록이에요.'), findsOneWidget);
+    await disposeApp(tester);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 }

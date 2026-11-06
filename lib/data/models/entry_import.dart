@@ -16,10 +16,12 @@ class ImportCandidate {
     required this.date,
     required this.emotion,
     required List<ImportPrompt> prompts,
+    this.isBookmarked,
     this.createdAt,
     this.updatedAt,
   }) : prompts = List<ImportPrompt>.unmodifiable(prompts);
 
+  final bool? isBookmarked;
   final String date;
   final int emotion;
   final List<ImportPrompt> prompts;
@@ -39,6 +41,7 @@ class ImportCandidate {
     createdAt: replacing?.createdAt ?? createdAt ?? now,
     updatedAt: updatedAt ?? now,
     photoPath: replacing?.photoPath,
+    isBookmarked: isBookmarked ?? replacing?.isBookmarked ?? false,
   );
 }
 
@@ -162,13 +165,14 @@ ImportCandidate? _candidate(Object? value, DateTime now) {
       ),
     );
   }
-  if (parsedPrompts.every((prompt) => prompt.answer.trim().isEmpty)) {
+  if (value.containsKey('is_bookmarked') && value['is_bookmarked'] is! bool) {
     return null;
   }
   try {
     return ImportCandidate(
       date: date,
       emotion: emotion.toInt(),
+      isBookmarked: value['is_bookmarked'] as bool?,
       prompts: parsedPrompts,
       createdAt: _timestamp(value['created_at']),
       updatedAt: _timestamp(value['updated_at']),
@@ -219,7 +223,11 @@ ParsedImport parseImportJson(String jsonStr, {required DateTime now}) {
   );
 }
 
-bool sameImportSnapshot(DailyEntry a, DailyEntry b) =>
+bool sameImportSnapshot(
+  DailyEntry a,
+  DailyEntry b, {
+  bool includeBookmark = true,
+}) =>
     a.id == b.id &&
     a.date == b.date &&
     a.emotion == b.emotion &&
@@ -230,5 +238,6 @@ bool sameImportSnapshot(DailyEntry a, DailyEntry b) =>
     a.prompt3 == b.prompt3 &&
     a.answer3 == b.answer3 &&
     a.photoPath == b.photoPath &&
+    (!includeBookmark || a.isBookmarked == b.isBookmarked) &&
     a.createdAt == b.createdAt &&
     a.updatedAt == b.updatedAt;

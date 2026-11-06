@@ -367,14 +367,15 @@ void main() {
       expect(state?.isCompleted, isFalse);
     });
 
-    test('returns false when emotion is set but no answers', () async {
+    test('감정만 선택한 기록을 저장한다', () async {
       await container.read(todayControllerProvider.future);
       final notifier = container.read(todayControllerProvider.notifier);
       notifier.setEmotion(3);
       // No answers
 
       final success = await notifier.save();
-      expect(success, isFalse);
+      expect(success, isTrue);
+      expect((await entryRepo.getTodayEntry())!.emotion, 3);
     });
 
     test('deletes old photo file after successful update', () async {

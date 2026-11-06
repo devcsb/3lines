@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/theme/app_motion.dart';
 import '../data/repositories/settings_repository.dart';
 import '../features/insights/insights_screen.dart';
+import '../features/bookmarks/bookmarks_screen.dart';
 import '../features/lock/lock_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -101,6 +102,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/lock', builder: (_, _) => const LockScreen()),
+      GoRoute(path: '/bookmarks', builder: (_, _) => const BookmarksScreen()),
       StatefulShellRoute.indexedStack(
         builder: (_, _, navigationShell) => ScaffoldWithNavBar(navigationShell),
         branches: [

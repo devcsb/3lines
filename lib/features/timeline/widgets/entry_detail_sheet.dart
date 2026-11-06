@@ -9,14 +9,21 @@ import '../../../core/theme/app_motion.dart';
 import '../../../core/utils/date_utils.dart' as du;
 import '../../../data/models/daily_entry.dart';
 import '../../../data/repositories/entry_repository.dart';
+import '../../bookmarks/bookmark_button.dart';
 
 class EntryDetailSheet extends ConsumerStatefulWidget {
   final DailyEntry entry;
   // 스와이프로 다른 날로 이동할 수 있으므로 삭제 콜백은 삭제 시점에 화면에
   // 표시 중인 entry 를 인자로 받는다(원본 entry 를 캡처하면 엉뚱한 날이 삭제됨).
   final ValueChanged<DailyEntry>? onDelete;
+  final bool navigateAdjacent;
 
-  const EntryDetailSheet({super.key, required this.entry, this.onDelete});
+  const EntryDetailSheet({
+    super.key,
+    required this.entry,
+    this.onDelete,
+    this.navigateAdjacent = true,
+  });
 
   @override
   ConsumerState<EntryDetailSheet> createState() => _EntryDetailSheetState();
@@ -34,7 +41,7 @@ class _EntryDetailSheetState extends ConsumerState<EntryDetailSheet> {
     super.initState();
     _window = [null, widget.entry, null];
     _pageController = PageController(initialPage: 1);
-    _loadAdjacent(widget.entry.date);
+    if (widget.navigateAdjacent) _loadAdjacent(widget.entry.date);
   }
 
   @override
@@ -101,6 +108,12 @@ class _EntryDetailSheetState extends ConsumerState<EntryDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.navigateAdjacent) {
+      return _EntryDetailContent(
+        entry: widget.entry,
+        onDelete: widget.onDelete,
+      );
+    }
     final hasPrev = _window[0] != null;
     final hasNext = _window[2] != null;
 
@@ -168,18 +181,8 @@ class _EntryDetailContent extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Drag handle
-          Center(
-            child: Container(
-              width: 48,
-              height: 4,
-              decoration: BoxDecoration(
-                color: emotionColor.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
+          BookmarkButton(key: ValueKey(entry.date), date: entry.date),
+          const SizedBox(height: 16),
 
           // Date + emotion badge + delete row
           Wrap(
@@ -322,26 +325,30 @@ class _EntryDetailContent extends StatelessWidget {
           const SizedBox(height: 20),
 
           // Q&A cards
-          _buildQACard(
-            theme,
-            category: PromptCategory.gratitude,
-            question: entry.prompt1,
-            answer: entry.answer1,
-          ),
-          const SizedBox(height: 10),
-          _buildQACard(
-            theme,
-            category: PromptCategory.acceptance,
-            question: entry.prompt2,
-            answer: entry.answer2,
-          ),
-          const SizedBox(height: 10),
-          _buildQACard(
-            theme,
-            category: PromptCategory.intention,
-            question: entry.prompt3,
-            answer: entry.answer3,
-          ),
+          if (!entry.hasAnswers)
+            Text('마음만 남긴 기록이에요.', style: theme.textTheme.bodyLarge),
+          if (entry.hasAnswers) ...[
+            _buildQACard(
+              theme,
+              category: PromptCategory.gratitude,
+              question: entry.prompt1,
+              answer: entry.answer1,
+            ),
+            const SizedBox(height: 10),
+            _buildQACard(
+              theme,
+              category: PromptCategory.acceptance,
+              question: entry.prompt2,
+              answer: entry.answer2,
+            ),
+            const SizedBox(height: 10),
+            _buildQACard(
+              theme,
+              category: PromptCategory.intention,
+              question: entry.prompt3,
+              answer: entry.answer3,
+            ),
+          ],
 
           const SizedBox(height: 8),
         ],
@@ -393,7 +400,7 @@ class _EntryDetailContent extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.04),
+        color: theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: accent.withValues(alpha: 0.12)),
       ),

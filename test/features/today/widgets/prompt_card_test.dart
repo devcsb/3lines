@@ -18,9 +18,9 @@ void main() {
             question:
                 question ??
                 const [
-                  '오늘 감사한 작은 것 하나는?',
-                  '오늘 불편했던 감정을, 있는 그대로 인정한다면?',
-                  '내일 내가 되고 싶은 모습은?',
+                  '지금 꺼내놓고 싶은 이야기가 있나요?',
+                  '지금 내 마음에 머물러 있는 것은?',
+                  '지금 나에게 필요한 것이 있다면?',
                 ][index.clamp(0, 2)],
             answer: answer,
             readOnly: readOnly,
@@ -38,17 +38,19 @@ void main() {
 
   testWidgets('shows category chip for gratitude (index 0)', (tester) async {
     await tester.pumpWidget(buildApp(index: 0));
-    expect(find.text('감사'), findsOneWidget);
+    expect(find.text('꺼내놓기'), findsOneWidget);
   });
 
   testWidgets('shows category chip for acceptance (index 1)', (tester) async {
-    await tester.pumpWidget(buildApp(index: 1));
-    expect(find.text('수용'), findsOneWidget);
+    await tester.pumpWidget(
+      buildApp(index: 1, question: '지금 내 마음에 머물러 있는 것은?'),
+    );
+    expect(find.text('지금 마음'), findsOneWidget);
   });
 
   testWidgets('shows category chip for intention (index 2)', (tester) async {
-    await tester.pumpWidget(buildApp(index: 2));
-    expect(find.text('의도'), findsOneWidget);
+    await tester.pumpWidget(buildApp(index: 2, question: '지금 나에게 필요한 것이 있다면?'));
+    expect(find.text('나를 돌보기'), findsOneWidget);
   });
 
   testWidgets('shows TextField in edit mode', (tester) async {
@@ -62,9 +64,9 @@ void main() {
     expect(find.text('답변'), findsOneWidget);
   });
 
-  testWidgets('shows dash for empty answer in read-only mode', (tester) async {
+  testWidgets('빈 답변을 빠뜨린 항목처럼 표시하지 않는다', (tester) async {
     await tester.pumpWidget(buildApp(readOnly: true, answer: ''));
-    expect(find.text('—'), findsOneWidget);
+    expect(find.text('비워둔 질문이에요'), findsOneWidget);
   });
 
   testWidgets('calls onChanged when text is entered', (tester) async {
@@ -75,19 +77,26 @@ void main() {
     expect(changed, '감사합니다');
   });
 
-  testWidgets('enforces 200 character max length', (tester) async {
-    await tester.pumpWidget(buildApp());
-    final textField = tester.widget<TextField>(find.byType(TextField));
-    expect(textField.maxLength, 200);
+  testWidgets('200자가 넘는 여러 문단도 마지막 문장까지 입력할 수 있다', (tester) async {
+    final story =
+        '${List.filled(40, '오늘 하지 못한 말이 남아 있다.').join(' ')}\n\n여기까지 내 이야기를 남긴다.';
+    String? changed;
+    await tester.pumpWidget(buildApp(onChanged: (value) => changed = value));
+    await tester.enterText(find.byType(TextField), story);
+    expect(changed, story);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      story,
+    );
   });
 
-  testWidgets('keeps two visible lines and expands to four lines', (
-    tester,
-  ) async {
+  testWidgets('문단을 나누는 키보드와 충분한 작성 공간을 제공한다', (tester) async {
     await tester.pumpWidget(buildApp());
     final textField = tester.widget<TextField>(find.byType(TextField));
-    expect(textField.minLines, 2);
-    expect(textField.maxLines, 4);
+    expect(textField.minLines, 3);
+    expect(textField.maxLines, 8);
+    expect(textField.keyboardType, TextInputType.multiline);
+    expect(textField.textInputAction, TextInputAction.newline);
   });
 
   testWidgets('reduce-motion에서는 답변 모드 전환이 즉시 끝난다', (tester) async {

@@ -12,7 +12,6 @@ import '../../data/models/journal_draft.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import 'today_state.dart';
-import 'answer_input.dart';
 
 typedef _TodayMetadata = ({
   ({int count, bool usedGraceDay}) streak,
@@ -450,8 +449,7 @@ class TodayController extends AsyncNotifier<TodayState> {
         current.isSwitchingDate ||
         (current.isCompleted && !current.isEditing) ||
         index < 0 ||
-        index > 2 ||
-        !acceptsAnswerInput(value, answerLimit(index))) {
+        index > 2) {
       return;
     }
     switch (index) {
@@ -462,27 +460,6 @@ class TodayController extends AsyncNotifier<TodayState> {
       case 2:
         _changed(current.copyWith(answer3: value));
     }
-  }
-
-  int? _answerLimitSession;
-  DailyEntry? _answerLimitBaseline;
-  List<int> _answerLimits = const [200, 200, 200];
-
-  int answerLimit(int index) {
-    final current = _activeState;
-    if (current == null || index < 0 || index > 2) return 200;
-    // Refresh may import a new immutable baseline without replacing the draft session.
-    if (_answerLimitSession != current.session ||
-        _answerLimitBaseline != current.existingEntry) {
-      _answerLimitSession = current.session;
-      _answerLimitBaseline = current.existingEntry;
-      _answerLimits = [
-        current.answer1,
-        current.answer2,
-        current.answer3,
-      ].map(answerInputLimit).toList();
-    }
-    return _answerLimits[index];
   }
 
   void undoExample(int index, String previous, TodayState inserted) {

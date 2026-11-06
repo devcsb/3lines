@@ -78,6 +78,11 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                   children: [
                     const SizedBox(height: 8),
                     Text('타임라인', style: theme.textTheme.headlineSmall),
+                    TextButton.icon(
+                      onPressed: () => context.push('/bookmarks'),
+                      icon: const Icon(Icons.bookmark_border_rounded),
+                      label: const Text('책갈피 모아보기'),
+                    ),
                     const SizedBox(height: 16),
                     // Search bar
                     SearchBar(

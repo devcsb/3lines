@@ -13,6 +13,7 @@ class DailyEntry {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? photoPath;
+  final bool isBookmarked;
 
   DailyEntry({
     this.id,
@@ -27,8 +28,9 @@ class DailyEntry {
     DateTime? createdAt,
     DateTime? updatedAt,
     this.photoPath,
-  })  : createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now();
+    this.isBookmarked = false,
+  }) : createdAt = createdAt ?? DateTime.now(),
+       updatedAt = updatedAt ?? DateTime.now();
 
   DailyEntry copyWith({
     int? id,
@@ -43,6 +45,7 @@ class DailyEntry {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? Function()? photoPath,
+    bool? isBookmarked,
   }) {
     return DailyEntry(
       id: id ?? this.id,
@@ -57,6 +60,7 @@ class DailyEntry {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       photoPath: photoPath != null ? photoPath() : this.photoPath,
+      isBookmarked: isBookmarked ?? this.isBookmarked,
     );
   }
 
@@ -74,17 +78,33 @@ class DailyEntry {
           answer2 == other.answer2 &&
           prompt3 == other.prompt3 &&
           answer3 == other.answer3 &&
-          photoPath == other.photoPath;
+          photoPath == other.photoPath &&
+          isBookmarked == other.isBookmarked;
 
   @override
   int get hashCode => Object.hash(
-        id, date, emotion, prompt1, answer1, prompt2, answer2, prompt3, answer3, photoPath);
+    id,
+    date,
+    emotion,
+    prompt1,
+    answer1,
+    prompt2,
+    answer2,
+    prompt3,
+    answer3,
+    photoPath,
+    isBookmarked,
+  );
+
+  bool get hasAnswers =>
+      [answer1, answer2, answer3].any((answer) => answer.trim().isNotEmpty);
 
   Map<String, dynamic> toJson() {
     return {
       'date': date,
       'emotion': emotion,
       'photo_path': photoPath,
+      'is_bookmarked': isBookmarked,
       'prompts': [
         {'category': 'gratitude', 'question': prompt1, 'answer': answer1},
         {'category': 'acceptance', 'question': prompt2, 'answer': answer2},

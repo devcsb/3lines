@@ -57,7 +57,7 @@ void main() {
           expect(find.text('$page / 3'), findsOneWidget);
           // Verify the last line is scroll-reachable before capturing it.
           final subtitle = find.text(switch (page) {
-            1 => '감정 하나와 답변 한 개부터 저장할 수 있어요',
+            1 => '짧아도, 길어도, 정리되지 않은 이야기여도 괜찮아요',
             2 => '기록한 날의 감정을 히트맵과 통계로 돌아봐요',
             _ => '자체 서버로 기록을 전송하지 않아요. 앱 삭제나 기기 분실에 대비해 텍스트 기록을 내보내세요',
           });
